@@ -49,8 +49,9 @@ NEXT_PUBLIC_MAPBOX_PK=pk...
 ### UI / Boundary
 - UI **Components** in the `./src/components` folder.
 - UI **Pages** in `./src/app/.../page.tsx`.
-- **In both Components and Pages, MAKE SURE THE FIRST LINE OF THE FILE IS `"use client";` unless you know the difference between server and client components.
+- **In both Components and Pages, MAKE SURE THE FIRST LINE OF THE FILE IS `"use client";` See [Use Client Directive](https://nextjs.org/docs/app/api-reference/directives/use-client). You can also read up on [Server Components](https://nextjs.org/docs/app/getting-started/server-and-client-components) to see when to / not to use this directive.
 - Use prebuilt components wherever possible. Refer to [Shadcn UI](https://ui.shadcn.com/docs/components) for component library.
+- Use [Tailwind](https://tailwindcss.com/docs/styling-with-utility-classes) for styling
 
 ### Backend / Controller
 - ...
