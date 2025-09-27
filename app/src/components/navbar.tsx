@@ -59,52 +59,11 @@ export function MainNavbar() {
             <div className="relative h-full aspect-square w-6">
               <Favicon />
             </div>
-            <div className="text-base font-bold">FTOOLS</div>
-
-            {/* <div className="relative h-6 aspect-[150/53]">
-              <FStarsLogo />
-            </div> */}
+            <div className="text-base font-bold">FSG</div>
           </Link>
-          {/* <Button variant="ghost" asChild className="h-full">
-            <Link href="/qrcode">QR Code</Link>
-          </Button> */}
-          <NavigationMenu>
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Tools</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    {components.map((component) => (
-                      <NavigationMenuLink
-                        key={component.title}
-                        title={component.title}
-                        href={component.href}
-                        asChild
-                      >
-                        <Link
-                          href={component.href}
-                          className="flex flex-row gap-2"
-                        >
-                          {component.icon}
-
-                          <div className="flex-1 flex flex-col gap-1">
-                            <div className="flex flex-row items-center gap-2">
-                              <h3 className="text-sm font-bold">
-                                {component.title}
-                              </h3>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {component.description}
-                            </p>
-                          </div>
-                        </Link>
-                      </NavigationMenuLink>
-                    ))}
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
+          <Button variant="ghost" asChild className="h-full">
+            <Link href="/">Explore</Link>
+          </Button>
         </div>
         <div className="flex flex-row items-center gap-2">
           <Button
@@ -119,13 +78,6 @@ export function MainNavbar() {
             )}
           </Button>
           {user ? <UserButton /> : <SignInButton />}
-
-          {/* <Button variant="default" asChild>
-            <Link href="/new">
-              <PlusIcon className="h-4 w-4" />
-              New
-            </Link>
-          </Button> */}
         </div>
       </div>
     </nav>

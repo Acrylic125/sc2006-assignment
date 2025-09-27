@@ -25,6 +25,7 @@ DATABASE_URL=
 # See Mapbox ENV Setup
 NEXT_PUBLIC_MAPBOX_PK=pk...
 ```
+1. To start a development server, run `pnpm run dev`. Your terminal should have a URL `Local:        http://localhost:3000`. Go to this url.
 
 ### Clerk ENV Setup
 1. Setup a [Clek](https://clerk.com/)
@@ -50,11 +51,11 @@ Below is the high level code structure.
 ![Code Structure](./docs/code-structure.png)
 
 ### UI / Boundary
-- UI **Components** in the `./src/components` folder.
-- UI **Pages** in `./src/app/.../page.tsx`.
+- UI **Components** in the `./src/components/.../some-component.tsx` folder.
+- UI **Pages** in `./src/app/.../some-page/page.tsx` (Corresponds to `http://localhost:3000/.../some-page`).
 - In both Components and Pages, MAKE SURE THE FIRST LINE OF THE FILE IS `"use client";` See [Use Client Directive](https://nextjs.org/docs/app/api-reference/directives/use-client). You can also read up on [Server Components](https://nextjs.org/docs/app/getting-started/server-and-client-components) to see when to / not to use this directive.
 - Use prebuilt components wherever possible. Refer to [Shadcn UI](https://ui.shadcn.com/docs/components) for component library.
-- Use [Tailwind](https://tailwindcss.com/docs/styling-with-utility-classes) for styling
+- Use [Tailwind](https://tailwindcss.com/docs/styling-with-utility-classes) for styling. See [TailwindCSS VScode Extension](https://tailwindcss.com/docs/editor-setup) to have intellisense for tailwind.
 
 ### Backend / Controller
 - ...
