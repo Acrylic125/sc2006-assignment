@@ -17,7 +17,18 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Filter, Plus, Sparkles, Star, Tag } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
+import {
+  Ellipsis,
+  Filter,
+  Navigation,
+  Plus,
+  Sparkles,
+  Star,
+  Tag,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 function useBreakpointBetween(min: number, max: number) {
@@ -40,7 +51,9 @@ function ItineraryDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">No Intinerary Selected</Button>
+        <Button variant="outline" className="w-36 md:w-40 lg:w-52">
+          <span className="truncate">No Intinerary Selected</span>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel>Filters</DropdownMenuLabel>
@@ -105,29 +118,84 @@ function FilterTagsDropdown() {
   );
 }
 
+export function ViewPOIReviews() {
+  const auth = useAuth();
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-row items-center justify-between">
+        <h3 className="font-medium">Reviews</h3>
+        <Button variant="default" size="sm" disabled={!auth.isSignedIn}>
+          <Plus /> Review
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function ViewPOIPanel() {
+  // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
+  const poi = {
+    name: "Marina Bay Sands",
+    description: "Marina Bay Sands is a hotel and casino located in Singapore.",
+    image: "/example.png",
+    latitude: 1.2834,
+    longitude: 103.8607,
+  };
+
+  return (
+    <div className="w-full flex flex-col">
+      <div className="w-full aspect-[4/3] relative">
+        <Image src={poi.image} alt={poi.name} fill className="object-cover" />
+      </div>
+      <div className="flex flex-col p-1">
+        <h1 className="text-base font-bold">{poi.name}</h1>
+        <p className="text-sm text-muted-foreground">{poi.description}</p>
+        <div className="flex flex-col gap-1 py-4">
+          <Button variant="ghost" asChild className="w-fit p-0">
+            <a
+              href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+            >
+              <Navigation />
+              Navigate
+            </a>
+          </Button>
+          <Button className="w-full truncate" size="sm">
+            Add to Itinerary
+          </Button>
+          <Button className="w-full truncate" variant="secondary" size="sm">
+            Start Itinerary
+          </Button>
+        </div>
+        <ViewPOIReviews />
+      </div>
+    </div>
+  );
+}
+
 function ExplorePageLayout({ className }: { className?: string }) {
   // Refer to https://tailwindcss.com/docs/responsive-design
   // for breakpoint values.
-  // <= md implies mobile.
-  // const isMobile = useBreakpointBetween(0, 768);
+  // <= lg implies mobile.
+  // const isMobile = useBreakpointBetween(0, 1024);
 
-  const showItinerary = useState<string | null>(null);
+  const [showItinerary, setShowItinerary] = useState<string | null>(null);
+
+  // if (isMobile) {
+  //   return <></>;
+  // }
 
   return (
-    <div className={cn("w-full h-screen-max grid grid-cols-12", className)}>
+    <div
+      className={cn("w-full h-screen-max flex flex-col md:flex-row", className)}
+    >
       {showItinerary && (
         <ScrollArea className="col-span-2 h-screen-max">
           <div className="flex flex-col w-full bg-amber-400 h-screen-max"></div>
         </ScrollArea>
       )}
-      <div
-        className={cn(
-          "flex flex-col h-full",
-          // "h-screen-max",
-          showItinerary ? "col-span-8" : "col-span-10"
-        )}
-      >
-        <div className="flex flex-row items-center justify-between">
+      <div className="flex flex-col h-full flex-1">
+        <div className="flex flex-row items-center justify-between p-1 border-b border-border gap-1">
           <div className="flex-1 flex flex-row items-center gap-2">
             <FilterTagsDropdown />
             <FilterDropdown />
@@ -135,10 +203,39 @@ function ExplorePageLayout({ className }: { className?: string }) {
           <div className="flex-1 flex flex-row items-center gap-2">
             <ItineraryDropdown />
           </div>
-          <div className="flex-1 flex flex-row justify-end items-center gap-2">
-            <Button variant="ghost">
-              <Sparkles /> <span className="hidden lg:block">Surprise Me!</span>
+
+          <div className="flex-1 flex flex-row items-center gap-2 lg:hidden justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Sparkles />{" "}
+                  <span className="hidden sm:block">Surprise Me</span>
+                  {/* <span className="hidden xs:block">Surprise Me!</span> */}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Filters</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem>
+                  Show Visited
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem>
+                  Show Unvisited
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="flex-1 hidden lg:flex flex-row justify-end items-center">
+            <Button variant="ghost" className="px-2.5" asChild>
+              <Link href="/surprise-me">
+                <div className="bg-background rounded-sm px-3 py-1.5 flex items-center gap-2">
+                  <Sparkles />
+                  <span className="hidden lg:block">Surprise Me!</span>
+                </div>
+              </Link>
             </Button>
+
             <Tabs defaultValue="account">
               <TabsList>
                 <TabsTrigger value="account">Explore</TabsTrigger>
@@ -147,16 +244,18 @@ function ExplorePageLayout({ className }: { className?: string }) {
             </Tabs>
           </div>
         </div>
-        <div className="bg-blue-500 w-full flex-1">
-          Lorem ipsum, dolor sit amet consectetur adipisicing elit. Consectetur
-          hic in error esse est autem pariatur dolores deleniti laborum enim,
-          nobis labore reprehenderit nulla asperiores at sequi! Suscipit,
-          numquam repellendus.
-        </div>
         {/* <ExploreMap className="w-full flex-1" /> */}
       </div>
-      <ScrollArea className="col-span-2 h-screen-max">
-        <div className="flex flex-col w-full bg-amber-400 h-screen-max"></div>
+      <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max">
+        <ViewPOIPanel />
+        <div className="absolute flex flex-col items-center top-0 left-1/2 right-1/2 -translate-x-1/2">
+          <Tabs defaultValue="account">
+            <TabsList>
+              <TabsTrigger value="account">Itinerary</TabsTrigger>
+              <TabsTrigger value="password">Place</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </ScrollArea>
     </div>
   );
