@@ -1,46 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { Favicon } from "./icons/Favicon";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { useThemeStore } from "./theme-store";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "./ui/button";
-import {
-  ImageToIcoToolIcon,
-  QRCodeToolIcon,
-  ShareToolIcon,
-} from "./icons/tool-icons";
-
-const components = [
-  {
-    title: "QR Code",
-    href: "/qrcode",
-    description: "Generate QR codes for your website or application",
-    icon: <QRCodeToolIcon />,
-  },
-  {
-    title: "Image to ICO",
-    href: "/img-to-ico",
-    description: "Convert images to ICO files",
-    icon: <ImageToIcoToolIcon />,
-  },
-  {
-    title: "Share",
-    href: "/share",
-    description: "Share your content with others",
-    icon: <ShareToolIcon />,
-  },
-];
 
 export function MainNavbar() {
   const { theme, setTheme } = useThemeStore(

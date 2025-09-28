@@ -5,9 +5,14 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.url(),
   },
-  clientPrefix: "PUBLIC_",
-  client: {},
-  runtimeEnv: process.env,
+  clientPrefix: "NEXT_PUBLIC_",
+  client: {
+    NEXT_PUBLIC_MAPBOX_PK: z.string(),
+  },
+  runtimeEnv: {
+    DATABASE_URL: process.env.DATABASE_URL,
+    NEXT_PUBLIC_MAPBOX_PK: process.env.NEXT_PUBLIC_MAPBOX_PK,
+  },
 
   /**
    * By default, this library will feed the environment variables directly to
