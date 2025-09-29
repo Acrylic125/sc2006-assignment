@@ -24,8 +24,11 @@ import {
   Check,
   Ellipsis,
   Filter,
+  List,
+  MapPin,
   Navigation,
   Pen,
+  Pin,
   Plus,
   Sparkles,
   Star,
@@ -38,6 +41,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { useQueryState, parseAsInteger } from "nuqs";
+// import { DndContext } from "@dnd-kit/core";
 
 // function useBreakpointBetween(min: number, max: number) {
 //   const [breakpoint, setBreakpoint] = useState<boolean>(false);
@@ -375,6 +380,8 @@ export function ViewPOIReviews() {
 }
 
 export function ViewPOIPanel() {
+  // use nuqs to get the poiId
+  const [poiId, setPoiId] = useQueryState("poiId", parseAsInteger);
   // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
   const poi = {
     name: "Marina Bay Sands",
@@ -383,6 +390,24 @@ export function ViewPOIPanel() {
     latitude: 1.2834,
     longitude: 103.8607,
   };
+
+  if (poiId === null) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
+        <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
+          <MapPin className="size-6 stroke-red-400" />
+          <div className="flex flex-col">
+            <h3 className="text-base font-bold text-center">
+              No pin selected!
+            </h3>
+            <p className="text-muted-foreground text-center text-sm">
+              Select a pin on the map to view more information.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col">
@@ -412,6 +437,179 @@ export function ViewPOIPanel() {
       </div>
     </div>
   );
+}
+
+export function ViewItineraryPanel() {
+  const mapStore = useMapStore(
+    useShallow(({ viewingItineraryId }) => {
+      return {
+        viewingItineraryId,
+      };
+    })
+  );
+  // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
+  const itinerary = {
+    id: 1,
+    name: "Itinerary 1",
+    pois: [
+      {
+        id: 1,
+        name: "Place 1",
+        reviewed: true,
+        orderPriority: 1,
+      },
+      {
+        id: 2,
+        name: "Place 2",
+        reviewed: true,
+        orderPriority: 2,
+      },
+      {
+        id: 3,
+        name: "Place 3",
+        reviewed: false,
+        orderPriority: 3,
+      },
+      {
+        id: 4,
+        name: "Place 4",
+        reviewed: true,
+        orderPriority: 4,
+      },
+      {
+        id: 5,
+        name: "Place 5",
+        reviewed: true,
+        orderPriority: 5,
+      },
+    ],
+  };
+  // const poi = {
+  //   name: "Marina Bay Sands",
+  //   description: "Marina Bay Sands is a hotel and casino located in Singapore.",
+  //   image: "/example.png",
+  //   latitude: 1.2834,
+  //   longitude: 103.8607,
+  // };
+
+  if (mapStore.viewingItineraryId === null) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
+        <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
+          <List className="size-6 stroke-pink-50" />
+          <div className="flex flex-col">
+            <h3 className="text-base font-bold text-center">
+              No initerary selected!
+            </h3>
+            <p className="text-muted-foreground text-center text-sm">
+              Select an itinerary to get started.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isLastPOIReviewed =
+    itinerary.pois.length === 0 ||
+    itinerary.pois[itinerary.pois.length - 1].reviewed;
+
+  return (
+    <div className="w-full flex flex-col gap-2 py-16 px-8 lg:px-1">
+      <h2 className="text-lg font-bold">{itinerary.name}</h2>
+      <div className="w-full flex flex-col">
+        <div className="flex flex-row items-center">
+          <div className="w-8 flex flex-col items-center">
+            <div className="bg-primary rounded-full w-4 h-4"></div>
+            <div className="h-4 w-0.5 bg-primary" />
+          </div>
+        </div>
+        {itinerary.pois.map((poi, i) => {
+          const isPrevReviewed = i <= 0 || itinerary.pois[i - 1].reviewed;
+          const isSelfChecked = poi.reviewed;
+          const isNextReviewed = isSelfChecked;
+          return (
+            <div key={poi.id} className="flex flex-row gap-2 items-center">
+              <div className="w-8 flex flex-col items-center justify-center">
+                <div
+                  className={cn("h-4 w-0.5", {
+                    "bg-primary": isPrevReviewed,
+                    "bg-neutral-300 dark:bg-neutral-700": !isPrevReviewed,
+                  })}
+                />
+                <div
+                  className={cn(
+                    "border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8",
+                    {
+                      "bg-primary": poi.reviewed,
+                    }
+                  )}
+                >
+                  <Check className="stroke-3 size-4 text-background" />
+                </div>
+                <div
+                  className={cn("h-4 w-0.5", {
+                    "bg-primary": isNextReviewed,
+                    "bg-neutral-300 dark:bg-neutral-700": !isNextReviewed,
+                  })}
+                />
+              </div>
+              <div className="flex flex-row items-center h-full flex-1">
+                <h3>{poi.name}</h3>
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="flex flex-row items-center">
+          <div className="w-8 flex flex-col items-center">
+            <div
+              className={cn("h-4 w-0.5", {
+                "bg-primary": isLastPOIReviewed,
+                "bg-neutral-300 dark:bg-neutral-700": !isLastPOIReviewed,
+              })}
+            />
+            <div
+              className={cn("rounded-full w-4 h-4", {
+                "bg-primary": isLastPOIReviewed,
+                "bg-neutral-300 dark:bg-neutral-700": !isLastPOIReviewed,
+              })}
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  // return <></>;
+
+  // return (
+  //   <div className="w-full flex flex-col">
+  //     <div className="w-full aspect-[4/3] relative">
+  //       <Image src={poi.image} alt={poi.name} fill className="object-cover" />
+  //     </div>
+  //     <div className="flex flex-col p-1">
+  //       <h1 className="text-base font-bold">{poi.name}</h1>
+  //       <p className="text-sm text-muted-foreground">{poi.description}</p>
+  //       <div className="flex flex-col gap-1 py-4">
+  //         <Button variant="ghost" asChild className="w-fit p-0">
+  //           <a
+  //             href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+  //           >
+  //             <Navigation />
+  //             Navigate
+  //           </a>
+  //         </Button>
+  //         <Button className="w-full truncate" size="sm">
+  //           Add to Itinerary
+  //         </Button>
+  //         <Button className="w-full truncate" variant="secondary" size="sm">
+  //           Start Itinerary
+  //         </Button>
+  //       </div>
+  //       <ViewPOIReviews />
+  //     </div>
+  //   </div>
+  // );
 }
 
 const mapViewTabs = [
@@ -504,6 +702,22 @@ export function SidePanelTabGroup() {
   );
 }
 
+export function SidePanel() {
+  const mapStore = useMapStore(
+    useShallow(({ currentSidePanelTab }) => {
+      return {
+        currentSidePanelTab,
+      };
+    })
+  );
+
+  if (mapStore.currentSidePanelTab === "itinerary") {
+    return <ViewItineraryPanel />;
+  } else {
+    return <ViewPOIPanel />;
+  }
+}
+
 export default function Home() {
   return (
     <div className="w-full h-full flex flex-col items-center bg-background">
@@ -523,7 +737,6 @@ export default function Home() {
                   <Button variant="outline">
                     <Sparkles />{" "}
                     <span className="hidden sm:block">Surprise Me</span>
-                    {/* <span className="hidden xs:block">Surprise Me!</span> */}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -577,7 +790,7 @@ export default function Home() {
           </div>
         </div>
         <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max">
-          <ViewPOIPanel />
+          <SidePanel />
           <div className="absolute flex flex-col items-center top-2 left-1/2 right-1/2 -translate-x-1/2">
             <SidePanelTabGroup />
           </div>

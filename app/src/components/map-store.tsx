@@ -49,7 +49,7 @@ type MapStore = {
 export const useMapStore = create<MapStore>((set) => ({
   viewingItineraryId: null,
   currentMapTab: "explore",
-  currentSidePanelTab: "itinerary",
+  currentSidePanelTab: "place",
   explore: {
     pois: [],
   },

@@ -9,6 +9,7 @@ import { makeQueryClient } from "@/server/query-client";
 import { trpc } from "@/server/client";
 import { httpBatchLink } from "@trpc/react-query";
 import { getTrpcUrl } from "@/server/utils";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 export function ThemeProvider({
   children,
@@ -67,9 +68,11 @@ export function Providers({
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <ClerkProvider>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider className={className}>{children}</ThemeProvider>
-        </QueryClientProvider>
+        <NuqsAdapter>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider className={className}>{children}</ThemeProvider>
+          </QueryClientProvider>
+        </NuqsAdapter>
       </ClerkProvider>
     </trpc.Provider>
   );
