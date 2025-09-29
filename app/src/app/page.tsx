@@ -1,6 +1,7 @@
 "use client";
 
 import { ExploreMap } from "@/components/map";
+import { useMapStore } from "@/components/map-store";
 import { MainNavbar } from "@/components/navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, formatDurationToClosestUnit } from "@/lib/utils";
 import { useAuth } from "@clerk/nextjs";
 import {
   Ellipsis,
@@ -27,10 +28,13 @@ import {
   Sparkles,
   Star,
   Tag,
+  ThumbsDown,
+  ThumbsUp,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 // function useBreakpointBetween(min: number, max: number) {
 //   const [breakpoint, setBreakpoint] = useState<boolean>(false);
@@ -126,18 +130,39 @@ export function ViewPOIReviews() {
   const reviews = [
     {
       id: 1,
-      liked: true,
+      liked: false,
       comment: "This is a review",
-      images: ["/example.png", "/example.png"],
-      createdAt: new Date(),
+      images: ["/example.png", "/example.png", "/example.png"],
+      age: 30000,
+      // createdAt: new Date(),
       // User needs to be retrieved from clerk.
       // See https://clerk.com/docs/reference/backend/user/get-user-list
       // Filter by `userId`. Note the limit is 100. We will only ever
       // retrieve up to 50 reviews at a time so this limit will never
       // be reached.
       user: {
-        // Change this user id to your user id. You should see
-        // a difference.
+        id: "user_123",
+        name: "User 1",
+        profilePicture: "https://github.com/shadcn.png",
+      },
+      itinerary: {
+        id: 1,
+        name: "Itinerary 1",
+      },
+    },
+    {
+      id: 2,
+      liked: true,
+      comment: "This is a review",
+      images: ["/example.png", "/example.png", "/example.png"],
+      age: 86400000,
+      // createdAt: new Date(),
+      // User needs to be retrieved from clerk.
+      // See https://clerk.com/docs/reference/backend/user/get-user-list
+      // Filter by `userId`. Note the limit is 100. We will only ever
+      // retrieve up to 50 reviews at a time so this limit will never
+      // be reached.
+      user: {
         id: "user_123",
         name: "User 1",
         profilePicture: "https://github.com/shadcn.png",
@@ -161,19 +186,45 @@ export function ViewPOIReviews() {
         {reviews.map((review) => (
           <div
             key={review.id}
-            className={cn(
-              "flex flex-col gap-1 border border-border rounded-md p-2",
-              {
-                "bg-secondary": review.user.id === auth.userId,
-              }
-            )}
+            className="flex flex-col border border-border rounded-md p-2 bg-secondary gap-2"
           >
+            <div className="flex flex-row items-center justify-between gap-2">
+              <div className="flex flex-row items-center gap-2">
+                <Avatar>
+                  <AvatarImage src={review.user.profilePicture} />
+                  <AvatarFallback>Profile</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{review.user.name}</span>
+              </div>
+              {review.liked ? (
+                <ThumbsUp className="size-4 stroke-primary dark:fill-primary/25" />
+              ) : (
+                <ThumbsDown className="size-4 stroke-red-400 fill-red-200/25 dark:fill-red-700/25" />
+              )}
+            </div>
+            <p className="text-sm font-light text-foreground">
+              {review.comment}
+            </p>
             <div className="flex flex-row items-center gap-2">
-              <Avatar>
-                <AvatarImage src={review.user.profilePicture} />
-                <AvatarFallback>Profile</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium">{review.user.name}</span>
+              {review.images.map((image, i) => (
+                <div className="w-1/3 aspect-square relative" key={i}>
+                  <Image
+                    src={image}
+                    alt={review.comment}
+                    className="object-cover"
+                    fill
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-row justify-between">
+              <span className="text-sm flex-1 truncate">
+                {(auth.userId === review.user.id || true) &&
+                  review.itinerary.name}
+              </span>
+              <span className="flex flex-row items-center text-muted-foreground text-sm flex-1 truncate justify-end">
+                {formatDurationToClosestUnit(review.age)} ago
+              </span>
             </div>
           </div>
         ))}
@@ -222,6 +273,96 @@ export function ViewPOIPanel() {
   );
 }
 
+const mapViewTabs = [
+  {
+    id: "explore",
+    label: "Explore",
+  },
+  {
+    id: "recommend",
+    label: "Recommend",
+  },
+] as const;
+
+export function MapViewTabGroup() {
+  const mapStore = useMapStore(
+    useShallow(({ currentMapTab, setCurrentMapTab }) => {
+      return {
+        currentMapTab,
+        setCurrentMapTab,
+      };
+    })
+  );
+
+  return (
+    <div className="flex flex-row bg-secondary/75 backdrop-blur-sm rounded-full border border-border p-1">
+      {mapViewTabs.map((tab) => {
+        return (
+          <Button
+            key={tab.id}
+            variant={mapStore.currentMapTab === tab.id ? "default" : "ghost"}
+            onClick={() => {
+              mapStore.setCurrentMapTab(tab.id);
+            }}
+            size="sm"
+            className={cn("rounded-full shadow-sm text-sm py-1 px-2.5 h-fit", {
+              "border-border border": mapStore.currentMapTab === tab.id,
+            })}
+          >
+            {tab.label}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+const sidePanelTabs = [
+  {
+    id: "itinerary",
+    label: "Itinerary",
+  },
+  {
+    id: "place",
+    label: "Place",
+  },
+] as const;
+
+export function SidePanelTabGroup() {
+  const mapStore = useMapStore(
+    useShallow(({ currentSidePanelTab, setCurrentSidePanelTab }) => {
+      return {
+        currentSidePanelTab,
+        setCurrentSidePanelTab,
+      };
+    })
+  );
+
+  return (
+    <div className="flex flex-row bg-secondary/75 backdrop-blur-sm rounded-full border border-border p-1">
+      {sidePanelTabs.map((tab) => {
+        return (
+          <Button
+            key={tab.id}
+            variant={
+              mapStore.currentSidePanelTab === tab.id ? "default" : "ghost"
+            }
+            onClick={() => {
+              mapStore.setCurrentSidePanelTab(tab.id);
+            }}
+            size="sm"
+            className={cn("rounded-full shadow-sm text-sm py-1 px-2.5 h-fit", {
+              "border-border border": mapStore.currentSidePanelTab === tab.id,
+            })}
+          >
+            {tab.label}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <div className="w-full h-full flex flex-col items-center bg-background">
@@ -261,7 +402,7 @@ export default function Home() {
               </DropdownMenu>
             </div>
 
-            <div className="flex-1 hidden lg:flex flex-row justify-end items-center">
+            <div className="flex-1 hidden lg:flex flex-row justify-end items-center gap-1">
               <Button variant="outline" className="px-2.5" asChild>
                 <Link href="/surprise-me">
                   <div className="bg-background rounded-sm px-3 py-1.5 flex items-center gap-2">
@@ -271,12 +412,23 @@ export default function Home() {
                 </Link>
               </Button>
 
-              <Tabs defaultValue="account">
-                <TabsList>
-                  <TabsTrigger value="account">Explore</TabsTrigger>
-                  <TabsTrigger value="password">Recommend</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <MapViewTabGroup />
+              {/* <div className="flex flex-row items-center bg-secondary/75 backdrop-blur-sm rounded-full border border-border p-1">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="rounded-full border-border border shadow-sm text-sm py-1 px-2.5 h-fit"
+                >
+                  Explore
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-sm py-1 px-1.5 h-fit"
+                >
+                  Recommend
+                </Button>
+              </div> */}
             </div>
           </div>
           <div className="h-full w-full p-1">
@@ -286,28 +438,7 @@ export default function Home() {
         <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max">
           <ViewPOIPanel />
           <div className="absolute flex flex-col items-center top-2 left-1/2 right-1/2 -translate-x-1/2">
-            <div className="flex flex-row bg-secondary/75 backdrop-blur-sm rounded-full border border-border p-1">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="rounded-full shadow-sm text-sm py-1 px-2.5 h-fit"
-              >
-                Itinerary
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full text-sm py-1 px-1.5 h-fit"
-              >
-                Place
-              </Button>
-            </div>
-            {/* <Tabs defaultValue="account">
-            <TabsList>
-              <TabsTrigger value="account">Itinerary</TabsTrigger>
-              <TabsTrigger value="password">Place</TabsTrigger>
-            </TabsList>
-          </Tabs> */}
+            <SidePanelTabGroup />
           </div>
         </ScrollArea>
       </div>
