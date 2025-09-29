@@ -21,15 +21,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, formatDurationToClosestUnit } from "@/lib/utils";
 import { useAuth } from "@clerk/nextjs";
 import {
+  Check,
   Ellipsis,
   Filter,
   Navigation,
+  Pen,
   Plus,
   Sparkles,
   Star,
   Tag,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -53,23 +56,96 @@ import { useShallow } from "zustand/react/shallow";
 // }
 
 function ItineraryDropdown() {
+  const mapStore = useMapStore(
+    useShallow(({ viewingItineraryId, setViewingItineraryId }) => {
+      return {
+        viewingItineraryId,
+        setViewingItineraryId,
+      };
+    })
+  );
+  const itineraries = [
+    {
+      id: 1,
+      name: "Itinerary 1",
+    },
+    {
+      id: 2,
+      name: "Itinerary 2",
+    },
+  ];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-36 md:w-40 lg:w-52">
-          <span className="truncate">No Intinerary Selected</span>
+          {mapStore.viewingItineraryId ? (
+            <span className="truncate">
+              {
+                itineraries.find(
+                  (itinerary) => itinerary.id === mapStore.viewingItineraryId
+                )?.name
+              }
+            </span>
+          ) : (
+            <span className="truncate text-muted-foreground">
+              No Intinerary Selected
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuLabel>Filters</DropdownMenuLabel>
+        <DropdownMenuLabel>My Itineraries</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup>
-          <DropdownMenuRadioItem value="none">-- None --</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="bottom">Bottom</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="right">Right</DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+
+        {itineraries.map((itinerary) => (
+          <div key={itinerary.id} className="relative">
+            <Button
+              onClick={() => {
+                if (mapStore.viewingItineraryId === itinerary.id) {
+                  mapStore.setViewingItineraryId(null);
+                } else {
+                  mapStore.setViewingItineraryId(itinerary.id);
+                }
+              }}
+              className="w-full px-2 flex flex-row items-center justify-start pr-20"
+              variant={
+                mapStore.viewingItineraryId === itinerary.id
+                  ? "default"
+                  : "ghost"
+              }
+            >
+              {itinerary.name}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("absolute top-0 right-0", {
+                    "text-background":
+                      mapStore.viewingItineraryId === itinerary.id,
+                    "text-foreground":
+                      mapStore.viewingItineraryId !== itinerary.id,
+                  })}
+                >
+                  <Ellipsis />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>
+                  <Pen className="size-3" /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive">
+                  <Trash2 className="size-3" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem className="px-2">
           <Plus /> Create Itinerary
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -78,18 +154,53 @@ function ItineraryDropdown() {
 }
 
 function FilterDropdown() {
+  const mapStore = useMapStore(
+    useShallow(({ filters, setFilterShowVisited, setFilterShowUnvisited }) => {
+      return {
+        showVisited: filters.showVisited,
+        showUnvisited: filters.showUnvisited,
+        setFilterShowVisited,
+        setFilterShowUnvisited,
+      };
+    })
+  );
+
+  const hasModified = !mapStore.showVisited || !mapStore.showUnvisited;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button variant={hasModified ? "default" : "outline"}>
           <Filter /> <span className="hidden lg:block">Filters</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel>Filters</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem>Show Visited</DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem>Show Unvisited</DropdownMenuCheckboxItem>
+        <Button
+          variant="ghost"
+          className="flex flex-row items-center gap-2 w-full justify-start px-2"
+          onClick={() => {
+            mapStore.setFilterShowVisited(!mapStore.showVisited);
+          }}
+        >
+          <span className="w-4">
+            {mapStore.showVisited && <Check className="size-4" />}
+          </span>
+          <span>Show Visited</span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex flex-row items-center gap-2 justify-start px-2"
+          onClick={() => {
+            mapStore.setFilterShowUnvisited(!mapStore.showUnvisited);
+          }}
+        >
+          <span className="w-4">
+            {mapStore.showUnvisited && <Check className="size-4" />}
+          </span>
+          <span>Show Unvisited</span>
+        </Button>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -105,10 +216,21 @@ function FilterTagsDropdown() {
     "Shopping",
     "Entertainment",
   ];
+  const mapStore = useMapStore(
+    useShallow(({ filters, setFilterExcludedTags }) => {
+      return {
+        excludedTags: filters.excludedTags,
+        setFilterExcludedTags,
+      };
+    })
+  );
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button
+          variant={mapStore.excludedTags.size > 0 ? "default" : "outline"}
+        >
           <Tag /> <span className="hidden lg:block">Tags</span>
         </Button>
       </DropdownMenuTrigger>
@@ -116,7 +238,26 @@ function FilterTagsDropdown() {
         <DropdownMenuLabel>Tags</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {tags.map((tag) => (
-          <DropdownMenuCheckboxItem key={tag}>{tag}</DropdownMenuCheckboxItem>
+          <Button
+            key={tag}
+            variant="ghost"
+            className="flex flex-row items-center gap-2 justify-start px-2"
+            onClick={() => {
+              const currentExcludedTags = new Set(mapStore.excludedTags);
+              if (mapStore.excludedTags.has(tag)) {
+                currentExcludedTags.delete(tag);
+                mapStore.setFilterExcludedTags(currentExcludedTags);
+              } else {
+                currentExcludedTags.add(tag);
+                mapStore.setFilterExcludedTags(currentExcludedTags);
+              }
+            }}
+          >
+            <span className="w-4">
+              {!mapStore.excludedTags.has(tag) && <Check className="size-4" />}
+            </span>
+            <span>{tag}</span>
+          </Button>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
