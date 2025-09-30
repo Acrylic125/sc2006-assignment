@@ -11,31 +11,31 @@ const itinerary = {
     {
       id: 10,
       name: "Place 1",
-      reviewed: true,
+      checked: true,
       orderPriority: 1,
     },
     {
       id: 20,
       name: "Place 2",
-      reviewed: true,
+      checked: true,
       orderPriority: 2,
     },
     {
       id: 30,
       name: "Place 3",
-      reviewed: false,
+      checked: false,
       orderPriority: 3,
     },
     {
       id: 40,
       name: "Place 4",
-      reviewed: true,
+      checked: true,
       orderPriority: 4,
     },
     {
       id: 50,
       name: "Place 5",
-      reviewed: true,
+      checked: true,
       orderPriority: 5,
     },
   ],
@@ -49,7 +49,6 @@ export const itineraryRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       // TODO: Get the itinerary from the database. MAKE SURE TO SORT THE POIS BY ORDER PRIORITY (in ascending order).
       //   db.select().from(itineraryPOITable).where...
       return itinerary;

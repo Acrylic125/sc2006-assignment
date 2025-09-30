@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl";
 import { env } from "@/lib/env";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { useMapStore } from "./map-store";
 import { useShallow } from "zustand/react/shallow";

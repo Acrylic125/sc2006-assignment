@@ -80,18 +80,24 @@ export const itineraryTable = pgTable("itinerary", {
 
 // This is the join table for the many-to-many relationship between itinerary and poi.
 // Do not combine. We can do a join if we need to.
-export const itineraryPOITable = pgTable("itinerary_poi", {
-  id: serial().notNull().primaryKey(),
-  itineraryId: integer("itinerary_id")
-    .notNull()
-    .references(() => itineraryTable.id),
-  poiId: integer("poi_id")
-    .notNull()
-    .references(() => poiTable.id),
-  // This is the order priority of the poi in the itinerary.
-  // Show from lowest -> highest.
-  orderPriority: integer("order_priority").notNull(),
-});
+export const itineraryPOITable = pgTable(
+  "itinerary_poi",
+  {
+    id: serial().notNull().primaryKey(),
+    itineraryId: integer("itinerary_id")
+      .notNull()
+      .references(() => itineraryTable.id),
+    poiId: integer("poi_id")
+      .notNull()
+      .references(() => poiTable.id),
+    // This is the order priority of the poi in the itinerary.
+    // Show from lowest -> highest.
+    orderPriority: integer("order_priority").notNull(),
+    // Indicates if the poi has been checked off.
+    checked: boolean("checked").notNull().default(false),
+  },
+  (t) => [unique("idx_itinerary_poi").on(t.itineraryId, t.poiId)]
+);
 
 export const reviewTable = pgTable(
   "review",
@@ -106,6 +112,7 @@ export const reviewTable = pgTable(
     comment: text("comment"),
   },
   // A user can only have one review for a poi.
+  // THIS IS SHARED ACROSS ALL ITINERARIES!
   (t) => [unique("idx_user_poi").on(t.userId, t.poiId)]
 );
 

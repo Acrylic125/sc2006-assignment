@@ -7,8 +7,11 @@ import { useAuth } from "@clerk/nextjs";
 import { MapPin, Navigation, Plus, ThumbsDown, ThumbsUp } from "lucide-react";
 import Image from "next/image";
 import { useQueryState, parseAsInteger } from "nuqs";
+import { useMapModalStore } from "./modal/map-modal-store";
+import { useShallow } from "zustand/react/shallow";
+import { useMapStore } from "./map-store";
 
-export function ViewPOIReviews() {
+export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
 
   // TODO: Retrieve personal reviews + other reviews using the Reviews Router.
@@ -59,11 +62,31 @@ export function ViewPOIReviews() {
     },
   ];
 
+  const modalStore = useMapModalStore(
+    useShallow(({ setAction }) => {
+      return {
+        setAction,
+      };
+    })
+  );
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-row items-center justify-between">
         <h3 className="font-medium">Reviews</h3>
-        <Button variant="default" size="sm" disabled={!auth.isSignedIn}>
+        <Button
+          variant="default"
+          size="sm"
+          disabled={!auth.isSignedIn}
+          onClick={() => {
+            modalStore.setAction({
+              type: "itinerary-poi-review",
+              options: {
+                poiId: poiId,
+              },
+            });
+          }}
+        >
           <Plus /> Review
         </Button>
       </div>
@@ -172,7 +195,7 @@ export function ViewPOIPanel() {
             Start Itinerary
           </Button>
         </div>
-        <ViewPOIReviews />
+        <ViewPOIReviews poiId={poiId} />
       </div>
     </div>
   );

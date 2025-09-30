@@ -3,7 +3,7 @@ import {
   FilterTagsDropdown,
   ItineraryDropdown,
   MapViewTabGroup,
-} from "@/components/map";
+} from "@/components/map/map";
 import { MainNavbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
-import { SidePanel, SidePanelTabGroup } from "@/components/map-side-panel";
+import { SidePanel, SidePanelTabGroup } from "@/components/map/map-side-panel";
+import { MapModal } from "@/components/map/modal/map-modal";
 
 export default function Home() {
   return (
@@ -75,13 +76,14 @@ export default function Home() {
             {/* <ExploreMap className="h-full w-full" /> */}
           </div>
         </div>
-        <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max">
+        <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max lg:border-l border-border">
           <SidePanel />
           <div className="absolute flex flex-col items-center top-2 left-1/2 right-1/2 -translate-x-1/2">
             <SidePanelTabGroup />
           </div>
         </ScrollArea>
       </div>
+      <MapModal />
     </div>
   );
 }

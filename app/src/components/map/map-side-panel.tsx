@@ -1,11 +1,11 @@
 "use client";
 
-import { useMapStore } from "@/components/map-store";
+import { useMapStore } from "@/components/map/map-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useShallow } from "zustand/react/shallow";
-import { ViewItineraryPanel } from "./view-itinerary-side-panel";
-import { ViewPOIPanel } from "./view-poi-side-panel";
+import { ViewItineraryPanel } from "@/components/map/view-itinerary-side-panel";
+import { ViewPOIPanel } from "@/components/map/view-poi-side-panel";
 
 const sidePanelTabs = [
   {

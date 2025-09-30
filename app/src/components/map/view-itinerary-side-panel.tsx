@@ -1,6 +1,6 @@
 "use client";
 
-import { useMapStore } from "@/components/map-store";
+import { useMapStore } from "@/components/map/map-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Check, List } from "lucide-react";
@@ -18,30 +18,33 @@ import {
   DndContext,
   DragEndEvent,
   KeyboardSensor,
-  PointerSensor,
+  // PointerSensor,
+  // TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { trpc } from "@/server/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useMapModalStore } from "./modal/map-modal-store";
+import { TouchSensor, MouseSensor } from "@/lib/dnd-kit";
 
 export function ItineraryPOISortableItem({
   id,
   poi,
-  isPrevReviewed,
-  isNextReviewed,
+  isPrevChecked,
+  isNextChecked,
   className,
 }: {
   id: number;
   poi: {
     id: number;
     name: string;
-    reviewed: boolean;
+    checked: boolean;
     orderPriority: number;
   };
-  isPrevReviewed: boolean;
-  isNextReviewed: boolean;
+  isPrevChecked: boolean;
+  isNextChecked: boolean;
   className?: string;
 }) {
   const {
@@ -52,6 +55,13 @@ export function ItineraryPOISortableItem({
     transition,
     isDragging,
   } = useSortable({ id });
+  const modalStore = useMapModalStore(
+    useShallow(({ setAction }) => {
+      return {
+        setAction,
+      };
+    })
+  );
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -75,28 +85,36 @@ export function ItineraryPOISortableItem({
       <div className="w-8 flex flex-col items-center justify-center">
         <div
           className={cn("h-4 w-0.5", {
-            "bg-primary": isPrevReviewed,
-            "bg-neutral-300 dark:bg-neutral-700": !isPrevReviewed,
+            "bg-primary": isPrevChecked,
+            "bg-neutral-300 dark:bg-neutral-700": !isPrevChecked,
           })}
         />
         <Button
-          variant={poi.reviewed ? "default" : "outline"}
+          variant={poi.checked ? "default" : "outline"}
           className="border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8"
+          data-no-dnd="true"
           onClick={(e) => {
+            e.stopPropagation();
+            modalStore.setAction({
+              type: "itinerary-poi-review",
+              options: {
+                poiId: poi.id,
+              },
+            });
             console.log("clicked");
           }}
         >
           <Check
             className={cn("stroke-3 size-4", {
-              "text-background": poi.reviewed,
-              "text-neutral-300 dark:text-neutral-700": !poi.reviewed,
+              "text-background": poi.checked,
+              "text-neutral-300 dark:text-neutral-700": !poi.checked,
             })}
           />
         </Button>
         <div
           className={cn("h-4 w-0.5", {
-            "bg-primary": isNextReviewed,
-            "bg-neutral-300 dark:bg-neutral-700": !isNextReviewed,
+            "bg-primary": isNextChecked,
+            "bg-neutral-300 dark:bg-neutral-700": !isNextChecked,
           })}
         />
       </div>
@@ -116,7 +134,9 @@ export function ViewItineraryPanel() {
     })
   );
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    // useSensor(PointerSensor),
+    useSensor(TouchSensor),
+    useSensor(MouseSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -257,7 +277,7 @@ export function ViewItineraryPanel() {
 
   const isLastPOIReviewed =
     itinerary.pois.length === 0 ||
-    itinerary.pois[itinerary.pois.length - 1].reviewed;
+    itinerary.pois[itinerary.pois.length - 1].checked;
 
   return (
     <div className="w-full flex flex-col gap-2 py-16 px-8 lg:px-1">
@@ -281,17 +301,16 @@ export function ViewItineraryPanel() {
             disabled={updateItineraryPOIOrderMutation.isPending}
           >
             {itinerary.pois.map((poi, i) => {
-              const isPrevReviewed = i <= 0 || itinerary.pois[i - 1].reviewed;
-              // const isSelfChecked = ;
-              const isNextReviewed = poi.reviewed;
+              const isPrevChecked = i <= 0 || itinerary.pois[i - 1].checked;
+              const isNextChecked = poi.checked;
 
               return (
                 <ItineraryPOISortableItem
                   key={poi.id}
                   id={poi.id}
                   poi={poi}
-                  isPrevReviewed={isPrevReviewed}
-                  isNextReviewed={isNextReviewed}
+                  isPrevChecked={isPrevChecked}
+                  isNextChecked={isNextChecked}
                   // isSelfChecked={isSelfChecked}
                   className={cn({
                     "opacity-50": updateItineraryPOIOrderMutation.isPending,
