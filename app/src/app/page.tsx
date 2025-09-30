@@ -511,16 +511,20 @@ function ItineraryPOISortableItem({
             "bg-neutral-300 dark:bg-neutral-700": !isPrevReviewed,
           })}
         />
-        <div
-          className={cn(
-            "border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8",
-            {
-              "bg-primary": poi.reviewed,
-            }
-          )}
+        <Button
+          variant={poi.reviewed ? "default" : "outline"}
+          className="border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8"
+          onClick={(e) => {
+            console.log("clicked");
+          }}
         >
-          <Check className="stroke-3 size-4 text-background" />
-        </div>
+          <Check
+            className={cn("stroke-3 size-4", {
+              "text-background": poi.reviewed,
+              "text-neutral-300 dark:text-neutral-700": !poi.reviewed,
+            })}
+          />
+        </Button>
         <div
           className={cn("h-4 w-0.5", {
             "bg-primary": isNextReviewed,
@@ -588,25 +592,10 @@ export function ViewItineraryPanel() {
       if (oldIndex === newIndex) return;
       if (oldIndex === -1 || newIndex === -1) return;
 
-      // Deep copy of the pois
-      const pois = JSON.parse(
-        JSON.stringify(itinerary.pois)
-      ) as typeof itinerary.pois;
-
-      const newIndexPriority = itinerary.pois[newIndex].orderPriority;
-      if (oldIndex > newIndex) {
-        for (let i = newIndex; i < oldIndex; i++) {
-          pois[i].orderPriority++;
-        }
-      } else {
-        for (let i = oldIndex + 1; i < newIndex; i++) {
-          pois[i].orderPriority--;
-        }
-      }
-      pois[oldIndex].orderPriority = newIndexPriority;
-      // Sort pois by orderPriority
-      pois.sort((a, b) => a.orderPriority - b.orderPriority);
-      console.log(pois.map((poi) => poi.orderPriority));
+      const pois = arrayMove(itinerary.pois, oldIndex, newIndex);
+      pois.forEach((poi, i) => {
+        poi.orderPriority = i;
+      });
 
       utils.itinerary.getItinerary.setData(
         {
@@ -617,33 +606,26 @@ export function ViewItineraryPanel() {
           pois: pois,
         }
       );
-      // updateItineraryPOIOrderMutation.mutate({
-      //   itineraryId: itineraryId,
-      //   pois: pois.map((poi) => ({
-      //     id: poi.id,
-      //     orderPriority: poi.orderPriority,
-      //   })),
-      // });
-
-      // updateItineraryPOIOrderMutation.mutate(
-      //   {
-      //     itineraryId: itineraryId,
-      //     pois: itinerary.pois.map((poi) => ({
-      //       id: poi.id,
-      //       orderPriority: poi.orderPriority,
-      //     })),
-      //   },
-      //   {
-      //     onError: (error) => {
-      //       console.error(error);
-      //     },
-      //   }
-      // );
-      // setItems((items) => {
-      //   const oldIndex = items.findIndex((item) => item.id === active.id);
-      //   const newIndex = items.findIndex((item) => item.id === over.id);
-      //   return arrayMove(items, oldIndex, newIndex);
-      // });
+      updateItineraryPOIOrderMutation.mutate(
+        {
+          itineraryId: itineraryId,
+          pois: pois.map((poi) => ({
+            id: poi.id,
+            orderPriority: poi.orderPriority,
+          })),
+        },
+        {
+          onError: (error) => {
+            console.error(error);
+            utils.itinerary.getItinerary.setData(
+              {
+                id: itineraryId,
+              },
+              itinerary
+            );
+          },
+        }
+      );
     }
   };
 

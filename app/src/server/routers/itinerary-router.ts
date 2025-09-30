@@ -76,6 +76,7 @@ export const itineraryRouter = createTRPCRouter({
         itinerary.pois.find((p) => p.id === poi.id)!.orderPriority =
           poi.orderPriority;
       });
+      itinerary.pois.sort((a, b) => a.orderPriority - b.orderPriority);
 
       return itinerary;
     }),
