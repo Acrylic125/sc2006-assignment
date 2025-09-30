@@ -39,10 +39,29 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useQueryState, parseAsInteger } from "nuqs";
-// import { DndContext } from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { trpc } from "@/server/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // function useBreakpointBetween(min: number, max: number) {
 //   const [breakpoint, setBreakpoint] = useState<boolean>(false);
@@ -439,6 +458,83 @@ export function ViewPOIPanel() {
   );
 }
 
+function ItineraryPOISortableItem({
+  id,
+  poi,
+  isPrevReviewed,
+  isNextReviewed,
+  className,
+}: {
+  id: number;
+  poi: {
+    id: number;
+    name: string;
+    reviewed: boolean;
+    orderPriority: number;
+  };
+  isPrevReviewed: boolean;
+  isNextReviewed: boolean;
+  className?: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "flex flex-row gap-2 items-center",
+        {
+          "bg-secondary": isDragging,
+        },
+        className
+      )}
+    >
+      <div className="w-8 flex flex-col items-center justify-center">
+        <div
+          className={cn("h-4 w-0.5", {
+            "bg-primary": isPrevReviewed,
+            "bg-neutral-300 dark:bg-neutral-700": !isPrevReviewed,
+          })}
+        />
+        <div
+          className={cn(
+            "border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8",
+            {
+              "bg-primary": poi.reviewed,
+            }
+          )}
+        >
+          <Check className="stroke-3 size-4 text-background" />
+        </div>
+        <div
+          className={cn("h-4 w-0.5", {
+            "bg-primary": isNextReviewed,
+            "bg-neutral-300 dark:bg-neutral-700": !isNextReviewed,
+          })}
+        />
+      </div>
+      <div className="flex flex-row items-center h-full flex-1">
+        <h3>{poi.name}</h3>
+      </div>
+    </div>
+  );
+}
+
 export function ViewItineraryPanel() {
   const mapStore = useMapStore(
     useShallow(({ viewingItineraryId }) => {
@@ -447,43 +543,110 @@ export function ViewItineraryPanel() {
       };
     })
   );
-  // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
-  const itinerary = {
-    id: 1,
-    name: "Itinerary 1",
-    pois: [
-      {
-        id: 1,
-        name: "Place 1",
-        reviewed: true,
-        orderPriority: 1,
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const utils = trpc.useUtils();
+  const getItineraryQuery = trpc.itinerary.getItinerary.useQuery(
+    {
+      id: mapStore.viewingItineraryId ?? 0,
+    },
+    {
+      enabled: mapStore.viewingItineraryId !== null,
+    }
+  );
+  const updateItineraryPOIOrderMutation =
+    trpc.itinerary.updateItineraryPOIOrder.useMutation({
+      onSuccess: (data, input) => {
+        // We treat the itinerary as our single source of truth
+        // for the itinerary data.
+        utils.itinerary.getItinerary.setData(
+          {
+            id: input.itineraryId,
+          },
+          data
+        );
       },
-      {
-        id: 2,
-        name: "Place 2",
-        reviewed: true,
-        orderPriority: 2,
-      },
-      {
-        id: 3,
-        name: "Place 3",
-        reviewed: false,
-        orderPriority: 3,
-      },
-      {
-        id: 4,
-        name: "Place 4",
-        reviewed: true,
-        orderPriority: 4,
-      },
-      {
-        id: 5,
-        name: "Place 5",
-        reviewed: true,
-        orderPriority: 5,
-      },
-    ],
+    });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const itinerary = getItineraryQuery.data;
+      if (!itinerary) return;
+      const itineraryId = mapStore.viewingItineraryId;
+      if (!itineraryId) return;
+
+      const oldIndex = itinerary.pois.findIndex((poi) => poi.id === active.id);
+      const newIndex = itinerary.pois.findIndex((poi) => poi.id === over.id);
+
+      if (oldIndex === newIndex) return;
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      // Deep copy of the pois
+      const pois = JSON.parse(
+        JSON.stringify(itinerary.pois)
+      ) as typeof itinerary.pois;
+
+      const newIndexPriority = itinerary.pois[newIndex].orderPriority;
+      if (oldIndex > newIndex) {
+        for (let i = newIndex; i < oldIndex; i++) {
+          pois[i].orderPriority++;
+        }
+      } else {
+        for (let i = oldIndex + 1; i < newIndex; i++) {
+          pois[i].orderPriority--;
+        }
+      }
+      pois[oldIndex].orderPriority = newIndexPriority;
+      // Sort pois by orderPriority
+      pois.sort((a, b) => a.orderPriority - b.orderPriority);
+      console.log(pois.map((poi) => poi.orderPriority));
+
+      utils.itinerary.getItinerary.setData(
+        {
+          id: itineraryId,
+        },
+        {
+          ...itinerary,
+          pois: pois,
+        }
+      );
+      // updateItineraryPOIOrderMutation.mutate({
+      //   itineraryId: itineraryId,
+      //   pois: pois.map((poi) => ({
+      //     id: poi.id,
+      //     orderPriority: poi.orderPriority,
+      //   })),
+      // });
+
+      // updateItineraryPOIOrderMutation.mutate(
+      //   {
+      //     itineraryId: itineraryId,
+      //     pois: itinerary.pois.map((poi) => ({
+      //       id: poi.id,
+      //       orderPriority: poi.orderPriority,
+      //     })),
+      //   },
+      //   {
+      //     onError: (error) => {
+      //       console.error(error);
+      //     },
+      //   }
+      // );
+      // setItems((items) => {
+      //   const oldIndex = items.findIndex((item) => item.id === active.id);
+      //   const newIndex = items.findIndex((item) => item.id === over.id);
+      //   return arrayMove(items, oldIndex, newIndex);
+      // });
+    }
   };
+
   // const poi = {
   //   name: "Marina Bay Sands",
   //   description: "Marina Bay Sands is a hotel and casino located in Singapore.",
@@ -492,7 +655,31 @@ export function ViewItineraryPanel() {
   //   longitude: 103.8607,
   // };
 
-  if (mapStore.viewingItineraryId === null) {
+  if (getItineraryQuery.isLoading) {
+    return (
+      <div className="w-full flex flex-col gap-2 py-16 px-8 lg:px-1">
+        <h2 className="text-lg font-bold">
+          <Skeleton className="w-24 h-6" />
+        </h2>
+        <div className="w-full flex flex-col">
+          <div className="flex flex-col items-center gap-2">
+            <Skeleton className="w-full h-12" />
+            <Skeleton className="w-full h-12" />
+            <Skeleton className="w-full h-12" />
+            <Skeleton className="w-full h-12" />
+            <Skeleton className="w-full h-12" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const itinerary = getItineraryQuery.data;
+  if (
+    mapStore.viewingItineraryId === null ||
+    !itinerary ||
+    getItineraryQuery.error
+  ) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
         <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
@@ -505,6 +692,14 @@ export function ViewItineraryPanel() {
               Select an itinerary to get started.
             </p>
           </div>
+          {getItineraryQuery.error && (
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {getItineraryQuery.error.message}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </div>
     );
@@ -524,42 +719,38 @@ export function ViewItineraryPanel() {
             <div className="h-4 w-0.5 bg-primary" />
           </div>
         </div>
-        {itinerary.pois.map((poi, i) => {
-          const isPrevReviewed = i <= 0 || itinerary.pois[i - 1].reviewed;
-          const isSelfChecked = poi.reviewed;
-          const isNextReviewed = isSelfChecked;
-          return (
-            <div key={poi.id} className="flex flex-row gap-2 items-center">
-              <div className="w-8 flex flex-col items-center justify-center">
-                <div
-                  className={cn("h-4 w-0.5", {
-                    "bg-primary": isPrevReviewed,
-                    "bg-neutral-300 dark:bg-neutral-700": !isPrevReviewed,
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={itinerary.pois.map((item) => item.id)}
+            strategy={verticalListSortingStrategy}
+            // DO NOT allow dragging if the mutation is pending
+            disabled={updateItineraryPOIOrderMutation.isPending}
+          >
+            {itinerary.pois.map((poi, i) => {
+              const isPrevReviewed = i <= 0 || itinerary.pois[i - 1].reviewed;
+              // const isSelfChecked = ;
+              const isNextReviewed = poi.reviewed;
+
+              return (
+                <ItineraryPOISortableItem
+                  key={poi.id}
+                  id={poi.id}
+                  poi={poi}
+                  isPrevReviewed={isPrevReviewed}
+                  isNextReviewed={isNextReviewed}
+                  // isSelfChecked={isSelfChecked}
+                  className={cn({
+                    "opacity-50": updateItineraryPOIOrderMutation.isPending,
                   })}
                 />
-                <div
-                  className={cn(
-                    "border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8",
-                    {
-                      "bg-primary": poi.reviewed,
-                    }
-                  )}
-                >
-                  <Check className="stroke-3 size-4 text-background" />
-                </div>
-                <div
-                  className={cn("h-4 w-0.5", {
-                    "bg-primary": isNextReviewed,
-                    "bg-neutral-300 dark:bg-neutral-700": !isNextReviewed,
-                  })}
-                />
-              </div>
-              <div className="flex flex-row items-center h-full flex-1">
-                <h3>{poi.name}</h3>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </SortableContext>
+        </DndContext>
 
         <div className="flex flex-row items-center">
           <div className="w-8 flex flex-col items-center">
