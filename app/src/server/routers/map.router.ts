@@ -20,10 +20,11 @@ export const mapRouter = createTRPCRouter({
         };
         popularity: number; // [0, 1], higher means more popular
       }[] = [];
+      let id = 1;
       for (let i = -10; i < 10; i++) {
         for (let j = -10; j < 10; j++) {
           pois.push({
-            id: i * 100 + j,
+            id: id++,
             pos: {
               latitude: 1.3521 + j * 0.01,
               longitude: 103.8198 + i * 0.01,

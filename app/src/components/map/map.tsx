@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Check, Ellipsis, Filter, Pen, Plus, Tag, Trash2 } from "lucide-react";
 import { trpc } from "@/server/client";
+import { parseAsInteger, useQueryState } from "nuqs";
 
 export function ItineraryDropdown() {
   const mapStore = useMapStore(
@@ -271,7 +272,7 @@ function createPinURL(color: string) {
     encodeURIComponent(`
     <svg width="32" height="48" viewBox="0 0 32 48" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="16.0002" cy="16" r="16" fill="${color}" />
-      <path d="M0 16H32C32 27.5 28.3233 36.8858 15.75 48C3.59311 35.165 0.136821 28.1267 0 16Z" fill="#FB2C36"/>
+      <path d="M0 16H32C32 27.5 28.3233 36.8858 15.75 48C3.59311 35.165 0.136821 28.1267 0 16Z" fill="${color}"/>
       <circle cx="16.0005" cy="16" r="8" fill="white"/>
     </svg>
   `)
@@ -289,11 +290,13 @@ const pins = {
 };
 
 function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
+  const [, setPoiId] = useQueryState("poi", parseAsInteger);
   const mapStore = useMapStore(
-    useShallow(({ filters, viewingItineraryId }) => {
+    useShallow(({ filters, viewingItineraryId, setCurrentSidePanelTab }) => {
       return {
         filters,
         viewingItineraryId,
+        setCurrentSidePanelTab,
       };
     })
   );
@@ -321,6 +324,10 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     if (!poisQuery.data) return;
     if (!map) return;
 
+    const itineraryPOISSet = new Set(
+      itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
+    );
+
     const load = async () => {
       if (map.getLayer("pin-layer")) {
         map.removeLayer("pin-layer");
@@ -338,6 +345,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
           },
           properties: {
             id: poi.id,
+            color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
           },
         });
       }
@@ -349,28 +357,35 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         },
       });
       map.on("click", "pin-layer", (e) => {
-        console.log("Clicked pin ID:", e.features?.[0]?.properties?.id);
+        if (e.features === undefined || e.features?.length === 0) return;
+        const poiId = e.features?.[0]?.properties?.id;
+        if (poiId === undefined || typeof poiId !== "number") return;
+        console.log("Clicked pin ID:", poiId);
+        setPoiId(poiId);
+        mapStore.setCurrentSidePanelTab("place");
       });
 
       // Ensure the pin image is loaded before adding the layer
-      const ensurePinImage = async () => {
-        if (map.hasImage("pin")) return;
+      const ensurePinImage = async (color: keyof typeof pins) => {
+        if (map.hasImage(`pin-${color}`)) return;
         const img = new Image();
         img.crossOrigin = "anonymous";
-        const url = pins.red;
+        const url = pins[color];
         img.src = url;
         try {
           await img.decode();
           const bitmap = await createImageBitmap(img);
-          if (!map.hasImage("pin")) {
-            map.addImage("pin", bitmap);
+          if (!map.hasImage(`pin-${color}`)) {
+            map.addImage(`pin-${color}`, bitmap);
           }
         } catch (err) {
           console.error("Failed to load pin image", err);
         }
       };
 
-      await ensurePinImage();
+      await ensurePinImage("red");
+      await ensurePinImage("green");
+      await ensurePinImage("blue");
 
       if (!map.getLayer("pin-layer")) {
         map.addLayer({
@@ -378,7 +393,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
           type: "symbol",
           source: "pins",
           layout: {
-            "icon-image": "pin",
+            "icon-image": ["concat", "pin-", ["get", "color"]],
             "icon-size": 0.5,
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
@@ -392,7 +407,15 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     } else {
       map.on("load", load);
     }
-  }, [map, poisQuery.data, itinerariesQuery.data, enabled]);
+  }, [
+    map,
+    poisQuery.data,
+    itinerariesQuery.data,
+    enabled,
+    mapStore,
+    mapStore.setCurrentSidePanelTab,
+    setPoiId,
+  ]);
 }
 
 export function ExploreMap({ className }: { className: string }) {
