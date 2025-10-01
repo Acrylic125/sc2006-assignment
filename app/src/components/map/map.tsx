@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Check, Ellipsis, Filter, Pen, Plus, Tag, Trash2 } from "lucide-react";
+import { trpc } from "@/server/client";
 
 export function ItineraryDropdown() {
   const mapStore = useMapStore(
@@ -28,16 +29,8 @@ export function ItineraryDropdown() {
       };
     })
   );
-  const itineraries = [
-    {
-      id: 1,
-      name: "Itinerary 1",
-    },
-    {
-      id: 2,
-      name: "Itinerary 2",
-    },
-  ];
+
+  const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
 
   return (
     <DropdownMenu>
@@ -46,7 +39,7 @@ export function ItineraryDropdown() {
           {mapStore.viewingItineraryId ? (
             <span className="truncate">
               {
-                itineraries.find(
+                itinerariesQuery.data?.find(
                   (itinerary) => itinerary.id === mapStore.viewingItineraryId
                 )?.name
               }
@@ -62,7 +55,7 @@ export function ItineraryDropdown() {
         <DropdownMenuLabel>My Itineraries</DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {itineraries.map((itinerary) => (
+        {itinerariesQuery.data?.map((itinerary) => (
           <div key={itinerary.id} className="relative">
             <Button
               onClick={() => {

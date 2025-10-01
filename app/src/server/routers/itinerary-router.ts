@@ -42,7 +42,22 @@ const itinerary = {
   ],
 };
 
+const itineraries = [
+  {
+    id: 1,
+    name: "Itinerary 1",
+  },
+  {
+    id: 2,
+    name: "Itinerary 2",
+  },
+];
+
 export const itineraryRouter = createTRPCRouter({
+  getAllItineraries: protectedProcedure.query(async ({ ctx }) => {
+    // TODO: Get all the itineraries from the database.
+    return itineraries;
+  }),
   getItinerary: protectedProcedure
     .input(
       z.object({
