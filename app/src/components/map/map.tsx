@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { env } from "@/lib/env";
 
@@ -265,30 +265,257 @@ export function MapViewTabGroup() {
   );
 }
 
+function createPinURL(color: string) {
+  return (
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+    <svg width="32" height="48" viewBox="0 0 32 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16.0002" cy="16" r="16" fill="${color}" />
+      <path d="M0 16H32C32 27.5 28.3233 36.8858 15.75 48C3.59311 35.165 0.136821 28.1267 0 16Z" fill="#FB2C36"/>
+      <circle cx="16.0005" cy="16" r="8" fill="white"/>
+    </svg>
+  `)
+  );
+}
+
+const pins = {
+  red: createPinURL("#FB2C36"),
+  blue: createPinURL("#3B82F6"),
+  green: createPinURL("#10B981"),
+  yellow: createPinURL("#EAB308"),
+  purple: createPinURL("#8B5CF6"),
+  orange: createPinURL("#F59E0B"),
+  pink: createPinURL("#EC4899"),
+};
+
+function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
+  const mapStore = useMapStore(
+    useShallow(({ filters, viewingItineraryId }) => {
+      return {
+        filters,
+        viewingItineraryId,
+      };
+    })
+  );
+  const poisQuery = trpc.map.search.useQuery(
+    {
+      showVisited: mapStore.filters.showVisited,
+      showUnvisited: mapStore.filters.showUnvisited,
+      excludedTags: Array.from(mapStore.filters.excludedTags),
+    },
+    {
+      enabled,
+    }
+  );
+  const itinerariesQuery = trpc.itinerary.getItinerary.useQuery(
+    {
+      id: mapStore.viewingItineraryId ?? 0,
+    },
+    {
+      enabled: mapStore.viewingItineraryId !== null,
+    }
+  );
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (!poisQuery.data) return;
+    if (!map) return;
+
+    const load = async () => {
+      if (map.getLayer("pin-layer")) {
+        map.removeLayer("pin-layer");
+      }
+      if (map.getSource("pins")) {
+        map.removeSource("pins");
+      }
+      const features = [];
+      for (const poi of poisQuery.data) {
+        features.push({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [poi.pos.longitude, poi.pos.latitude],
+          },
+          properties: {
+            id: poi.id,
+          },
+        });
+      }
+      map.addSource("pins", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: features,
+        },
+      });
+      map.on("click", "pin-layer", (e) => {
+        console.log("Clicked pin ID:", e.features?.[0]?.properties?.id);
+      });
+
+      // Ensure the pin image is loaded before adding the layer
+      const ensurePinImage = async () => {
+        if (map.hasImage("pin")) return;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const url = pins.red;
+        img.src = url;
+        try {
+          await img.decode();
+          const bitmap = await createImageBitmap(img);
+          if (!map.hasImage("pin")) {
+            map.addImage("pin", bitmap);
+          }
+        } catch (err) {
+          console.error("Failed to load pin image", err);
+        }
+      };
+
+      await ensurePinImage();
+
+      if (!map.getLayer("pin-layer")) {
+        map.addLayer({
+          id: "pin-layer",
+          type: "symbol",
+          source: "pins",
+          layout: {
+            "icon-image": "pin",
+            "icon-size": 0.5,
+            "icon-anchor": "bottom",
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+          },
+        });
+      }
+    };
+    if (map.loaded()) {
+      load();
+    } else {
+      map.on("load", load);
+    }
+  }, [map, poisQuery.data, itinerariesQuery.data, enabled]);
+}
+
 export function ExploreMap({ className }: { className: string }) {
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapStore = useMapStore(
+    useShallow(({ currentMapTab }) => {
+      return {
+        currentMapTab,
+      };
+    })
+  );
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
     mapboxgl.accessToken = env.NEXT_PUBLIC_MAPBOX_PK;
-    // Marina Bay Sands coordinates [lng, lat]
-    // const marinaBaySands: [number, number] = [103.8607, 1.2834];
-    const marinaBaySands: [number, number] = [103.8607, 1.2834];
-
-    mapRef.current = new mapboxgl.Map({
+    const m = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: marinaBaySands,
-      zoom: 15,
+      center: [103.8198, 1.3521],
+      zoom: 10,
     });
+    setMap(m);
+
+    // Add red pin with pulsating effect
+    // mapRef.current.on("load", () => {
+    //   if (!mapRef.current) return;
+
+    //   // Create a custom marker element
+    //   const markerElement = document.createElement("div");
+    //   markerElement.className = "custom-red-pin";
+
+    //   // Create the pin structure
+    //   markerElement.innerHTML = `
+    //     <div class="pin-container">
+    //       <div class="pin-pulse"></div>
+    //       <div class="pin-pulse"></div>
+    //       <div class="pin-pulse"></div>
+    //       <div class="pin-dot"></div>
+    //     </div>
+    //   `;
+
+    //   // Add styles for the pin and pulsating effect
+    //   const style = document.createElement("style");
+    //   style.textContent = `
+    //     .custom-red-pin {
+    //       width: 20px;
+    //       height: 20px;
+    //       position: relative;
+    //     }
+
+    //     .pin-container {
+    //       position: relative;
+    //       width: 100%;
+    //       height: 100%;
+    //       display: flex;
+    //       align-items: center;
+    //       justify-content: center;
+    //     }
+
+    //     .pin-dot {
+    //       width: 12px;
+    //       height: 12px;
+    //       background-color: #dc2626;
+    //       border: 2px solid white;
+    //       border-radius: 50%;
+    //       position: relative;
+    //       z-index: 4;
+    //       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    //     }
+
+    //     .pin-pulse {
+    //       position: absolute;
+    //       width: 100px;
+    //       height: 100px;
+    //       background-color: #dc2626;
+    //       border-radius: 50%;
+    //       opacity: 0.6;
+    //       animation: pulse 1s infinite;
+    //     }
+
+    //     .pin-pulse:nth-child(1) {
+    //       animation-delay: 0ms;
+    //     }
+
+    //     .pin-pulse:nth-child(2) {
+    //       animation-delay: 100ms;
+    //     }
+
+    //     .pin-pulse:nth-child(3) {
+    //       animation-delay: 200ms;
+    //     }
+
+    //     @keyframes pulse {
+    //       0% {
+    //         transform: scale(0.8);
+    //         opacity: 0.6;
+    //       }
+    //       50% {
+    //         transform: scale(1.2);
+    //         opacity: 0.3;
+    //       }
+    //       100% {
+    //         transform: scale(1.6);
+    //         opacity: 0;
+    //       }
+    //     }
+    //   `;
+
+    //   document.head.appendChild(style);
+
+    //   // Create and add the marker
+    //   new mapboxgl.Marker(markerElement)
+    //     .setLngLat([103.8198, 1.3521])
+    //     .addTo(mapRef.current);
+    // });
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
+      m.remove();
     };
   }, []);
+
+  useExploreMap(map, mapStore.currentMapTab === "explore");
 
   return <div id="map-container" ref={mapContainerRef} className={className} />;
 }

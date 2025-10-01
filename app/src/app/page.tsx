@@ -1,4 +1,5 @@
 import {
+  ExploreMap,
   FilterDropdown,
   FilterTagsDropdown,
   ItineraryDropdown,
@@ -73,7 +74,7 @@ export default function Home() {
             </div>
           </div>
           <div className="h-full w-full p-1">
-            {/* <ExploreMap className="h-full w-full" /> */}
+            <ExploreMap className="h-full w-full" />
           </div>
         </div>
         <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max lg:border-l border-border">
