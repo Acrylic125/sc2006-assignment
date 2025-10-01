@@ -1,7 +1,8 @@
 import z from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { db } from "@/db";
-import { itineraryPOITable } from "@/db/schema";
+import { itineraryPOITable, itineraryTable, reviewTable } from "@/db/schema";
+import { and, eq, exists } from "drizzle-orm";
 
 // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
 const itinerary = {
@@ -78,5 +79,55 @@ export const itineraryRouter = createTRPCRouter({
       itinerary.pois.sort((a, b) => a.orderPriority - b.orderPriority);
 
       return itinerary;
+    }),
+  updateItineraryPOI: protectedProcedure
+    .input(
+      z.object({
+        itineraryId: z.number(),
+        poiId: z.number(),
+        checked: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await db
+        .update(itineraryPOITable)
+        .set({
+          checked: input.checked,
+        })
+        .where(
+          and(
+            eq(itineraryPOITable.itineraryId, input.itineraryId),
+            eq(itineraryPOITable.poiId, input.poiId),
+            exists(
+              db
+                .select()
+                .from(itineraryTable)
+                .where(
+                  and(
+                    eq(itineraryTable.id, input.itineraryId),
+                    // This is to make sure the user is the owner of the itinerary.
+                    eq(itineraryTable.userId, ctx.auth.userId)
+                  )
+                )
+            )
+          )
+        );
+
+      // Return the associated review of this place for the user.
+      // Will be used for the review modal.
+      const review = await db
+        .select()
+        .from(reviewTable)
+        .where(
+          and(
+            eq(reviewTable.poiId, input.poiId),
+            eq(reviewTable.userId, ctx.auth.userId)
+          )
+        )
+        .limit(1);
+      if (review.length === 0) {
+        return null;
+      }
+      return review[0];
     }),
 });

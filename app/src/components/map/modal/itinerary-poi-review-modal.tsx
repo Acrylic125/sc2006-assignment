@@ -20,6 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  DislikeButton,
+  LikeButton,
+} from "@/components/icons/like-dislike-icons";
 
 const POIReviewFormSchema = z.object({
   liked: z.boolean(),
@@ -51,7 +55,7 @@ export function POIReviewDialog({
       <DialogHeader>
         <DialogTitle>Review this Place!</DialogTitle>
         <DialogDescription>
-          To check off this place as visited, let us know how you felt about it.
+          Let us know how you felt about it.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
@@ -63,18 +67,20 @@ export function POIReviewDialog({
               <FormItem>
                 <FormLabel>Did you like this place?</FormLabel>
                 <FormControl>
-                  <Button
-                    variant="outline"
-                    onClick={() => field.onChange(true)}
-                  >
-                    <ThumbsUp /> Like
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => field.onChange(false)}
-                  >
-                    <ThumbsDown /> Dislike
-                  </Button>
+                  <div className="flex flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => field.onChange(true)}
+                    >
+                      <LikeButton active={field.value} /> Like
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => field.onChange(false)}
+                    >
+                      <DislikeButton active={!field.value} /> Dislike
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

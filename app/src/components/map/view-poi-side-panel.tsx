@@ -10,6 +10,7 @@ import { useQueryState, parseAsInteger } from "nuqs";
 import { useMapModalStore } from "./modal/map-modal-store";
 import { useShallow } from "zustand/react/shallow";
 import { useMapStore } from "./map-store";
+import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -104,10 +105,13 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                 </Avatar>
                 <span className="text-sm font-medium">{review.user.name}</span>
               </div>
+
               {review.liked ? (
-                <ThumbsUp className="size-4 stroke-primary dark:fill-primary/25" />
+                <LikeButton active />
               ) : (
-                <ThumbsDown className="size-4 stroke-red-400 fill-red-200/25 dark:fill-red-700/25" />
+                // <ThumbsUp className="size-4 stroke-primary dark:fill-primary/25" />
+                <DislikeButton active />
+                // <ThumbsDown className="size-4 stroke-red-400 fill-red-200/25 dark:fill-red-700/25" />
               )}
             </div>
             <p className="text-sm font-light text-foreground">
@@ -143,7 +147,7 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
 
 export function ViewPOIPanel() {
   // use nuqs to get the poiId
-  const [poiId, setPoiId] = useQueryState("poiId", parseAsInteger);
+  const [poiId, setPoiId] = useQueryState("poi", parseAsInteger);
   // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
   const poi = {
     name: "Marina Bay Sands",

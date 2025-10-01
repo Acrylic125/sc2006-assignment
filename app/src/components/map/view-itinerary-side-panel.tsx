@@ -28,12 +28,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useMapModalStore } from "./modal/map-modal-store";
 import { TouchSensor, MouseSensor } from "@/lib/dnd-kit";
+import confetti from "canvas-confetti";
+import { useRef } from "react";
 
 export function ItineraryPOISortableItem({
   id,
   poi,
   isPrevChecked,
-  isNextChecked,
+  isSelfChecked,
   className,
 }: {
   id: number;
@@ -44,7 +46,7 @@ export function ItineraryPOISortableItem({
     orderPriority: number;
   };
   isPrevChecked: boolean;
-  isNextChecked: boolean;
+  isSelfChecked: boolean;
   className?: string;
 }) {
   const {
@@ -62,11 +64,22 @@ export function ItineraryPOISortableItem({
       };
     })
   );
+  const mapStore = useMapStore(
+    useShallow(({ viewingItineraryId }) => {
+      return {
+        viewingItineraryId,
+      };
+    })
+  );
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const updateItineraryPOI = trpc.itinerary.updateItineraryPOI.useMutation();
+  const utils = trpc.useUtils();
 
   return (
     <div
@@ -93,15 +106,71 @@ export function ItineraryPOISortableItem({
           variant={poi.checked ? "default" : "outline"}
           className="border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8"
           data-no-dnd="true"
+          disabled={updateItineraryPOI.isPending}
+          ref={buttonRef}
           onClick={(e) => {
             e.stopPropagation();
-            modalStore.setAction({
-              type: "itinerary-poi-review",
-              options: {
+            if (!mapStore.viewingItineraryId) return;
+
+            const buttonRect = buttonRef.current?.getBoundingClientRect();
+            if (!buttonRect) return;
+            const x = buttonRect.x / window.innerWidth;
+            const y = buttonRect.y / window.innerHeight;
+
+            updateItineraryPOI.mutate(
+              {
+                itineraryId: mapStore.viewingItineraryId,
                 poiId: poi.id,
+                checked: !poi.checked,
               },
-            });
-            console.log("clicked");
+              {
+                onSuccess: (data, input) => {
+                  // Get current data for the itinerary.
+                  const itinerary = utils.itinerary.getItinerary.getData({
+                    id: input.itineraryId,
+                  });
+                  if (!itinerary) return;
+                  // Update the checked status of the poi.
+                  // Deep clone the itinerary.
+                  const newItinerary = JSON.parse(
+                    JSON.stringify(itinerary)
+                  ) as typeof itinerary;
+                  const poi = newItinerary.pois.find(
+                    (p) => p.id === input.poiId
+                  );
+                  if (!poi) return;
+                  poi.checked = !poi.checked;
+                  // Update the itinerary.
+                  utils.itinerary.getItinerary.setData(
+                    {
+                      id: input.itineraryId,
+                    },
+                    newItinerary
+                  );
+
+                  // If the poi is checked, show confetti.
+                  if (poi.checked) {
+                    confetti({
+                      particleCount: 48,
+                      spread: 40,
+                      origin: {
+                        x: x,
+                        y: y,
+                      },
+                    });
+
+                    // If no review, show the review modal.
+                    if (data) return;
+                    modalStore.setAction({
+                      type: "itinerary-poi-review",
+                      options: {
+                        poiId: poi.id,
+                      },
+                    });
+                  }
+                },
+              }
+            );
           }}
         >
           <Check
@@ -113,8 +182,8 @@ export function ItineraryPOISortableItem({
         </Button>
         <div
           className={cn("h-4 w-0.5", {
-            "bg-primary": isNextChecked,
-            "bg-neutral-300 dark:bg-neutral-700": !isNextChecked,
+            "bg-primary": isSelfChecked,
+            "bg-neutral-300 dark:bg-neutral-700": !isSelfChecked,
           })}
         />
       </div>
@@ -217,14 +286,6 @@ export function ViewItineraryPanel() {
     }
   };
 
-  // const poi = {
-  //   name: "Marina Bay Sands",
-  //   description: "Marina Bay Sands is a hotel and casino located in Singapore.",
-  //   image: "/example.png",
-  //   latitude: 1.2834,
-  //   longitude: 103.8607,
-  // };
-
   if (getItineraryQuery.isLoading) {
     return (
       <div className="w-full flex flex-col gap-2 py-16 px-8 lg:px-1">
@@ -302,7 +363,6 @@ export function ViewItineraryPanel() {
           >
             {itinerary.pois.map((poi, i) => {
               const isPrevChecked = i <= 0 || itinerary.pois[i - 1].checked;
-              const isNextChecked = poi.checked;
 
               return (
                 <ItineraryPOISortableItem
@@ -310,8 +370,7 @@ export function ViewItineraryPanel() {
                   id={poi.id}
                   poi={poi}
                   isPrevChecked={isPrevChecked}
-                  isNextChecked={isNextChecked}
-                  // isSelfChecked={isSelfChecked}
+                  isSelfChecked={poi.checked}
                   className={cn({
                     "opacity-50": updateItineraryPOIOrderMutation.isPending,
                   })}
@@ -340,34 +399,4 @@ export function ViewItineraryPanel() {
       </div>
     </div>
   );
-  // return <></>;
-
-  // return (
-  //   <div className="w-full flex flex-col">
-  //     <div className="w-full aspect-[4/3] relative">
-  //       <Image src={poi.image} alt={poi.name} fill className="object-cover" />
-  //     </div>
-  //     <div className="flex flex-col p-1">
-  //       <h1 className="text-base font-bold">{poi.name}</h1>
-  //       <p className="text-sm text-muted-foreground">{poi.description}</p>
-  //       <div className="flex flex-col gap-1 py-4">
-  //         <Button variant="ghost" asChild className="w-fit p-0">
-  //           <a
-  //             href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
-  //           >
-  //             <Navigation />
-  //             Navigate
-  //           </a>
-  //         </Button>
-  //         <Button className="w-full truncate" size="sm">
-  //           Add to Itinerary
-  //         </Button>
-  //         <Button className="w-full truncate" variant="secondary" size="sm">
-  //           Start Itinerary
-  //         </Button>
-  //       </div>
-  //       <ViewPOIReviews />
-  //     </div>
-  //   </div>
-  // );
 }
