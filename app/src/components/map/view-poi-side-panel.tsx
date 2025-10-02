@@ -4,13 +4,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatDurationToClosestUnit } from "@/lib/utils";
 import { useAuth } from "@clerk/nextjs";
-import { MapPin, Navigation, Plus, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  ImageIcon,
+  Loader2,
+  MapPin,
+  Navigation,
+  Plus,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import Image from "next/image";
 import { useQueryState, parseAsInteger } from "nuqs";
 import { useMapModalStore } from "./modal/map-modal-store";
 import { useShallow } from "zustand/react/shallow";
 import { useMapStore } from "./map-store";
 import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
+import { trpc } from "@/server/client";
+import { Skeleton } from "../ui/skeleton";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -149,15 +159,32 @@ export function ViewPOIPanel() {
   // use nuqs to get the poiId
   const [poiId, setPoiId] = useQueryState("poi", parseAsInteger);
   // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
-  const poi = {
-    name: "Marina Bay Sands",
-    description: "Marina Bay Sands is a hotel and casino located in Singapore.",
-    image: "/example.png",
-    latitude: 1.2834,
-    longitude: 103.8607,
-  };
+  const poiQuery = trpc.map.getPOI.useQuery(
+    { id: poiId ?? 0 },
+    {
+      enabled: poiId !== null,
+    }
+  );
 
-  if (poiId === null) {
+  if (poiQuery.isLoading) {
+    return (
+      <div className="w-full flex flex-col gap-2">
+        <div className="w-full aspect-[4/3] relative">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="flex flex-col p-1 gap-2">
+          <Skeleton className="w-24 h-6" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-1/2 h-4" />
+        </div>
+      </div>
+    );
+  }
+
+  const poi = poiQuery.data;
+
+  if (poiId === null || poi === null || poi === undefined) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
         <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
@@ -178,7 +205,19 @@ export function ViewPOIPanel() {
   return (
     <div className="w-full flex flex-col">
       <div className="w-full aspect-[4/3] relative">
-        <Image src={poi.image} alt={poi.name} fill className="object-cover" />
+        {poi.images.length > 0 && poi.images[0] !== "" ? (
+          <Image
+            src={`https://${poi.images[0]}`}
+            alt={poi.name}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
+            <ImageIcon className="size-8" />
+            No Image
+          </div>
+        )}
       </div>
       <div className="flex flex-col p-1">
         <h1 className="text-base font-bold">{poi.name}</h1>
