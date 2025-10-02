@@ -40,7 +40,7 @@ export const useMapStore = create<MapStore>((set) => ({
   currentMapTab: "explore",
   currentSidePanelTab: "place",
   recommend: {
-    recommendFromPos: { latitude: 103.8198, longitude: 1.3521 },
+    recommendFromPos: { latitude: 1.3521, longitude: 103.8198 },
   },
   filters: {
     showVisited: true,
