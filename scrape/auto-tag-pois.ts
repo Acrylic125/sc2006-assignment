@@ -1,10 +1,11 @@
 import * as fs from "fs";
 import OpenAI from 'openai';
+import dotenv from 'dotenv';
 
 // OpenAI API setup through OpenRouter
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
-  apiKey: "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",
+  apiKey: process.env.OPEN_ROUTER_API_KEY,
   defaultHeaders: {
     "HTTP-Referer": "https://sc2006-poi-tagging.local", // Site URL for rankings
     "X-Title": "SC2006 POI Tagging System", // Site title for rankings
