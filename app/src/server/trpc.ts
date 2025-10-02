@@ -30,9 +30,18 @@ const isAuthed = t.middleware(({ next, ctx }) => {
   });
 });
 
+const isAuthedOrPublic = t.middleware(({ next, ctx }) => {
+  return next({
+    ctx: {
+      auth: ctx.auth,
+    },
+  });
+});
+
 export const router = t.router;
 export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure.use(isAuthed);
+export const publicOrProtectedProcedure = t.procedure.use(isAuthedOrPublic);
 
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;

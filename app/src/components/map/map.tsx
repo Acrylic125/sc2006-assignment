@@ -418,6 +418,147 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
   ]);
 }
 
+function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
+  const [, setPoiId] = useQueryState("poi", parseAsInteger);
+  const mapStore = useMapStore(
+    useShallow(
+      ({
+        filters,
+        viewingItineraryId,
+        setCurrentSidePanelTab,
+        recommend,
+        setRecommendFromPos,
+      }) => {
+        return {
+          filters,
+          viewingItineraryId,
+          setCurrentSidePanelTab,
+          recommendFromPos: recommend.recommendFromPos,
+          setRecommendFromPos,
+        };
+      }
+    )
+  );
+
+  const poisQuery = trpc.map.recommend.useQuery(
+    {
+      fromLocation: mapStore.recommendFromPos,
+      showVisited: mapStore.filters.showVisited,
+      showUnvisited: mapStore.filters.showUnvisited,
+      excludedTags: Array.from(mapStore.filters.excludedTags),
+    },
+    {
+      enabled,
+    }
+  );
+  const itinerariesQuery = trpc.itinerary.getItinerary.useQuery(
+    {
+      id: mapStore.viewingItineraryId ?? 0,
+    },
+    {
+      enabled: mapStore.viewingItineraryId !== null,
+    }
+  );
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (!poisQuery.data) return;
+    if (!map) return;
+
+    const itineraryPOISSet = new Set(
+      itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
+    );
+
+    const load = async () => {
+      if (map.getLayer("pin-layer")) {
+        map.removeLayer("pin-layer");
+      }
+      if (map.getSource("pins")) {
+        map.removeSource("pins");
+      }
+      const features = [];
+      for (const poi of poisQuery.data) {
+        features.push({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [poi.pos.longitude, poi.pos.latitude],
+          },
+          properties: {
+            id: poi.id,
+            color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
+          },
+        });
+      }
+      map.addSource("pins", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: features,
+        },
+      });
+      map.on("click", "pin-layer", (e) => {
+        if (e.features === undefined || e.features?.length === 0) return;
+        const poiId = e.features?.[0]?.properties?.id;
+        if (poiId === undefined || typeof poiId !== "number") return;
+        console.log("Clicked pin ID:", poiId);
+        setPoiId(poiId);
+        mapStore.setCurrentSidePanelTab("place");
+      });
+
+      // Ensure the pin image is loaded before adding the layer
+      const ensurePinImage = async (color: keyof typeof pins) => {
+        if (map.hasImage(`pin-${color}`)) return;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const url = pins[color];
+        img.src = url;
+        try {
+          await img.decode();
+          const bitmap = await createImageBitmap(img);
+          if (!map.hasImage(`pin-${color}`)) {
+            map.addImage(`pin-${color}`, bitmap);
+          }
+        } catch (err) {
+          console.error("Failed to load pin image", err);
+        }
+      };
+
+      await ensurePinImage("red");
+      await ensurePinImage("green");
+      await ensurePinImage("blue");
+
+      if (!map.getLayer("pin-layer")) {
+        map.addLayer({
+          id: "pin-layer",
+          type: "symbol",
+          source: "pins",
+          layout: {
+            "icon-image": ["concat", "pin-", ["get", "color"]],
+            "icon-size": 0.5,
+            "icon-anchor": "bottom",
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+          },
+        });
+      }
+    };
+    if (map.loaded()) {
+      load();
+    } else {
+      map.on("load", load);
+    }
+  }, [
+    map,
+    poisQuery.data,
+    itinerariesQuery.data,
+    enabled,
+    mapStore,
+    mapStore.setCurrentSidePanelTab,
+    setPoiId,
+  ]);
+}
+
 export function ExploreMap({ className }: { className: string }) {
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -539,6 +680,7 @@ export function ExploreMap({ className }: { className: string }) {
   }, []);
 
   useExploreMap(map, mapStore.currentMapTab === "explore");
+  useRecommendMap(map, mapStore.currentMapTab === "recommend");
 
   return <div id="map-container" ref={mapContainerRef} className={className} />;
 }
