@@ -21,6 +21,7 @@ import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { SidePanel, SidePanelTabGroup } from "@/components/map/map-side-panel";
 import { MapModal } from "@/components/map/modal/map-modal";
+import { Chatbot } from "@/components/chat/chatbot";
 
 export default function Home() {
   return (
@@ -85,6 +86,7 @@ export default function Home() {
         </ScrollArea>
       </div>
       <MapModal />
+      <Chatbot />
     </div>
   );
 }
