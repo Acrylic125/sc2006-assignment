@@ -20,6 +20,9 @@ importers:
       drizzle-orm:
         specifier: ^0.44.2
         version: 0.44.5(@neondatabase/serverless@1.0.2)(@types/pg@8.15.5)(postgres@3.4.7)
+      openai:
+        specifier: ^6.0.1
+        version: 6.0.1(zod@3.25.76)
       postgres:
         specifier: ^3.4.7
         version: 3.4.7
@@ -1508,6 +1511,18 @@ packages:
   onetime@5.1.2:
     resolution: {integrity: sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==}
     engines: {node: '>=6'}
+
+  openai@6.0.1:
+    resolution: {integrity: sha512-Xf9k3/Ezckp0aQmkU7LTXPg9dTxo3uspuJqxotHF3Jscq0r7EU0KEoqesQVxoQ6YeAzd/jlm7kxayZufpYRJUQ==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
@@ -3515,6 +3530,10 @@ snapshots:
   onetime@5.1.2:
     dependencies:
       mimic-fn: 2.1.0
+
+  openai@6.0.1(zod@3.25.76):
+    optionalDependencies:
+      zod: 3.25.76
 
   p-limit@2.3.0:
     dependencies:
