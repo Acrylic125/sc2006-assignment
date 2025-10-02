@@ -16,4 +16,4 @@ Project folder for scraping data.
 - Process the data and map it to fit the POI schema (`poiTable`).
 - **NOTE:** The image url provided by the data will be a url. If the url has the domain, `yoursingapore.com`, replace it with `visitsingapore.com`. Example, `https://www.yoursingapore.com/content/dam/desktop/global/see-do-singapore/places-to-see/bras-basah-bugis-carousel01-rect.jpg` convert to `www.visitsingapore.com/content/dam/desktop/global/see-do-singapore/places-to-see/bras-basah-bugis-carousel01-rect.jpg`. 
 4. Insert the `POI` and `POI Images` into the `poiTable` and `poiImagesTable` tables respectively.
-5. **Manually tag** the inserted poi with the associated tag.
+5. **Manually tag** the inserted poi with the associated tag by inserting `poiTagTable`.
