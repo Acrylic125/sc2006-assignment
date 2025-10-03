@@ -158,6 +158,13 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
 export function ViewPOIPanel() {
   // use nuqs to get the poiId
   const [poiId, setPoiId] = useQueryState("poi", parseAsInteger);
+  const mapStore = useMapStore(
+    useShallow(({ viewingItineraryId, setViewingItineraryId, setCurrentSidePanelTab }) => ({
+      viewingItineraryId,
+      setViewingItineraryId,
+      setCurrentSidePanelTab,
+    }))
+  );
   // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
   const poiQuery = trpc.map.getPOI.useQuery(
     { id: poiId ?? 0 },
@@ -166,6 +173,11 @@ export function ViewPOIPanel() {
     }
   );
 
+  const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
+  const addPOIToItineraryMutation = trpc.itinerary.addPOIToItinerary.useMutation();
+  const createItineraryMutation = trpc.itinerary.createItinerary.useMutation();
+  const utils = trpc.useUtils();
+  
   if (poiQuery.isLoading) {
     return (
       <div className="w-full flex flex-col gap-2">
@@ -231,11 +243,79 @@ export function ViewPOIPanel() {
               Navigate
             </a>
           </Button>
-          <Button className="w-full truncate" size="sm">
-            Add to Itinerary
+          <Button 
+            className="w-full truncate" 
+            size="sm"
+            disabled={addPOIToItineraryMutation.isPending || !mapStore.viewingItineraryId}
+            onClick={async () => {
+              if (!mapStore.viewingItineraryId || !poiId) return;
+              
+              try {
+                await addPOIToItineraryMutation.mutateAsync({
+                  itineraryId: mapStore.viewingItineraryId,
+                  poiId: poiId,
+                });
+                
+                // Invalidate the itinerary query to refresh the data
+                await utils.itinerary.getItinerary.invalidate({
+                  id: mapStore.viewingItineraryId,
+                });
+                
+                // Switch to itinerary view to show the added POI
+                mapStore.setCurrentSidePanelTab("itinerary");
+              } catch (error) {
+                console.error("Failed to add POI to itinerary:", error);
+              }
+            }}
+          >
+            {addPOIToItineraryMutation.isPending ? (
+              <>
+                <Loader2 className="size-3 animate-spin" />
+                Adding...
+              </>
+            ) : mapStore.viewingItineraryId ? (
+              "Add to Itinerary"
+            ) : (
+              "Select Itinerary First"
+            )}
           </Button>
-          <Button className="w-full truncate" variant="secondary" size="sm">
-            Start Itinerary
+          <Button 
+            className="w-full truncate" 
+            variant="secondary" 
+            size="sm"
+            disabled={createItineraryMutation.isPending}
+            onClick={async () => {
+              if (!poiId) return;
+              
+              try {
+                // Create a new itinerary with the POI's name
+                const newItinerary = await createItineraryMutation.mutateAsync({
+                  name: `Trip to ${poi.name}`,
+                });
+                
+                // Add this POI to the new itinerary
+                await addPOIToItineraryMutation.mutateAsync({
+                  itineraryId: newItinerary.id,
+                  poiId: poiId,
+                });
+                
+                // Refresh itineraries list and set as current
+                await utils.itinerary.getAllItineraries.invalidate();
+                mapStore.setViewingItineraryId(newItinerary.id);
+                mapStore.setCurrentSidePanelTab("itinerary");
+              } catch (error) {
+                console.error("Failed to start itinerary:", error);
+              }
+            }}
+          >
+            {createItineraryMutation.isPending ? (
+              <>
+                <Loader2 className="size-3 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Start Itinerary From Here"
+            )}
           </Button>
         </div>
         <ViewPOIReviews poiId={poiId} />
