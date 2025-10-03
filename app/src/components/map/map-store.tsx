@@ -24,12 +24,12 @@ type MapStore = {
   filters: {
     showVisited: boolean;
     showUnvisited: boolean;
-    excludedTags: Set<string>;
+    excludedTags: Set<number>;
   };
   setViewingItineraryId: (itineraryId: number | null) => void;
   setCurrentMapTab: (tab: "explore" | "recommend") => void;
   setCurrentSidePanelTab: (tab: "itinerary" | "place") => void;
-  setFilterExcludedTags: (tags: Set<string>) => void;
+  setFilterExcludedTags: (tags: Set<number>) => void;
   setFilterShowVisited: (showVisited: boolean) => void;
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
@@ -53,7 +53,7 @@ export const useMapStore = create<MapStore>((set) => ({
     set({ currentMapTab: tab }),
   setCurrentSidePanelTab: (tab: "itinerary" | "place") =>
     set({ currentSidePanelTab: tab }),
-  setFilterExcludedTags: (tags: Set<string>) =>
+  setFilterExcludedTags: (tags: Set<number>) =>
     set((prev) => ({ filters: { ...prev.filters, excludedTags: tags } })),
   setFilterShowVisited: (showVisited: boolean) =>
     set((prev) => ({ filters: { ...prev.filters, showVisited } })),
