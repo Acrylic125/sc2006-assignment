@@ -354,7 +354,6 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         if (e.features === undefined || e.features?.length === 0) return;
         const poiId = e.features?.[0]?.properties?.id;
         if (poiId === undefined || typeof poiId !== "number") return;
-        console.log("Clicked pin ID:", poiId);
         setPoiId(poiId);
         mapStore.setCurrentSidePanelTab("place");
       };
@@ -487,12 +486,19 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
 
       // Add map click handler to set recommend position
       const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-        const { lng, lat } = e.lngLat;
-        mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
         const features = map.queryRenderedFeatures(e.point, {
-          layers: [LAYER_PIN_FROM_PINS],
+          layers: [LAYER_RECOMMEND_PINS],
         });
         console.log(features);
+        if (features === undefined || features?.length === 0) {
+          const { lng, lat } = e.lngLat;
+          mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
+          return;
+        }
+        const poiId = features?.[0]?.properties?.id;
+        if (poiId === undefined || typeof poiId !== "number") return;
+        setPoiId(poiId);
+        mapStore.setCurrentSidePanelTab("place");
       };
 
       // Remove existing click handlers to avoid duplicates
@@ -536,13 +542,6 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
             type: "FeatureCollection",
             features: features,
           },
-        });
-        map.on("click", LAYER_RECOMMEND_PINS, (e) => {
-          if (e.features === undefined || e.features?.length === 0) return;
-          const poiId = e.features?.[0]?.properties?.id;
-          if (poiId === undefined || typeof poiId !== "number") return;
-          setPoiId(poiId);
-          mapStore.setCurrentSidePanelTab("place");
         });
       }
 
