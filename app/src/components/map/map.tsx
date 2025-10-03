@@ -165,15 +165,7 @@ export function FilterDropdown() {
 }
 
 export function FilterTagsDropdown() {
-  const tags = [
-    "Nature",
-    "History",
-    "Culture",
-    "Food",
-    "Drinks",
-    "Shopping",
-    "Entertainment",
-  ];
+  const tagsQuery = trpc.map.getTags.useQuery();
   const mapStore = useMapStore(
     useShallow(({ filters, setFilterExcludedTags }) => {
       return {
@@ -192,29 +184,31 @@ export function FilterTagsDropdown() {
           <Tag /> <span className="hidden lg:block">Tags</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent className="max-h-64 overflow-y-auto">
         <DropdownMenuLabel>Tags</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {tags.map((tag) => (
+        {tagsQuery.data?.map((tag) => (
           <Button
-            key={tag}
+            key={tag.id}
             variant="ghost"
-            className="flex flex-row items-center gap-2 justify-start px-2"
+            className="w-full flex flex-row items-center gap-2 justify-start px-2"
             onClick={() => {
               const currentExcludedTags = new Set(mapStore.excludedTags);
-              if (mapStore.excludedTags.has(tag)) {
-                currentExcludedTags.delete(tag);
+              if (mapStore.excludedTags.has(tag.id)) {
+                currentExcludedTags.delete(tag.id);
                 mapStore.setFilterExcludedTags(currentExcludedTags);
               } else {
-                currentExcludedTags.add(tag);
+                currentExcludedTags.add(tag.id);
                 mapStore.setFilterExcludedTags(currentExcludedTags);
               }
             }}
           >
             <span className="w-4">
-              {!mapStore.excludedTags.has(tag) && <Check className="size-4" />}
+              {!mapStore.excludedTags.has(tag.id) && (
+                <Check className="size-4" />
+              )}
             </span>
-            <span>{tag}</span>
+            <span>{tag.name}</span>
           </Button>
         ))}
       </DropdownMenuContent>
@@ -328,13 +322,12 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
 
+    let cleanUpFn: (() => void) | undefined;
+
     const load = async () => {
-      if (map.getLayer("pin-layer")) {
-        map.removeLayer("pin-layer");
-      }
-      if (map.getSource("pins")) {
-        map.removeSource("pins");
-      }
+      const LAYER_EXPLORE_PINS = "explore-pins-layer";
+      const SOURCE_EXPLORE_PINS = "explore-pins";
+
       const features = [];
       for (const poi of poisQuery.data) {
         features.push({
@@ -349,21 +342,32 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
           },
         });
       }
-      map.addSource("pins", {
+
+      map.addSource(SOURCE_EXPLORE_PINS, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
           features: features,
         },
       });
-      map.on("click", "pin-layer", (e) => {
+      const handlePinClick = (e: mapboxgl.MapMouseEvent) => {
         if (e.features === undefined || e.features?.length === 0) return;
         const poiId = e.features?.[0]?.properties?.id;
         if (poiId === undefined || typeof poiId !== "number") return;
-        console.log("Clicked pin ID:", poiId);
         setPoiId(poiId);
         mapStore.setCurrentSidePanelTab("place");
-      });
+      };
+      map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
+
+      cleanUpFn = () => {
+        if (map.getLayer(LAYER_EXPLORE_PINS)) {
+          map.removeLayer(LAYER_EXPLORE_PINS);
+        }
+        if (map.getSource(SOURCE_EXPLORE_PINS)) {
+          map.removeSource(SOURCE_EXPLORE_PINS);
+        }
+        map.off("click", LAYER_EXPLORE_PINS, handlePinClick);
+      };
 
       // Ensure the pin image is loaded before adding the layer
       const ensurePinImage = async (color: keyof typeof pins) => {
@@ -387,11 +391,11 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
       await ensurePinImage("green");
       await ensurePinImage("blue");
 
-      if (!map.getLayer("pin-layer")) {
+      if (!map.getLayer(LAYER_EXPLORE_PINS)) {
         map.addLayer({
-          id: "pin-layer",
+          id: LAYER_EXPLORE_PINS,
           type: "symbol",
-          source: "pins",
+          source: SOURCE_EXPLORE_PINS,
           layout: {
             "icon-image": ["concat", "pin-", ["get", "color"]],
             "icon-size": 0.5,
@@ -402,11 +406,16 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         });
       }
     };
-    if (map.loaded()) {
-      load();
-    } else {
-      map.on("load", load);
-    }
+    // if (map.loaded()) {
+    //   load();
+    // } else {
+    // }
+    map.on("load", load);
+    map.fire("load");
+    return () => {
+      cleanUpFn?.();
+      map.off("load", load);
+    };
   }, [
     map,
     poisQuery.data,
@@ -440,9 +449,9 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     )
   );
 
-  const poisQuery = trpc.map.recommend.useQuery(
+  const poisQuery = trpc.map.search.useQuery(
     {
-      fromLocation: mapStore.recommendFromPos,
+      recommendFromLocation: mapStore.recommendFromPos,
       showVisited: mapStore.filters.showVisited,
       showUnvisited: mapStore.filters.showUnvisited,
       excludedTags: Array.from(mapStore.filters.excludedTags),
@@ -464,40 +473,56 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     if (!enabled) return;
     if (!map) return;
 
+    let cleanUpFn: (() => void) | undefined;
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
 
     const load = async () => {
-      // Remove existing layers and sources
-      if (map.getLayer("pin-layer")) {
-        map.removeLayer("pin-layer");
-      }
-      if (map.getSource("pins")) {
-        map.removeSource("pins");
-      }
-      if (map.getLayer("recommend-pin-layer")) {
-        map.removeLayer("recommend-pin-layer");
-      }
-      if (map.getSource("recommend-pin")) {
-        map.removeSource("recommend-pin");
-      }
+      const LAYER_RECOMMEND_PINS = "recommend-pins-layer";
+      const SOURCE_RECOMMEND_PINS = "recommend-pins";
+      const LAYER_PIN_FROM_PINS = "pin-from-layer";
+      const SOURCE_PIN_FROM_PINS = "pin-from-pins";
 
       // Add map click handler to set recommend position
       const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-        const { lng, lat } = e.lngLat;
-        mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: [LAYER_RECOMMEND_PINS],
+        });
+        console.log(features);
+        if (features === undefined || features?.length === 0) {
+          const { lng, lat } = e.lngLat;
+          mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
+          return;
+        }
+        const poiId = features?.[0]?.properties?.id;
+        if (poiId === undefined || typeof poiId !== "number") return;
+        setPoiId(poiId);
+        mapStore.setCurrentSidePanelTab("place");
       };
 
       // Remove existing click handlers to avoid duplicates
-      map.off("click", handleMapClick);
+      cleanUpFn = () => {
+        // Remove existing layers and sources
+        if (map.getLayer(LAYER_RECOMMEND_PINS)) {
+          map.removeLayer(LAYER_RECOMMEND_PINS);
+        }
+        if (map.getSource(SOURCE_RECOMMEND_PINS)) {
+          map.removeSource(SOURCE_RECOMMEND_PINS);
+        }
+        if (map.getLayer(LAYER_PIN_FROM_PINS)) {
+          map.removeLayer(LAYER_PIN_FROM_PINS);
+        }
+        if (map.getSource(SOURCE_PIN_FROM_PINS)) {
+          map.removeSource(SOURCE_PIN_FROM_PINS);
+        }
+        map.off("click", handleMapClick);
+      };
       map.on("click", handleMapClick);
 
       // Add POI pins if data is available
       if (poisQuery.data) {
         const features = [];
-        console.log("TTTTT");
-        console.log(poisQuery.data);
         for (const poi of poisQuery.data) {
           features.push({
             type: "Feature" as const,
@@ -511,25 +536,17 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
             },
           });
         }
-        map.addSource("pins", {
+        map.addSource(SOURCE_RECOMMEND_PINS, {
           type: "geojson",
           data: {
             type: "FeatureCollection",
             features: features,
           },
         });
-        map.on("click", "pin-layer", (e) => {
-          if (e.features === undefined || e.features?.length === 0) return;
-          const poiId = e.features?.[0]?.properties?.id;
-          if (poiId === undefined || typeof poiId !== "number") return;
-          console.log("Clicked pin ID:", poiId);
-          setPoiId(poiId);
-          mapStore.setCurrentSidePanelTab("place");
-        });
       }
 
       // Add red pin for recommend position
-      map.addSource("recommend-pin", {
+      map.addSource(SOURCE_PIN_FROM_PINS, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
@@ -574,11 +591,11 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
       await ensurePinImage("blue");
 
       // Add POI layer if data is available
-      if (poisQuery.data && !map.getLayer("pin-layer")) {
+      if (poisQuery.data && !map.getLayer(LAYER_RECOMMEND_PINS)) {
         map.addLayer({
-          id: "pin-layer",
+          id: LAYER_RECOMMEND_PINS,
           type: "symbol",
-          source: "pins",
+          source: SOURCE_RECOMMEND_PINS,
           layout: {
             "icon-image": ["concat", "pin-", ["get", "color"]],
             "icon-size": 0.5,
@@ -590,11 +607,11 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
       }
 
       // Add recommend pin layer
-      if (!map.getLayer("recommend-pin-layer")) {
+      if (!map.getLayer(LAYER_PIN_FROM_PINS)) {
         map.addLayer({
-          id: "recommend-pin-layer",
+          id: LAYER_PIN_FROM_PINS,
           type: "symbol",
-          source: "recommend-pin",
+          source: SOURCE_PIN_FROM_PINS,
           layout: {
             "icon-image": "pin-red",
             "icon-size": 0.5,
@@ -603,11 +620,17 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
         });
       }
     };
-    if (map.loaded()) {
-      load();
-    } else {
-      map.on("load", load);
-    }
+    // if (map.loaded()) {
+    //   load();
+    // } else {
+    //   map.on("load", load);
+    // }
+    map.on("load", load);
+    map.fire("load");
+    return () => {
+      cleanUpFn?.();
+      map.off("load", load);
+    };
   }, [
     map,
     poisQuery.data,
