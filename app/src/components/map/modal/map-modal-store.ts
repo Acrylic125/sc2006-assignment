@@ -5,6 +5,9 @@ export type MapModalAction = {
   options: {
     poiId: number;
   };
+} | {
+  type: "create-itinerary";
+  options: {};
 };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<
