@@ -406,10 +406,6 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         });
       }
     };
-    // if (map.loaded()) {
-    //   load();
-    // } else {
-    // }
     map.on("load", load);
     map.fire("load");
     return () => {
@@ -474,6 +470,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     if (!map) return;
 
     let cleanUpFn: (() => void) | undefined;
+    // let loadingMarker: mapboxgl.Marker | null = null;
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
@@ -486,19 +483,20 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
 
       // Add map click handler to set recommend position
       const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: [LAYER_RECOMMEND_PINS],
-        });
-        console.log(features);
-        if (features === undefined || features?.length === 0) {
-          const { lng, lat } = e.lngLat;
-          mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
-          return;
+        if (map.getLayer(LAYER_RECOMMEND_PINS)) {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: [LAYER_RECOMMEND_PINS],
+          });
+          if (!(features === undefined || features?.length === 0)) {
+            const poiId = features?.[0]?.properties?.id;
+            if (poiId === undefined || typeof poiId !== "number") return;
+            setPoiId(poiId);
+            mapStore.setCurrentSidePanelTab("place");
+            return;
+          }
         }
-        const poiId = features?.[0]?.properties?.id;
-        if (poiId === undefined || typeof poiId !== "number") return;
-        setPoiId(poiId);
-        mapStore.setCurrentSidePanelTab("place");
+        const { lng, lat } = e.lngLat;
+        mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
       };
 
       // Remove existing click handlers to avoid duplicates
@@ -598,7 +596,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
           source: SOURCE_RECOMMEND_PINS,
           layout: {
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 0.5,
+            "icon-size": 1,
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
@@ -614,17 +612,12 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
           source: SOURCE_PIN_FROM_PINS,
           layout: {
             "icon-image": "pin-red",
-            "icon-size": 0.5,
+            "icon-size": 1,
             "icon-anchor": "bottom",
           },
         });
       }
     };
-    // if (map.loaded()) {
-    //   load();
-    // } else {
-    //   map.on("load", load);
-    // }
     map.on("load", load);
     map.fire("load");
     return () => {
@@ -633,6 +626,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     };
   }, [
     map,
+    // poisQuery.isLoading,
     poisQuery.data,
     itinerariesQuery.data,
     enabled,
@@ -662,102 +656,9 @@ export function ExploreMap({ className }: { className: string }) {
       style: "mapbox://styles/mapbox/streets-v12",
       center: [103.8198, 1.3521],
       zoom: 10,
+      // fadeDuration: 0,
     });
     setMap(m);
-
-    // Add red pin with pulsating effect
-    // mapRef.current.on("load", () => {
-    //   if (!mapRef.current) return;
-
-    //   // Create a custom marker element
-    //   const markerElement = document.createElement("div");
-    //   markerElement.className = "custom-red-pin";
-
-    //   // Create the pin structure
-    //   markerElement.innerHTML = `
-    //     <div class="pin-container">
-    //       <div class="pin-pulse"></div>
-    //       <div class="pin-pulse"></div>
-    //       <div class="pin-pulse"></div>
-    //       <div class="pin-dot"></div>
-    //     </div>
-    //   `;
-
-    //   // Add styles for the pin and pulsating effect
-    //   const style = document.createElement("style");
-    //   style.textContent = `
-    //     .custom-red-pin {
-    //       width: 20px;
-    //       height: 20px;
-    //       position: relative;
-    //     }
-
-    //     .pin-container {
-    //       position: relative;
-    //       width: 100%;
-    //       height: 100%;
-    //       display: flex;
-    //       align-items: center;
-    //       justify-content: center;
-    //     }
-
-    //     .pin-dot {
-    //       width: 12px;
-    //       height: 12px;
-    //       background-color: #dc2626;
-    //       border: 2px solid white;
-    //       border-radius: 50%;
-    //       position: relative;
-    //       z-index: 4;
-    //       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    //     }
-
-    //     .pin-pulse {
-    //       position: absolute;
-    //       width: 100px;
-    //       height: 100px;
-    //       background-color: #dc2626;
-    //       border-radius: 50%;
-    //       opacity: 0.6;
-    //       animation: pulse 1s infinite;
-    //     }
-
-    //     .pin-pulse:nth-child(1) {
-    //       animation-delay: 0ms;
-    //     }
-
-    //     .pin-pulse:nth-child(2) {
-    //       animation-delay: 100ms;
-    //     }
-
-    //     .pin-pulse:nth-child(3) {
-    //       animation-delay: 200ms;
-    //     }
-
-    //     @keyframes pulse {
-    //       0% {
-    //         transform: scale(0.8);
-    //         opacity: 0.6;
-    //       }
-    //       50% {
-    //         transform: scale(1.2);
-    //         opacity: 0.3;
-    //       }
-    //       100% {
-    //         transform: scale(1.6);
-    //         opacity: 0;
-    //       }
-    //     }
-    //   `;
-
-    //   document.head.appendChild(style);
-
-    //   // Create and add the marker
-    //   new mapboxgl.Marker(markerElement)
-    //     .setLngLat([103.8198, 1.3521])
-    //     .addTo(mapRef.current);
-    // });
-
     return () => {
       m.remove();
     };
