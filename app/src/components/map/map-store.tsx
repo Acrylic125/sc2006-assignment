@@ -14,8 +14,25 @@ type Coordinates = {
   longitude: number;
 };
 
+type ViewingPOI =
+  | {
+      type: "existing-poi";
+      poiId: number;
+    }
+  | {
+      type: "new-poi";
+      pos: {
+        name: string;
+        description: string;
+        latitude: number;
+        longitude: number;
+        images: string[];
+      };
+    };
+
 type MapStore = {
   viewingItineraryId: number | null;
+  viewingPOI: ViewingPOI | null;
   currentMapTab: "explore" | "recommend";
   currentSidePanelTab: "itinerary" | "place";
   recommend: {
@@ -33,10 +50,12 @@ type MapStore = {
   setFilterShowVisited: (showVisited: boolean) => void;
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
+  setViewingPOI: (poi: ViewingPOI) => void;
 };
 
 export const useMapStore = create<MapStore>((set) => ({
   viewingItineraryId: null,
+  viewingPOI: null,
   currentMapTab: "explore",
   currentSidePanelTab: "place",
   recommend: {
@@ -61,6 +80,7 @@ export const useMapStore = create<MapStore>((set) => ({
     set((prev) => ({ filters: { ...prev.filters, showUnvisited } })),
   setRecommendFromPos: (pos: Coordinates) =>
     set({ recommend: { recommendFromPos: pos } }),
+  setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
 
   //   setExplorePois: (pois: { id: number; pos: Coordinates }[]) =>
   //     set({ explore: { pois } }),

@@ -155,10 +155,7 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
   );
 }
 
-export function ViewPOIPanel() {
-  // use nuqs to get the poiId
-  const [poiId, setPoiId] = useQueryState("poi", parseAsInteger);
-  // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
+export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   const poiQuery = trpc.map.getPOI.useQuery(
     { id: poiId ?? 0 },
     {
@@ -184,7 +181,7 @@ export function ViewPOIPanel() {
 
   const poi = poiQuery.data;
 
-  if (poiId === null || poi === null || poi === undefined) {
+  if (poi === null || poi === undefined) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
         <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
@@ -239,6 +236,52 @@ export function ViewPOIPanel() {
           </Button>
         </div>
         <ViewPOIReviews poiId={poiId} />
+      </div>
+    </div>
+  );
+}
+
+export function ViewNewPOIPanel({
+  pos,
+}: {
+  pos: {
+    name: string;
+    description: string;
+    latitude: number;
+    longitude: number;
+    images: string[];
+  };
+}) {
+  // TODO: Implement this.
+  return <></>;
+}
+
+export function ViewPOIPanel() {
+  const mapStore = useMapStore(
+    useShallow(({ viewingPOI }) => {
+      return {
+        viewingPOI,
+      };
+    })
+  );
+
+  if (mapStore.viewingPOI?.type === "existing-poi") {
+    return <ViewExistingPOIPanel poiId={mapStore.viewingPOI.poiId} />;
+  }
+  if (mapStore.viewingPOI?.type === "new-poi") {
+    return <ViewNewPOIPanel pos={mapStore.viewingPOI.pos} />;
+  }
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
+      <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
+        <MapPin className="size-6 stroke-red-400" />
+        <div className="flex flex-col">
+          <h3 className="text-base font-bold text-center">No pin selected!</h3>
+          <p className="text-muted-foreground text-center text-sm">
+            Select a pin on the map to view more information.
+          </p>
+        </div>
       </div>
     </div>
   );

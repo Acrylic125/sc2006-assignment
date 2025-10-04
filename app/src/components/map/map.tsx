@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Check, Ellipsis, Filter, Pen, Plus, Tag, Trash2 } from "lucide-react";
 import { trpc } from "@/server/client";
-import { parseAsInteger, useQueryState } from "nuqs";
 
 export function ItineraryDropdown() {
   const mapStore = useMapStore(
@@ -284,15 +283,22 @@ const pins = {
 };
 
 function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
-  const [, setPoiId] = useQueryState("poi", parseAsInteger);
   const mapStore = useMapStore(
-    useShallow(({ filters, viewingItineraryId, setCurrentSidePanelTab }) => {
-      return {
+    useShallow(
+      ({
         filters,
         viewingItineraryId,
         setCurrentSidePanelTab,
-      };
-    })
+        setViewingPOI,
+      }) => {
+        return {
+          filters,
+          viewingItineraryId,
+          setCurrentSidePanelTab,
+          setViewingPOI,
+        };
+      }
+    )
   );
   const poisQuery = trpc.map.search.useQuery(
     {
@@ -354,7 +360,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         if (e.features === undefined || e.features?.length === 0) return;
         const poiId = e.features?.[0]?.properties?.id;
         if (poiId === undefined || typeof poiId !== "number") return;
-        setPoiId(poiId);
+        mapStore.setViewingPOI({ type: "existing-poi", poiId });
         mapStore.setCurrentSidePanelTab("place");
       };
       map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
@@ -419,12 +425,11 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     enabled,
     mapStore,
     mapStore.setCurrentSidePanelTab,
-    setPoiId,
+    mapStore.setViewingPOI,
   ]);
 }
 
 function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
-  const [, setPoiId] = useQueryState("poi", parseAsInteger);
   const mapStore = useMapStore(
     useShallow(
       ({
@@ -433,6 +438,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
         setCurrentSidePanelTab,
         recommend,
         setRecommendFromPos,
+        setViewingPOI,
       }) => {
         return {
           filters,
@@ -440,6 +446,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
           setCurrentSidePanelTab,
           recommendFromPos: recommend.recommendFromPos,
           setRecommendFromPos,
+          setViewingPOI,
         };
       }
     )
@@ -490,7 +497,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
           if (!(features === undefined || features?.length === 0)) {
             const poiId = features?.[0]?.properties?.id;
             if (poiId === undefined || typeof poiId !== "number") return;
-            setPoiId(poiId);
+            mapStore.setViewingPOI({ type: "existing-poi", poiId });
             mapStore.setCurrentSidePanelTab("place");
             return;
           }
@@ -633,7 +640,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     mapStore,
     mapStore.setCurrentSidePanelTab,
     mapStore.recommendFromPos,
-    setPoiId,
+    mapStore.setViewingPOI,
   ]);
 }
 
