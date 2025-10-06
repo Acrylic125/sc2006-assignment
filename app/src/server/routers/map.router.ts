@@ -6,19 +6,109 @@ import {
   publicProcedure,
 } from "../trpc";
 import { db } from "@/db";
-import { poiImagesTable, poiTable } from "@/db/schema";
-import { and, eq, gt, lt, sql } from "drizzle-orm";
+import {
+  itineraryPOITable,
+  itineraryTable,
+  poiImagesTable,
+  poiTable,
+  poiTagTable,
+  tagTable,
+} from "@/db/schema";
+import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 
 export const mapRouter = createTRPCRouter({
+  getTags: publicProcedure.query(async ({ ctx }) => {
+    const tags = await db
+      .select({ id: tagTable.id, name: tagTable.name })
+      .from(tagTable);
+    return tags;
+  }),
   search: publicProcedure
     .input(
       z.object({
         showVisited: z.boolean(),
         showUnvisited: z.boolean(),
-        excludedTags: z.array(z.string()),
+        excludedTags: z.array(z.number()),
+        recommendFromLocation: z
+          .object({
+            latitude: z.number(),
+            longitude: z.number(),
+          })
+          .optional(),
       })
     )
     .query(async ({ ctx, input }) => {
+      // No pois to show.
+      if (!input.showVisited && !input.showUnvisited) {
+        return [];
+      }
+      const conditions = [
+        not(
+          exists(
+            db
+              .select()
+              .from(poiTagTable)
+              .where(
+                and(
+                  eq(poiTagTable.poiId, poiTable.id),
+                  inArray(poiTagTable.tagId, input.excludedTags)
+                )
+              )
+              .limit(1)
+          )
+        ),
+      ];
+      if (input.showVisited !== input.showUnvisited && ctx.auth.userId) {
+        const existent = db
+          .select()
+          .from(itineraryPOITable)
+          .innerJoin(
+            itineraryTable,
+            eq(itineraryPOITable.itineraryId, itineraryTable.id)
+          )
+          .where(
+            and(
+              eq(itineraryPOITable.poiId, poiTable.id),
+              eq(itineraryPOITable.checked, true),
+              eq(itineraryTable.userId, ctx.auth.userId)
+            )
+          )
+          .limit(1);
+        if (input.showVisited) {
+          conditions.push(exists(existent));
+        } else {
+          conditions.push(not(exists(existent)));
+        }
+      }
+
+      if (input.recommendFromLocation) {
+        const recommendationRadius = 5 / 111.32;
+        conditions.push(
+          lt(
+            poiTable.latitude,
+            sql`CAST(${input.recommendFromLocation.latitude + recommendationRadius} AS numeric)`
+          )
+        );
+        conditions.push(
+          gt(
+            poiTable.latitude,
+            sql`CAST(${input.recommendFromLocation.latitude - recommendationRadius} AS numeric)`
+          )
+        );
+        conditions.push(
+          lt(
+            poiTable.longitude,
+            sql`CAST(${input.recommendFromLocation.longitude + recommendationRadius} AS numeric)`
+          )
+        );
+        conditions.push(
+          gt(
+            poiTable.longitude,
+            sql`CAST(${input.recommendFromLocation.longitude - recommendationRadius} AS numeric)`
+          )
+        );
+      }
+
       const pois = await db
         .select({
           id: poiTable.id,
@@ -28,7 +118,9 @@ export const mapRouter = createTRPCRouter({
             longitude: sql<number>`CAST(${poiTable.longitude} AS numeric)`,
           },
         })
-        .from(poiTable);
+        .from(poiTable)
+        // .innerJoin(poiTagTable, eq(poiTable.id, poiTagTable.poiId))
+        .where(and(...conditions));
       return pois;
     }),
   recommend: publicOrProtectedProcedure
@@ -40,7 +132,7 @@ export const mapRouter = createTRPCRouter({
         }),
         showVisited: z.boolean(),
         showUnvisited: z.boolean(),
-        excludedTags: z.array(z.string()),
+        excludedTags: z.array(z.number()),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -79,6 +171,7 @@ export const mapRouter = createTRPCRouter({
             )
           )
         );
+
       return pois;
 
       // TODO: Fetch from the database.
