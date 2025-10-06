@@ -1,14 +1,19 @@
 import { create } from "zustand";
 
-export type MapModalAction = {
-  type: "itinerary-poi-review";
-  options: {
-    poiId: number;
-  };
-} | {
-  type: "create-itinerary";
-  options: {};
-};
+export type MapModalAction =
+  | {
+      type: "itinerary-poi-review";
+      options: {
+        poiId: number;
+      };
+    }
+  | {
+      type: "create-itinerary";
+      options: {
+        longitude: number;
+        latitude: number;
+      };
+    };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<
   MapModalAction,

@@ -108,7 +108,10 @@ export function ItineraryDropdown() {
           onClick={() => {
             modalStore.setAction({
               type: "create-itinerary",
-              options: {},
+              options: {
+                longitude: 0,
+                latitude: 0,
+              },
             });
           }}
         >
