@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Check, Ellipsis, Filter, Pen, Plus, Tag, Trash2 } from "lucide-react";
 import { trpc } from "@/server/client";
+import { useMapModalStore } from "./modal/map-modal-store";
 
 export function ItineraryDropdown() {
   const mapStore = useMapStore(
@@ -29,7 +30,7 @@ export function ItineraryDropdown() {
       };
     })
   );
-
+  const modalStore = useMapModalStore();
   const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
 
   return (
@@ -102,7 +103,15 @@ export function ItineraryDropdown() {
           </div>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="px-2">
+        <DropdownMenuItem
+          className="px-2"
+          onClick={() => {
+            modalStore.setAction({
+              type: "create-itinerary",
+              options: {},
+            });
+          }}
+        >
           <Plus /> Create Itinerary
         </DropdownMenuItem>
       </DropdownMenuContent>
