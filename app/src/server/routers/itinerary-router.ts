@@ -1,7 +1,12 @@
 import z from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { db } from "@/db";
-import { itineraryPOITable, itineraryTable, poiTable, reviewTable } from "@/db/schema";
+import {
+  itineraryPOITable,
+  itineraryTable,
+  poiTable,
+  reviewTable,
+} from "@/db/schema";
 import { and, eq, exists, sql } from "drizzle-orm";
 
 // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
@@ -59,7 +64,7 @@ export const itineraryRouter = createTRPCRouter({
     if (!userId) {
       throw new Error("User not authenticated");
     }
-    
+
     // Get all itineraries for the current user
     const userItineraries = await db
       .select({
@@ -68,10 +73,10 @@ export const itineraryRouter = createTRPCRouter({
       })
       .from(itineraryTable)
       .where(eq(itineraryTable.userId, userId));
-    
+
     return userItineraries;
   }),
-  
+
   createItinerary: protectedProcedure
     .input(
       z.object({
@@ -83,7 +88,7 @@ export const itineraryRouter = createTRPCRouter({
       if (!userId) {
         throw new Error("User not authenticated");
       }
-      
+
       // Insert new itinerary into database
       const [newItinerary] = await db
         .insert(itineraryTable)
@@ -95,10 +100,10 @@ export const itineraryRouter = createTRPCRouter({
           id: itineraryTable.id,
           name: itineraryTable.name,
         });
-      
+
       return newItinerary;
     }),
-    
+
   addPOIToItinerary: protectedProcedure
     .input(
       z.object({
@@ -111,7 +116,7 @@ export const itineraryRouter = createTRPCRouter({
       if (!userId) {
         throw new Error("User not authenticated");
       }
-      
+
       // Verify the itinerary belongs to the user
       const itinerary = await db
         .select()
@@ -123,11 +128,11 @@ export const itineraryRouter = createTRPCRouter({
           )
         )
         .limit(1);
-      
+
       if (itinerary.length === 0) {
         throw new Error("Itinerary not found or access denied");
       }
-      
+
       // Get the highest order priority in this itinerary
       const maxOrderResult = await db
         .select({
@@ -135,9 +140,9 @@ export const itineraryRouter = createTRPCRouter({
         })
         .from(itineraryPOITable)
         .where(eq(itineraryPOITable.itineraryId, input.itineraryId));
-      
+
       const nextOrder = (maxOrderResult[0]?.maxOrder ?? 0) + 1;
-      
+
       // Insert POI into itinerary (use INSERT ON CONFLICT to handle duplicates)
       try {
         const [newItineraryPOI] = await db
@@ -149,14 +154,14 @@ export const itineraryRouter = createTRPCRouter({
             checked: false,
           })
           .returning();
-        
+
         return newItineraryPOI;
       } catch (error) {
         // Handle duplicate entry (POI already in itinerary)
         throw new Error("POI is already in this itinerary");
       }
     }),
-    
+
   getItinerary: protectedProcedure
     .input(
       z.object({
@@ -165,10 +170,6 @@ export const itineraryRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
-      
       // First verify the itinerary belongs to the user
       const itinerary = await db
         .select({
@@ -183,11 +184,11 @@ export const itineraryRouter = createTRPCRouter({
           )
         )
         .limit(1);
-      
+
       if (itinerary.length === 0) {
         throw new Error("Itinerary not found or access denied");
       }
-      
+
       // Get POIs in the itinerary with their details, sorted by order priority
       const itineraryPOIs = await db
         .select({
@@ -200,7 +201,7 @@ export const itineraryRouter = createTRPCRouter({
         .innerJoin(poiTable, eq(poiTable.id, itineraryPOITable.poiId))
         .where(eq(itineraryPOITable.itineraryId, input.id))
         .orderBy(itineraryPOITable.orderPriority);
-      
+
       return {
         id: itinerary[0].id,
         name: itinerary[0].name,
