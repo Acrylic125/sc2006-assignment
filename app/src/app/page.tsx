@@ -1,10 +1,5 @@
-import {
-  ExploreMap,
-  FilterDropdown,
-  FilterTagsDropdown,
-  ItineraryDropdown,
-  MapViewTabGroup,
-} from "@/components/map/map";
+"use client";
+// import { ExploreMap } from "@/components/map/map";
 import { MainNavbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +16,17 @@ import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { SidePanel, SidePanelTabGroup } from "@/components/map/map-side-panel";
 import { MapModal } from "@/components/map/modal/map-modal";
+import {
+  FilterDropdown,
+  FilterTagsDropdown,
+} from "@/components/map/filter-dropdwon";
+import { ItineraryDropdown } from "@/components/map/itinerary-dropdown";
+import { MapViewTabGroup } from "@/components/map/map-view-tab-group";
+import dynamic from "next/dynamic";
+
+const _ExploreMap = dynamic(() => import("../components/map/map"), {
+  ssr: false,
+});
 
 export default function Home() {
   return (
@@ -74,7 +80,7 @@ export default function Home() {
             </div>
           </div>
           <div className="h-full w-full p-1">
-            <ExploreMap className="h-full w-full" />
+            <_ExploreMap className="h-full w-full" />
           </div>
         </div>
         <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max lg:border-l border-border">
