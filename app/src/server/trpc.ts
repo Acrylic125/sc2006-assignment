@@ -1,12 +1,13 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { cache } from "react";
 import { Context } from "./context";
+import { auth } from "@clerk/nextjs/server";
 
 export const createTRPCContext = cache(async () => {
   /**
    * @see: https://trpc.io/docs/server/context
    */
-  return {};
+  return { auth: await auth() };
 });
 
 /**
