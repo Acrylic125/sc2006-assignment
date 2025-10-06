@@ -1,62 +1,78 @@
 "use client";
 
-import { useMapStore } from "@/components/map/map-store";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Check, List } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
+import { formatDurationToClosestUnit } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-  closestCenter,
-  DndContext,
-  DragEndEvent,
-  KeyboardSensor,
-  // PointerSensor,
-  // TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { trpc } from "@/server/client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+  ImageIcon,
+  Loader2,
+  MapPin,
+  Navigation,
+  Plus,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
+import Image from "next/image";
+import { useQueryState, parseAsInteger } from "nuqs";
 import { useMapModalStore } from "./modal/map-modal-store";
-import { TouchSensor, MouseSensor } from "@/lib/dnd-kit";
-import confetti from "canvas-confetti";
-import { useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { useMapStore } from "./map-store";
+import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
+import { trpc } from "@/server/client";
+import { Skeleton } from "../ui/skeleton";
 
-export function ItineraryPOISortableItem({
-  id,
-  poi,
-  isPrevChecked,
-  isSelfChecked,
-  className,
-}: {
-  id: number;
-  poi: {
-    id: number;
-    name: string;
-    checked: boolean;
-    orderPriority: number;
-  };
-  isPrevChecked: boolean;
-  isSelfChecked: boolean;
-  className?: string;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+export function ViewPOIReviews({ poiId }: { poiId: number }) {
+  const auth = useAuth();
+
+  // TODO: Retrieve personal reviews + other reviews using the Reviews Router.
+  const reviews = [
+    {
+      id: 1,
+      liked: false,
+      comment: "This is a review",
+      images: ["/example.png", "/example.png", "/example.png"],
+      age: 30000,
+      // createdAt: new Date(),
+      // User needs to be retrieved from clerk.
+      // See https://clerk.com/docs/reference/backend/user/get-user-list
+      // Filter by `userId`. Note the limit is 100. We will only ever
+      // retrieve up to 50 reviews at a time so this limit will never
+      // be reached.
+      user: {
+        id: "user_123",
+        name: "User 1",
+        profilePicture: "https://github.com/shadcn.png",
+      },
+      itinerary: {
+        id: 1,
+        name: "Itinerary 1",
+      },
+    },
+    {
+      id: 2,
+      liked: true,
+      comment: "This is a review",
+      images: ["/example.png", "/example.png", "/example.png"],
+      age: 86400000,
+      // createdAt: new Date(),
+      // User needs to be retrieved from clerk.
+      // See https://clerk.com/docs/reference/backend/user/get-user-list
+      // Filter by `userId`. Note the limit is 100. We will only ever
+      // retrieve up to 50 reviews at a time so this limit will never
+      // be reached.
+      user: {
+        id: "user_123",
+        name: "User 1",
+        profilePicture: "https://github.com/shadcn.png",
+      },
+      itinerary: {
+        id: 1,
+        name: "Itinerary 1",
+      },
+    },
+  ];
+
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
       return {
@@ -64,337 +80,207 @@ export function ItineraryPOISortableItem({
       };
     })
   );
-  const mapStore = useMapStore(
-    useShallow(({ viewingItineraryId }) => {
-      return {
-        viewingItineraryId,
-      };
-    })
-  );
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const updateItineraryPOI = trpc.itinerary.updateItineraryPOI.useMutation();
-  const utils = trpc.useUtils();
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "flex flex-row gap-2 items-center",
-        {
-          "bg-secondary": isDragging,
-        },
-        className
-      )}
-    >
-      <div className="w-8 flex flex-col items-center justify-center">
-        <div
-          className={cn("h-4 w-0.5", {
-            "bg-primary": isPrevChecked,
-            "bg-neutral-300 dark:bg-neutral-700": !isPrevChecked,
-          })}
-        />
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-row items-center justify-between">
+        <h3 className="font-medium">Reviews</h3>
         <Button
-          variant={poi.checked ? "default" : "outline"}
-          className="border-2 border-neutral-300 dark:border-neutral-700 rounded-md p-2 w-8 h-8"
-          data-no-dnd="true"
-          disabled={updateItineraryPOI.isPending}
-          ref={buttonRef}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!mapStore.viewingItineraryId) return;
-
-            const buttonRect = buttonRef.current?.getBoundingClientRect();
-            if (!buttonRect) return;
-            const x = buttonRect.x / window.innerWidth;
-            const y = buttonRect.y / window.innerHeight;
-
-            updateItineraryPOI.mutate(
-              {
-                itineraryId: mapStore.viewingItineraryId,
-                poiId: poi.id,
-                checked: !poi.checked,
+          variant="default"
+          size="sm"
+          disabled={!auth.isSignedIn}
+          onClick={() => {
+            modalStore.setAction({
+              type: "itinerary-poi-review",
+              options: {
+                poiId: poiId,
               },
-              {
-                onSuccess: (data, input) => {
-                  // Get current data for the itinerary.
-                  const itinerary = utils.itinerary.getItinerary.getData({
-                    id: input.itineraryId,
-                  });
-                  if (!itinerary) return;
-                  // Update the checked status of the poi.
-                  // Deep clone the itinerary.
-                  const newItinerary = JSON.parse(
-                    JSON.stringify(itinerary)
-                  ) as typeof itinerary;
-                  const poi = newItinerary.pois.find(
-                    (p) => p.id === input.poiId
-                  );
-                  if (!poi) return;
-                  poi.checked = !poi.checked;
-                  // Update the itinerary.
-                  utils.itinerary.getItinerary.setData(
-                    {
-                      id: input.itineraryId,
-                    },
-                    newItinerary
-                  );
-
-                  // If the poi is checked, show confetti.
-                  if (poi.checked) {
-                    confetti({
-                      particleCount: 48,
-                      spread: 40,
-                      origin: {
-                        x: x,
-                        y: y,
-                      },
-                    });
-
-                    // If no review, show the review modal.
-                    if (data) return;
-                    modalStore.setAction({
-                      type: "itinerary-poi-review",
-                      options: {
-                        poiId: poi.id,
-                      },
-                    });
-                  }
-                },
-              }
-            );
+            });
           }}
         >
-          <Check
-            className={cn("stroke-3 size-4", {
-              "text-background": poi.checked,
-              "text-neutral-300 dark:text-neutral-700": !poi.checked,
-            })}
-          />
+          <Plus /> Review
         </Button>
-        <div
-          className={cn("h-4 w-0.5", {
-            "bg-primary": isSelfChecked,
-            "bg-neutral-300 dark:bg-neutral-700": !isSelfChecked,
-          })}
-        />
       </div>
-      <div className="flex flex-row items-center h-full flex-1">
-        <h3>{poi.name}</h3>
+      <div className="flex flex-col gap-2">
+        {reviews.map((review) => (
+          <div
+            key={review.id}
+            className="flex flex-col border border-border rounded-md p-2 bg-secondary gap-2"
+          >
+            <div className="flex flex-row items-center justify-between gap-2">
+              <div className="flex flex-row items-center gap-2">
+                <Avatar>
+                  <AvatarImage src={review.user.profilePicture} />
+                  <AvatarFallback>Profile</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{review.user.name}</span>
+              </div>
+
+              {review.liked ? (
+                <LikeButton active />
+              ) : (
+                // <ThumbsUp className="size-4 stroke-primary dark:fill-primary/25" />
+                <DislikeButton active />
+                // <ThumbsDown className="size-4 stroke-red-400 fill-red-200/25 dark:fill-red-700/25" />
+              )}
+            </div>
+            <p className="text-sm font-light text-foreground">
+              {review.comment}
+            </p>
+            <div className="flex flex-row items-center gap-2">
+              {review.images.map((image, i) => (
+                <div className="w-1/3 aspect-square relative" key={i}>
+                  <Image
+                    src={image}
+                    alt={review.comment}
+                    className="object-cover"
+                    fill
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-row justify-between">
+              <span className="text-sm flex-1 truncate">
+                {(auth.userId === review.user.id || true) &&
+                  review.itinerary.name}
+              </span>
+              <span className="flex flex-row items-center text-muted-foreground text-sm flex-1 truncate justify-end">
+                {formatDurationToClosestUnit(review.age)} ago
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-export function ViewItineraryPanel() {
-  const mapStore = useMapStore(
-    useShallow(({ viewingItineraryId }) => {
-      return {
-        viewingItineraryId,
-      };
-    })
-  );
-  const sensors = useSensors(
-    // useSensor(PointerSensor),
-    useSensor(TouchSensor),
-    useSensor(MouseSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const utils = trpc.useUtils();
-  const getItineraryQuery = trpc.itinerary.getItinerary.useQuery(
+export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
+  const poiQuery = trpc.map.getPOI.useQuery(
+    { id: poiId ?? 0 },
     {
-      id: mapStore.viewingItineraryId ?? 0,
-    },
-    {
-      enabled: mapStore.viewingItineraryId !== null,
+      enabled: poiId !== null,
     }
   );
-  const updateItineraryPOIOrderMutation =
-    trpc.itinerary.updateItineraryPOIOrder.useMutation({
-      onSuccess: (data, input) => {
-        // We treat the itinerary as our single source of truth
-        // for the itinerary data.
-        utils.itinerary.getItinerary.setData(
-          {
-            id: input.itineraryId,
-          },
-          data
-        );
-      },
-    });
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const itinerary = getItineraryQuery.data;
-      if (!itinerary) return;
-      const itineraryId = mapStore.viewingItineraryId;
-      if (!itineraryId) return;
-
-      const oldIndex = itinerary.pois.findIndex((poi) => poi.id === active.id);
-      const newIndex = itinerary.pois.findIndex((poi) => poi.id === over.id);
-
-      if (oldIndex === newIndex) return;
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      const pois = arrayMove(itinerary.pois, oldIndex, newIndex);
-      pois.forEach((poi, i) => {
-        poi.orderPriority = i;
-      });
-
-      utils.itinerary.getItinerary.setData(
-        {
-          id: itineraryId,
-        },
-        {
-          ...itinerary,
-          pois: pois,
-        }
-      );
-      updateItineraryPOIOrderMutation.mutate(
-        {
-          itineraryId: itineraryId,
-          pois: pois.map((poi) => ({
-            id: poi.id,
-            orderPriority: poi.orderPriority,
-          })),
-        },
-        {
-          onError: (error) => {
-            console.error(error);
-            utils.itinerary.getItinerary.setData(
-              {
-                id: itineraryId,
-              },
-              itinerary
-            );
-          },
-        }
-      );
-    }
-  };
-
-  if (getItineraryQuery.isLoading) {
+  if (poiQuery.isLoading) {
     return (
-      <div className="w-full flex flex-col gap-2 py-16 px-8 lg:px-1">
-        <h2 className="text-lg font-bold">
+      <div className="w-full flex flex-col gap-2">
+        <div className="w-full aspect-[4/3] relative">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="flex flex-col p-1 gap-2">
           <Skeleton className="w-24 h-6" />
-        </h2>
-        <div className="w-full flex flex-col">
-          <div className="flex flex-col items-center gap-2">
-            <Skeleton className="w-full h-12" />
-            <Skeleton className="w-full h-12" />
-            <Skeleton className="w-full h-12" />
-            <Skeleton className="w-full h-12" />
-            <Skeleton className="w-full h-12" />
-          </div>
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-1/2 h-4" />
         </div>
       </div>
     );
   }
 
-  const itinerary = getItineraryQuery.data;
-  if (
-    mapStore.viewingItineraryId === null ||
-    !itinerary ||
-    getItineraryQuery.error
-  ) {
+  const poi = poiQuery.data;
+
+  if (poi === null || poi === undefined) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
         <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
-          <List className="size-6 stroke-pink-50" />
+          <MapPin className="size-6 stroke-red-400" />
           <div className="flex flex-col">
             <h3 className="text-base font-bold text-center">
-              No initerary selected!
+              No pin selected!
             </h3>
             <p className="text-muted-foreground text-center text-sm">
-              Select an itinerary to get started.
+              Select a pin on the map to view more information.
             </p>
           </div>
-          {getItineraryQuery.error && (
-            <Alert variant="destructive">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                {getItineraryQuery.error.message}
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
       </div>
     );
   }
 
-  const isLastPOIReviewed =
-    itinerary.pois.length === 0 ||
-    itinerary.pois[itinerary.pois.length - 1].checked;
+  return (
+    <div className="w-full flex flex-col">
+      <div className="w-full aspect-[4/3] relative">
+        {poi.images.length > 0 && poi.images[0] !== "" ? (
+          <Image
+            src={`https://${poi.images[0]}`}
+            alt={poi.name}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
+            <ImageIcon className="size-8" />
+            No Image
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col p-1">
+        <h1 className="text-base font-bold">{poi.name}</h1>
+        <p className="text-sm text-muted-foreground">{poi.description}</p>
+        <div className="flex flex-col gap-1 py-4">
+          <Button variant="ghost" asChild className="w-fit p-0">
+            <a
+              href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+            >
+              <Navigation />
+              Navigate
+            </a>
+          </Button>
+          <Button className="w-full truncate" size="sm">
+            Add to Itinerary
+          </Button>
+          <Button className="w-full truncate" variant="secondary" size="sm">
+            Start Itinerary
+          </Button>
+        </div>
+        <ViewPOIReviews poiId={poiId} />
+      </div>
+    </div>
+  );
+}
+
+export function ViewNewPOIPanel({
+  pos,
+}: {
+  pos: {
+    name: string;
+    description: string;
+    latitude: number;
+    longitude: number;
+    images: string[];
+  };
+}) {
+  // TODO: Implement this.
+  return <></>;
+}
+
+export function ViewPOIPanel() {
+  const mapStore = useMapStore(
+    useShallow(({ viewingPOI }) => {
+      return {
+        viewingPOI,
+      };
+    })
+  );
+
+  if (mapStore.viewingPOI?.type === "existing-poi") {
+    return <ViewExistingPOIPanel poiId={mapStore.viewingPOI.poiId} />;
+  }
+  if (mapStore.viewingPOI?.type === "new-poi") {
+    return <ViewNewPOIPanel pos={mapStore.viewingPOI.pos} />;
+  }
 
   return (
-    <div className="w-full flex flex-col gap-2 py-16 px-8 lg:px-1">
-      <h2 className="text-lg font-bold">{itinerary.name}</h2>
-      <div className="w-full flex flex-col">
-        <div className="flex flex-row items-center">
-          <div className="w-8 flex flex-col items-center">
-            <div className="bg-primary rounded-full w-4 h-4"></div>
-            <div className="h-4 w-0.5 bg-primary" />
-          </div>
-        </div>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={itinerary.pois.map((item) => item.id)}
-            strategy={verticalListSortingStrategy}
-            // DO NOT allow dragging if the mutation is pending
-            disabled={updateItineraryPOIOrderMutation.isPending}
-          >
-            {itinerary.pois.map((poi, i) => {
-              const isPrevChecked = i <= 0 || itinerary.pois[i - 1].checked;
-
-              return (
-                <ItineraryPOISortableItem
-                  key={poi.id}
-                  id={poi.id}
-                  poi={poi}
-                  isPrevChecked={isPrevChecked}
-                  isSelfChecked={poi.checked}
-                  className={cn({
-                    "opacity-50": updateItineraryPOIOrderMutation.isPending,
-                  })}
-                />
-              );
-            })}
-          </SortableContext>
-        </DndContext>
-
-        <div className="flex flex-row items-center">
-          <div className="w-8 flex flex-col items-center">
-            <div
-              className={cn("h-4 w-0.5", {
-                "bg-primary": isLastPOIReviewed,
-                "bg-neutral-300 dark:bg-neutral-700": !isLastPOIReviewed,
-              })}
-            />
-            <div
-              className={cn("rounded-full w-4 h-4", {
-                "bg-primary": isLastPOIReviewed,
-                "bg-neutral-300 dark:bg-neutral-700": !isLastPOIReviewed,
-              })}
-            ></div>
-          </div>
+    <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
+      <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
+        <MapPin className="size-6 stroke-red-400" />
+        <div className="flex flex-col">
+          <h3 className="text-base font-bold text-center">No pin selected!</h3>
+          <p className="text-muted-foreground text-center text-sm">
+            Select a pin on the map to view more information.
+          </p>
         </div>
       </div>
     </div>
