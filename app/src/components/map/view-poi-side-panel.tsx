@@ -253,7 +253,21 @@ export function ViewNewPOIPanel({
   };
 }) {
   // TODO: Implement this.
-  return <></>;
+  return ( //basic temp skeleton
+    <div className="w-full flex flex-col gap-2">
+      <div className="w-full aspect-[4/3] relative">
+        <Skeleton className="w-full h-full" />
+      </div>
+      <div className="flex flex-col p-1 gap-2">
+        <Skeleton className="w-24 h-6" />
+        <Skeleton className="w-full h-4" />
+        <Skeleton className="w-full h-4" />
+        <Skeleton className="w-1/2 h-4" />
+      </div>
+    </div>
+  );
+  
+  //return <></>;
 }
 
 export function ViewPOIPanel() {
@@ -268,7 +282,7 @@ export function ViewPOIPanel() {
   if (mapStore.viewingPOI?.type === "existing-poi") {
     return <ViewExistingPOIPanel poiId={mapStore.viewingPOI.poiId} />;
   }
-  if (mapStore.viewingPOI?.type === "new-poi") {
+  else if (mapStore.viewingPOI?.type === "new-poi") {
     return <ViewNewPOIPanel pos={mapStore.viewingPOI.pos} />;
   }
 

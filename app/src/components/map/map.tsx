@@ -357,13 +357,23 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         },
       });
       const handlePinClick = (e: mapboxgl.MapMouseEvent) => {
+        //if the user clicks on a POI pin
         if (e.features === undefined || e.features?.length === 0) return;
         const poiId = e.features?.[0]?.properties?.id;
         if (poiId === undefined || typeof poiId !== "number") return;
         mapStore.setViewingPOI({ type: "existing-poi", poiId });
         mapStore.setCurrentSidePanelTab("place");
       };
+      const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+        //if the user clicks on an empty map location
+        const { lng, lat } = e.lngLat;
+        const pos = {name: "", description: "", latitude: lat, longitude: lng, images: [""]};
+        mapStore.setViewingPOI({ type: "new-poi", pos });
+        mapStore.setCurrentSidePanelTab("place");
+      };
+      map.on("click", handleMapClick);
       map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
+      
 
       cleanUpFn = () => {
         if (map.getLayer(LAYER_EXPLORE_PINS)) {
@@ -372,6 +382,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         if (map.getSource(SOURCE_EXPLORE_PINS)) {
           map.removeSource(SOURCE_EXPLORE_PINS);
         }
+        map.off("click", handleMapClick);
         map.off("click", LAYER_EXPLORE_PINS, handlePinClick);
       };
 
