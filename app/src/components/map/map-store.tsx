@@ -22,11 +22,8 @@ type ViewingPOI =
   | {
       type: "new-poi";
       pos: {
-        name: string;
-        description: string;
         latitude: number;
         longitude: number;
-        images: string[];
       };
     };
 

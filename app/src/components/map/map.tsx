@@ -83,6 +83,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     const load = async () => {
       const LAYER_EXPLORE_PINS = "explore-pins-layer";
       const SOURCE_EXPLORE_PINS = "explore-pins";
+      const SOURCE_PIN_FROM_PINS = "pin-from-pins";
 
       const features = [];
       for (const poi of poisQuery.data) {
@@ -106,6 +107,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
           features: features,
         },
       });
+
       const handlePinClick = (e: mapboxgl.MapMouseEvent) => {
         //if the user clicks on a POI pin
         if (e.features === undefined || e.features?.length === 0) return;
@@ -117,13 +119,35 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
       const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
         //if the user clicks on an empty map location
         const { lng, lat } = e.lngLat;
-        const pos = {name: "", description: "", latitude: lat, longitude: lng, images: [""]};
+        const pos = {latitude: lat, longitude: lng};
         mapStore.setViewingPOI({ type: "new-poi", pos });
         mapStore.setCurrentSidePanelTab("place");
+        /* //this doesnt work for some reason
+        map.addSource(SOURCE_PIN_FROM_PINS, {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    lng,
+                    lat,
+                  ],
+                },
+                properties: {
+                  color: "red",
+                },
+              },
+            ],
+          },
+        })
+        */
       };
       map.on("click", handleMapClick);
       map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
-      
 
       cleanUpFn = () => {
         if (map.getLayer(LAYER_EXPLORE_PINS)) {

@@ -245,29 +245,73 @@ export function ViewNewPOIPanel({
   pos,
 }: {
   pos: {
-    name: string;
-    description: string;
     latitude: number;
     longitude: number;
-    images: string[];
   };
 }) {
   // TODO: Implement this.
-  return ( //basic temp skeleton
-    <div className="w-full flex flex-col gap-2">
-      <div className="w-full aspect-[4/3] relative">
-        <Skeleton className="w-full h-full" />
+  const addrQuery = trpc.map.getAddress.useQuery(
+    {
+      lat: pos.latitude,
+      lng: pos.longitude
+    }
+  );
+  if (addrQuery.isLoading) {
+    (
+      <div className="w-full flex flex-col gap-2">
+        <div className="w-full aspect-[4/3] relative">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="flex flex-col p-1 gap-2">
+          <Skeleton className="w-24 h-6" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-1/2 h-4" />
+        </div>
       </div>
-      <div className="flex flex-col p-1 gap-2">
-        <Skeleton className="w-24 h-6" />
-        <Skeleton className="w-full h-4" />
-        <Skeleton className="w-full h-4" />
-        <Skeleton className="w-1/2 h-4" />
+    );
+  }
+
+  const addr = addrQuery.data;
+  const coords = `Lat: ${pos.latitude.toFixed(2)}, Long: ${pos.longitude.toFixed(2)}`;
+  const image = "" //image placeholder
+  
+  return (
+    <div className="w-full flex flex-col">
+      <div className="w-full aspect-[4/3] relative">
+        {image !== "" ? (
+          <Image
+            src={`https://${image}`}
+            alt={addr}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
+            <ImageIcon className="size-8" />
+            No Image
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col p-1">
+        <h1 className="text-base font-bold">{addr}</h1>
+        <p className="text-sm text-muted-foreground">{coords}</p>
+        <div className="flex flex-col gap-1 py-4">
+          <Button variant="ghost" asChild className="w-fit p-0">
+            <a
+              href={`https://www.google.com/maps?q=${pos.latitude},${pos.longitude}`}
+            >
+              <Navigation />
+              Navigate
+            </a>
+          </Button>
+          <Button className="w-full truncate" size="sm">
+            Upload your own POI here
+          </Button>
+        </div>
       </div>
     </div>
   );
-  
-  //return <></>;
 }
 
 export function ViewPOIPanel() {
