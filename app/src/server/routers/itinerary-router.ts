@@ -1,8 +1,13 @@
 import z from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { db } from "@/db";
-import { itineraryPOITable, itineraryTable, reviewTable } from "@/db/schema";
-import { and, eq, exists } from "drizzle-orm";
+import {
+  itineraryPOITable,
+  itineraryTable,
+  poiTable,
+  reviewTable,
+} from "@/db/schema";
+import { and, eq, exists, sql } from "drizzle-orm";
 
 // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
 const itinerary = {
@@ -55,9 +60,108 @@ const itineraries = [
 
 export const itineraryRouter = createTRPCRouter({
   getAllItineraries: protectedProcedure.query(async ({ ctx }) => {
-    // TODO: Get all the itineraries from the database.
-    return itineraries;
+    const userId = ctx.auth.userId;
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Get all itineraries for the current user
+    const userItineraries = await db
+      .select({
+        id: itineraryTable.id,
+        name: itineraryTable.name,
+      })
+      .from(itineraryTable)
+      .where(eq(itineraryTable.userId, userId));
+
+    return userItineraries;
   }),
+
+  createItinerary: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1, "Itinerary name is required").max(128),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      // Insert new itinerary into database
+      const [newItinerary] = await db
+        .insert(itineraryTable)
+        .values({
+          name: input.name,
+          userId: userId,
+        })
+        .returning({
+          id: itineraryTable.id,
+          name: itineraryTable.name,
+        });
+
+      return newItinerary;
+    }),
+
+  addPOIToItinerary: protectedProcedure
+    .input(
+      z.object({
+        itineraryId: z.number(),
+        poiId: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      // Verify the itinerary belongs to the user
+      const itinerary = await db
+        .select()
+        .from(itineraryTable)
+        .where(
+          and(
+            eq(itineraryTable.id, input.itineraryId),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (itinerary.length === 0) {
+        throw new Error("Itinerary not found or access denied");
+      }
+
+      // Get the highest order priority in this itinerary
+      const maxOrderResult = await db
+        .select({
+          maxOrder: sql<number>`COALESCE(MAX(${itineraryPOITable.orderPriority}), 0)`,
+        })
+        .from(itineraryPOITable)
+        .where(eq(itineraryPOITable.itineraryId, input.itineraryId));
+
+      const nextOrder = (maxOrderResult[0]?.maxOrder ?? 0) + 1;
+
+      // Insert POI into itinerary (use INSERT ON CONFLICT to handle duplicates)
+      try {
+        const [newItineraryPOI] = await db
+          .insert(itineraryPOITable)
+          .values({
+            itineraryId: input.itineraryId,
+            poiId: input.poiId,
+            orderPriority: nextOrder,
+            checked: false,
+          })
+          .returning();
+
+        return newItineraryPOI;
+      } catch (error) {
+        // Handle duplicate entry (POI already in itinerary)
+        throw new Error("POI is already in this itinerary");
+      }
+    }),
+
   getItinerary: protectedProcedure
     .input(
       z.object({
@@ -65,9 +169,44 @@ export const itineraryRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      // TODO: Get the itinerary from the database. MAKE SURE TO SORT THE POIS BY ORDER PRIORITY (in ascending order).
-      //   db.select().from(itineraryPOITable).where...
-      return itinerary;
+      const userId = ctx.auth.userId;
+      // First verify the itinerary belongs to the user
+      const itinerary = await db
+        .select({
+          id: itineraryTable.id,
+          name: itineraryTable.name,
+        })
+        .from(itineraryTable)
+        .where(
+          and(
+            eq(itineraryTable.id, input.id),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (itinerary.length === 0) {
+        throw new Error("Itinerary not found or access denied");
+      }
+
+      // Get POIs in the itinerary with their details, sorted by order priority
+      const itineraryPOIs = await db
+        .select({
+          id: itineraryPOITable.poiId,
+          name: sql<string>`${poiTable.name}`,
+          checked: itineraryPOITable.checked,
+          orderPriority: itineraryPOITable.orderPriority,
+        })
+        .from(itineraryPOITable)
+        .innerJoin(poiTable, eq(poiTable.id, itineraryPOITable.poiId))
+        .where(eq(itineraryPOITable.itineraryId, input.id))
+        .orderBy(itineraryPOITable.orderPriority);
+
+      return {
+        id: itinerary[0].id,
+        name: itinerary[0].name,
+        pois: itineraryPOIs,
+      };
     }),
   updateItineraryPOIOrder: protectedProcedure
     .input(
