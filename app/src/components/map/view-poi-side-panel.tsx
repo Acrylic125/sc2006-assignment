@@ -250,6 +250,13 @@ export function ViewNewPOIPanel({
   };
 }) {
   // TODO: Implement this.
+  const modalStore = useMapModalStore(
+    useShallow(({ setAction }) => {
+      return {
+        setAction,
+      };
+    })
+  );
   const addrQuery = trpc.map.getAddress.useQuery(
     {
       lat: pos.latitude,
@@ -305,7 +312,22 @@ export function ViewNewPOIPanel({
               Navigate
             </a>
           </Button>
-          <Button className="w-full truncate" size="sm">
+          <Button 
+            className="w-full truncate" size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              modalStore.setAction({
+                type: "create-poi",
+                options: {
+                  address: addr,
+                  longitude: pos.longitude,
+                  latitude: pos.latitude,
+                  name: "",
+                  description: "",
+                },
+              });
+            }}
+          >
             Upload your own POI here
           </Button>
         </div>

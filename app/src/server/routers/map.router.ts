@@ -219,6 +219,21 @@ export const mapRouter = createTRPCRouter({
       // }
       // return pois;
     }),
+  createPOI: protectedProcedure
+      .input(
+        z.object({
+          address: z.string().max(255),
+          lat: z.number(),
+          lng: z.number(),
+          name: z.string().max(255),
+          description: z.string().max(255),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.auth.userId;
+        // TODO: Create a new POI in the database.
+        //   db.insert(reviewsTable)...
+      }),
   getPOI: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {

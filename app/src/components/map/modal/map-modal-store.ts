@@ -13,6 +13,16 @@ export type MapModalAction =
         longitude: number;
         latitude: number;
       };
+    }
+ |  {
+      type: "create-poi";
+      options: {
+        address: string;
+        longitude: number;
+        latitude: number;
+        name: string;
+        description: string;
+      };
     };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<
