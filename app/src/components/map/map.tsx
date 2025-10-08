@@ -115,6 +115,10 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
             if (poiId === undefined || typeof poiId !== "number") return;
             mapStore.setViewingPOI({ type: "existing-poi", poiId });
             mapStore.setCurrentSidePanelTab("place");
+            if (features?.[0]?.geometry?.type === 'Point') {
+              const coords = features?.[0]?.geometry?.coordinates; //coords are lng lat
+              setAddPoiPos({ latitude: coords[1], longitude: coords[0] });
+            }
             return;
           }
         }
