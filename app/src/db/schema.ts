@@ -48,6 +48,7 @@ export const poiTable = pgTable("poi", {
   description: text("description").notNull(),
   latitude: numeric("latitude").notNull(),
   longitude: numeric("longitude").notNull(),
+  openingHours: text("opening_hours"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
@@ -137,5 +138,6 @@ export const userSurpriseMePreferencesTable = pgTable(
       .notNull()
       .references(() => poiTable.id),
     liked: boolean("liked").notNull(),
-  }
+  },
+  (t) => [unique("idx_user_poi").on(t.userId, t.poiId)]
 );

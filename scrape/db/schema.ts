@@ -138,5 +138,6 @@ export const userSurpriseMePreferencesTable = pgTable(
       .notNull()
       .references(() => poiTable.id),
     liked: boolean("liked").notNull(),
-  }
+  },
+  (t) => [unique("idx_user_poi").on(t.userId, t.poiId)]
 );
