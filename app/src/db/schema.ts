@@ -133,8 +133,9 @@ export const userSurpriseMePreferencesTable = pgTable(
   {
     id: serial().notNull().primaryKey(),
     userId: varchar({ length: 128 }).notNull(),
-    tagId: integer("tag_id")
+    poiId: integer("poi_id")
       .notNull()
-      .references(() => tagTable.id),
+      .references(() => poiTable.id),
+    liked: boolean("liked").notNull(),
   }
 );
