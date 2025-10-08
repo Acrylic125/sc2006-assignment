@@ -21,11 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
-import {
-  DislikeButton,
-  LikeButton,
-} from "@/components/icons/like-dislike-icons";
 
 const POICreateFormSchema = z.object({
   address: z.string(),
@@ -35,7 +30,7 @@ const POICreateFormSchema = z.object({
   description: z.string(),
 });
 
-export function POICreateDialog({
+export function CreatePOIDialog({
   options,
   close,
 }: {
@@ -46,11 +41,11 @@ export function POICreateDialog({
   const form = useForm<z.infer<typeof POICreateFormSchema>>({
     resolver: zodResolver(POICreateFormSchema),
     defaultValues: {
-      address: "", //how to pass the default value into here?
-      lat: 0, //pass a separate default to address so we can be more specific
-      lng: 0, //^
-      name: "",
-      description: "",
+      address: options.address, //how to pass the default value into here?
+      lat: options.latitude, //pass a separate default to address so we can be more specific
+      lng: options.longitude, //^
+      name: options.name,
+      description: options.description,
     },
   });
 

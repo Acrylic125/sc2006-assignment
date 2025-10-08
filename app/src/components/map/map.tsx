@@ -108,21 +108,24 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         },
       });
 
-      const handlePinClick = (e: mapboxgl.MapMouseEvent) => {
-        //if the user clicks on a POI pin
-        if (e.features === undefined || e.features?.length === 0) return;
-        const poiId = e.features?.[0]?.properties?.id;
-        if (poiId === undefined || typeof poiId !== "number") return;
-        mapStore.setViewingPOI({ type: "existing-poi", poiId });
-        mapStore.setCurrentSidePanelTab("place");
-      };
       const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-        //if the user clicks on an empty map location
+        if (map.getLayer(LAYER_EXPLORE_PINS)) {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: [LAYER_EXPLORE_PINS],
+          });
+          if (!(features === undefined || features?.length === 0)) {
+            const poiId = features?.[0]?.properties?.id;
+            if (poiId === undefined || typeof poiId !== "number") return;
+            mapStore.setViewingPOI({ type: "existing-poi", poiId });
+            mapStore.setCurrentSidePanelTab("place");
+            return;
+          }
+        }
         const { lng, lat } = e.lngLat;
         const pos = {latitude: lat, longitude: lng};
         mapStore.setViewingPOI({ type: "new-poi", pos });
         mapStore.setCurrentSidePanelTab("place");
-        /* //this doesnt work for some reason
+         //this doesnt work for some reason
         map.addSource(SOURCE_PIN_FROM_PINS, {
           type: "geojson",
           data: {
@@ -144,10 +147,8 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
             ],
           },
         })
-        */
       };
       map.on("click", handleMapClick);
-      map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
 
       cleanUpFn = () => {
         if (map.getLayer(LAYER_EXPLORE_PINS)) {
@@ -156,8 +157,10 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         if (map.getSource(SOURCE_EXPLORE_PINS)) {
           map.removeSource(SOURCE_EXPLORE_PINS);
         }
+        if (map.getSource(SOURCE_PIN_FROM_PINS)) {
+          map.removeSource(SOURCE_PIN_FROM_PINS);
+        }
         map.off("click", handleMapClick);
-        map.off("click", LAYER_EXPLORE_PINS, handlePinClick);
       };
 
       // Ensure the pin image is loaded before adding the layer

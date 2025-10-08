@@ -6,6 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useMapModalStore } from "./map-modal-store";
 import { POIReviewDialog } from "./itinerary-poi-review-modal";
 import { CreateItineraryDialog } from "./create-itinerary-modal";
+import { CreatePOIDialog } from "./create-poi-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -39,6 +40,9 @@ export function MapModal() {
         )}
         {modalStore.action?.type === "create-itinerary" && (
           <CreateItineraryDialog close={close} />
+        )}
+        {modalStore.action?.type === "create-poi" && (
+          <CreatePOIDialog options={modalStore.action.options} close={close} />
         )}
       </DialogContent>
     </Dialog>
