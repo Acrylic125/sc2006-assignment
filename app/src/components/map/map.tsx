@@ -68,6 +68,10 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
       enabled: mapStore.viewingItineraryId !== null,
     }
   );
+  const [addPoiPos, setAddPoiPos] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -83,6 +87,8 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     const load = async () => {
       const LAYER_EXPLORE_PINS = "explore-pins-layer";
       const SOURCE_EXPLORE_PINS = "explore-pins";
+      const LAYER_ADD_POI_PINS = "add-poi-pins-layer";
+      const SOURCE_ADD_POI_PINS = "add-poi-pins";
 
       const features = [];
       for (const poi of poisQuery.data) {
@@ -99,21 +105,25 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         });
       }
 
-      map.addSource(SOURCE_EXPLORE_PINS, {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: features,
-        },
-      });
-      const handlePinClick = (e: mapboxgl.MapMouseEvent) => {
-        if (e.features === undefined || e.features?.length === 0) return;
-        const poiId = e.features?.[0]?.properties?.id;
-        if (poiId === undefined || typeof poiId !== "number") return;
-        mapStore.setViewingPOI({ type: "existing-poi", poiId });
+      const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+        if (map.getLayer(LAYER_EXPLORE_PINS)) {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: [LAYER_EXPLORE_PINS],
+          });
+          if (!(features === undefined || features?.length === 0)) {
+            const poiId = features?.[0]?.properties?.id;
+            if (poiId === undefined || typeof poiId !== "number") return;
+            mapStore.setViewingPOI({ type: "existing-poi", poiId });
+            mapStore.setCurrentSidePanelTab("place");
+            return;
+          }
+        }
+        const { lng, lat } = e.lngLat;
+        setAddPoiPos({ latitude: lat, longitude: lng });
+        const pos = { latitude: lat, longitude: lng };
+        mapStore.setViewingPOI({ type: "new-poi", pos });
         mapStore.setCurrentSidePanelTab("place");
       };
-      map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
 
       cleanUpFn = () => {
         if (map.getLayer(LAYER_EXPLORE_PINS)) {
@@ -122,9 +132,19 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
         if (map.getSource(SOURCE_EXPLORE_PINS)) {
           map.removeSource(SOURCE_EXPLORE_PINS);
         }
-        map.off("click", LAYER_EXPLORE_PINS, handlePinClick);
+        if (map.getLayer(LAYER_ADD_POI_PINS)) {
+          map.removeLayer(LAYER_ADD_POI_PINS);
+        }
+        if (map.getSource(SOURCE_ADD_POI_PINS)) {
+          map.removeSource(SOURCE_ADD_POI_PINS);
+        }
+        map.off("click", handleMapClick);
       };
 
+      // Force remove existing layers and sources
+      cleanUpFn();
+
+      map.on("click", handleMapClick);
       // Ensure the pin image is loaded before adding the layer
       const ensurePinImage = async (color: keyof typeof pins) => {
         if (map.hasImage(`pin-${color}`)) return;
@@ -147,6 +167,32 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
       await ensurePinImage("green");
       await ensurePinImage("blue");
 
+      map.addSource(SOURCE_EXPLORE_PINS, {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: features,
+        },
+      });
+      if (addPoiPos) {
+        map.addSource(SOURCE_ADD_POI_PINS, {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [addPoiPos.longitude, addPoiPos.latitude],
+                },
+                properties: { color: "red" },
+              },
+            ],
+          },
+        });
+      }
+
       if (!map.getLayer(LAYER_EXPLORE_PINS)) {
         map.addLayer({
           id: LAYER_EXPLORE_PINS,
@@ -158,6 +204,18 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+          },
+        });
+      }
+      if (addPoiPos && !map.getLayer(LAYER_ADD_POI_PINS)) {
+        map.addLayer({
+          id: LAYER_ADD_POI_PINS,
+          type: "symbol",
+          source: SOURCE_ADD_POI_PINS,
+          layout: {
+            "icon-image": ["concat", "pin-", ["get", "color"]],
+            "icon-size": 1,
+            "icon-anchor": "bottom",
           },
         });
       }
@@ -174,6 +232,8 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     itinerariesQuery.data,
     enabled,
     mapStore,
+    addPoiPos,
+    setAddPoiPos,
     mapStore.setCurrentSidePanelTab,
     mapStore.setViewingPOI,
   ]);
@@ -273,6 +333,9 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
         }
         map.off("click", handleMapClick);
       };
+
+      // Force remove existing layers and sources
+      cleanUpFn();
       map.on("click", handleMapClick);
 
       // Add POI pins if data is available
