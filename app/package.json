@@ -31,6 +31,7 @@
     "@trpc/client": "^11.5.1",
     "@trpc/react-query": "^11.5.1",
     "@trpc/server": "^11.5.1",
+    "@uploadthing/react": "^7.3.3",
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -52,6 +53,7 @@
     "react-qr-code": "^2.0.18",
     "swapy": "^1.0.5",
     "tailwind-merge": "^3.3.1",
+    "uploadthing": "^7.7.4",
     "zod": "^4.1.9",
     "zustand": "^5.0.8"
   },
