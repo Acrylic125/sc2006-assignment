@@ -46,10 +46,30 @@ export default async function SurveyPage() {
       )
     );
 
+  const poiImagesMap = new Map<number, string[]>();
+  for (const poiImage of poiImages) {
+    poiImagesMap.set(poiImage.poiId, [
+      ...(poiImagesMap.get(poiImage.poiId) ?? []),
+      poiImage.imageUrl,
+    ]);
+  }
+  const pois = poisWithImaghes
+    .map((poi) => {
+      const images = poiImagesMap.get(poi.id);
+      if (!images) {
+        return null;
+      }
+      return {
+        poiId: poi.id,
+        imageUrl: images[0],
+      };
+    })
+    .filter((poi) => poi !== null);
+
   return (
     <div className="w-full h-screen flex flex-col items-center justify-center">
       <div className="max-w-3xl w-full">
-        <Survey pois={poiImages} />
+        <Survey pois={pois} />
       </div>
     </div>
   );
