@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
+import { UploadButton, UploadDropzone } from "@/components/uploadthing";
 
 const POICreateFormSchema = z.object({
   address: z.string(),
@@ -103,6 +104,36 @@ export function CreatePOIDialog({
                     <FormMessage />
                 </FormItem>
                 )}
+            />
+
+            <div className="form-label-group">
+              <div className="label-main">Upload images near the location: </div>
+              <small className="label-sub">(Image location data must be near the selected area)</small>
+            </div>
+
+            <UploadDropzone
+              appearance={{
+                button:
+                  "opacity-50 ut-ready:opacity-100 ut-readying:bg-primary ut-readying:text-primary-foreground ut-ready:bg-primary ut-ready:text-primary-foreground bg-primary text-primary-foreground ut-uploading:cursor-not-allowed",
+                container:
+                  "w-full flex-col rounded-md dark:border-border border-border border-2 bg-card",
+                label: "text-foreground dark:text-foreground",
+                allowedContent:
+                  "flex h-8 flex-col items-center justify-center px-2 text-foreground dark:text-foreground",
+              }}
+              endpoint="imageUploader"
+              onClientUploadComplete={(res) => {
+                // Do something with the response
+                // TODO: Call backend trpc method to upload images to the database
+                // also check that the files have a location near the pin
+                res.forEach((file) => {
+                  console.log("File: ", file.ufsUrl);
+                });
+              }}
+              onUploadError={(error: Error) => {
+                // Do something with the error.
+                alert(`ERROR! ${error.message}`);
+              }}
             />
 
             {createPOIMutation.isError && (
