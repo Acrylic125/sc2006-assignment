@@ -15,6 +15,7 @@ import {
 import { Ellipsis, Pen, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/server/client";
 import { useMapModalStore } from "./modal/map-modal-store";
+import { useState } from "react";
 
 export function ItineraryDropdown() {
   const mapStore = useMapStore(
@@ -27,6 +28,50 @@ export function ItineraryDropdown() {
   );
   const modalStore = useMapModalStore();
   const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
+  const deleteItineraryMutation = trpc.itinerary.deleteItinerary.useMutation({
+    onSuccess: () => {
+      // Refetch itineraries list
+      itinerariesQuery.refetch();
+      // If the deleted itinerary was currently selected, clear the selection
+      if (mapStore.viewingItineraryId && deletingItineraryId === mapStore.viewingItineraryId) {
+        mapStore.setViewingItineraryId(null);
+      }
+      setDeletingItineraryId(null);
+    },
+    onError: (error) => {
+      console.error("Failed to delete itinerary:", error);
+      setDeletingItineraryId(null);
+    },
+  });
+  const renameItineraryMutation = trpc.itinerary.renameItinerary.useMutation({
+    onSuccess: () => {
+      // Refetch itineraries list
+      itinerariesQuery.refetch();
+      setRenamingItinerary(null);
+    },
+    onError: (error) => {
+      console.error("Failed to rename itinerary:", error);
+      setRenamingItinerary(null);
+    },
+  });
+
+  const [deletingItineraryId, setDeletingItineraryId] = useState<number | null>(null);
+  const [renamingItinerary, setRenamingItinerary] = useState<{ id: number; name: string } | null>(null);
+
+  const handleDeleteItinerary = (itineraryId: number) => {
+    if (confirm("Are you sure you want to delete this itinerary? This action cannot be undone.")) {
+      setDeletingItineraryId(itineraryId);
+      deleteItineraryMutation.mutate({ id: itineraryId });
+    }
+  };
+
+  const handleRenameItinerary = (itineraryId: number, currentName: string) => {
+    const newName = prompt("Enter new name for the itinerary:", currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+      setRenamingItinerary({ id: itineraryId, name: newName.trim() });
+      renameItineraryMutation.mutate({ id: itineraryId, name: newName.trim() });
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -86,12 +131,20 @@ export function ItineraryDropdown() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>
-                  <Pen className="size-3" /> Rename
+                <DropdownMenuItem
+                  onClick={() => handleRenameItinerary(itinerary.id, itinerary.name)}
+                  disabled={renamingItinerary?.id === itinerary.id}
+                >
+                  <Pen className="size-3" /> 
+                  {renamingItinerary?.id === itinerary.id ? "Renaming..." : "Rename"}
                 </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive">
+                <DropdownMenuItem 
+                  variant="destructive"
+                  onClick={() => handleDeleteItinerary(itinerary.id)}
+                  disabled={deletingItineraryId === itinerary.id}
+                >
                   <Trash2 className="size-3" />
-                  Delete
+                  {deletingItineraryId === itinerary.id ? "Deleting..." : "Delete"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

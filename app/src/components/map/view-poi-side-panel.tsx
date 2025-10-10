@@ -353,6 +353,10 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
           <Button variant="ghost" asChild className="w-fit p-0">
             <a
               href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+             //if wanna open directions mode right away in G maps
+             //href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(poi.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
             >
               <Navigation />
               Navigate

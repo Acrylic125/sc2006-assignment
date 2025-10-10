@@ -8,6 +8,7 @@
  */
 
 import { create } from "zustand";
+import mapboxgl from "mapbox-gl";
 
 type Coordinates = {
   latitude: number;
@@ -31,6 +32,7 @@ type ViewingPOI =
     };
 
 type MapStore = {
+  mapInstance: mapboxgl.Map | null;
   viewingItineraryId: number | null;
   viewingPOI: ViewingPOI | null;
   currentMapTab: "explore" | "recommend";
@@ -43,6 +45,7 @@ type MapStore = {
     showUnvisited: boolean;
     excludedTags: Set<number>;
   };
+  setMapInstance: (map: mapboxgl.Map | null) => void;
   setViewingItineraryId: (itineraryId: number | null) => void;
   setCurrentMapTab: (tab: "explore" | "recommend") => void;
   setCurrentSidePanelTab: (tab: "itinerary" | "place") => void;
@@ -51,9 +54,11 @@ type MapStore = {
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
   setViewingPOI: (poi: ViewingPOI) => void;
+  centerMapOnPOI: (latitude: number, longitude: number) => void;
 };
 
-export const useMapStore = create<MapStore>((set) => ({
+export const useMapStore = create<MapStore>((set, get) => ({
+  mapInstance: null,
   viewingItineraryId: null,
   viewingPOI: null,
   currentMapTab: "explore",
@@ -66,6 +71,7 @@ export const useMapStore = create<MapStore>((set) => ({
     showUnvisited: true,
     excludedTags: new Set(),
   },
+  setMapInstance: (map: mapboxgl.Map | null) => set({ mapInstance: map }),
   setViewingItineraryId: (itineraryId: number | null) =>
     set({ viewingItineraryId: itineraryId }),
   setCurrentMapTab: (tab: "explore" | "recommend") =>
@@ -81,6 +87,16 @@ export const useMapStore = create<MapStore>((set) => ({
   setRecommendFromPos: (pos: Coordinates) =>
     set({ recommend: { recommendFromPos: pos } }),
   setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
+  centerMapOnPOI: (latitude: number, longitude: number) => {
+    const { mapInstance } = get();
+    if (mapInstance) {
+      mapInstance.flyTo({
+        center: [longitude, latitude],
+        zoom: 15,
+        duration: 1000, // Animation duration in milliseconds
+      });
+    }
+  },
 
   //   setExplorePois: (pois: { id: number; pos: Coordinates }[]) =>
   //     set({ explore: { pois } }),

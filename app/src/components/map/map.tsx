@@ -398,9 +398,10 @@ export default function ExploreMap({ className }: { className: string }) {
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapStore = useMapStore(
-    useShallow(({ currentMapTab }) => {
+    useShallow(({ currentMapTab, setMapInstance }) => {
       return {
         currentMapTab,
+        setMapInstance,
       };
     })
   );
@@ -416,10 +417,12 @@ export default function ExploreMap({ className }: { className: string }) {
       // fadeDuration: 0,
     });
     setMap(m);
+    mapStore.setMapInstance(m); // Set the map instance in the store
     return () => {
+      mapStore.setMapInstance(null); // Clean up when component unmounts
       m.remove();
     };
-  }, []);
+  }, [mapStore]);
 
   useExploreMap(map, mapStore.currentMapTab === "explore");
   useRecommendMap(map, mapStore.currentMapTab === "recommend");
