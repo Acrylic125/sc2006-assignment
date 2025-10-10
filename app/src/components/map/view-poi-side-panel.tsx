@@ -22,6 +22,7 @@ import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
 import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
 
+
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
 
@@ -163,6 +164,29 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     }
   );
 
+  // Get user's itineraries
+  const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
+  
+  // Mutation for adding POI to itinerary
+  const addPOIToItineraryMutation = trpc.itinerary.addPOIToItinerary.useMutation();
+  
+  // TRPC utilities for cache invalidation
+  const utils = trpc.useUtils();
+  
+  // Map store for managing state
+  const mapStore = useMapStore(
+    useShallow(({ viewingItineraryId, setViewingItineraryId, setCurrentSidePanelTab }) => {
+      return {
+        viewingItineraryId,
+        setViewingItineraryId,
+        setCurrentSidePanelTab,
+      };
+    })
+  );
+  
+  // Modal store for showing modals
+  const modalStore = useMapModalStore();
+
   if (poiQuery.isLoading) {
     return (
       <div className="w-full flex flex-col gap-2">
@@ -199,6 +223,112 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     );
   }
 
+  // Function to handle adding POI to an itinerary
+  const handleAddToItinerary = () => {
+    console.log("Add to itinerary clicked");
+    console.log("Itineraries data:", itinerariesQuery.data);
+    console.log("Currently selected itinerary ID:", mapStore.viewingItineraryId);
+    
+    // Check if there's a currently selected itinerary
+    if (mapStore.viewingItineraryId !== null) {
+      console.log("Adding to currently selected itinerary ID:", mapStore.viewingItineraryId);
+      addPOIToItineraryMutation.mutate({
+        itineraryId: mapStore.viewingItineraryId,
+        poiId: poiId,
+      }, {
+        onSuccess: (data) => {
+          console.log("Successfully added POI to itinerary:", data);
+          // Switch to the itinerary panel
+          mapStore.setCurrentSidePanelTab("itinerary");
+          // Invalidate the itinerary query to refresh the data
+          utils.itinerary.getItinerary.invalidate({ id: mapStore.viewingItineraryId! });
+          // Also invalidate the map search to refresh POI colors
+          utils.map.search.invalidate();
+          // Invalidate all itineraries to update the list
+          utils.itinerary.getAllItineraries.invalidate();
+        },
+        onError: (error) => {
+          console.error("Failed to add POI to itinerary:", error);
+          // Check if the error is because the POI is already in the itinerary
+          if (error.message && error.message.includes("already in this itinerary")) {
+            console.log("POI is already in this itinerary, switching to itinerary panel to show current state");
+          }
+          // Even if there's an error (like POI already in itinerary), 
+          // still switch to the itinerary panel to show the current state
+          mapStore.setCurrentSidePanelTab("itinerary");
+          // Invalidate queries to refresh the data
+          utils.itinerary.getItinerary.invalidate({ id: mapStore.viewingItineraryId! });
+          utils.map.search.invalidate();
+          utils.itinerary.getAllItineraries.invalidate();
+        }
+      });
+    } 
+    // If no itinerary is currently selected, but there are itineraries, add to the first one
+    else if (itinerariesQuery.data && itinerariesQuery.data.length > 0) {
+      console.log("No itinerary selected, adding to first itinerary ID:", itinerariesQuery.data[0].id);
+      addPOIToItineraryMutation.mutate({
+        itineraryId: itinerariesQuery.data[0].id,
+        poiId: poiId,
+      }, {
+        onSuccess: (data) => {
+          console.log("Successfully added POI to itinerary:", data);
+          // Set the current itinerary as the viewing itinerary
+          mapStore.setViewingItineraryId(itinerariesQuery.data[0].id);
+          // Switch to the itinerary panel
+          mapStore.setCurrentSidePanelTab("itinerary");
+          // Invalidate the itinerary query to refresh the data
+          utils.itinerary.getItinerary.invalidate({ id: itinerariesQuery.data[0].id });
+          // Also invalidate the map search to refresh POI colors
+          utils.map.search.invalidate();
+          // Invalidate all itineraries to update the list
+          utils.itinerary.getAllItineraries.invalidate();
+        },
+        onError: (error) => {
+          console.error("Failed to add POI to itinerary:", error);
+          // Check if the error is because the POI is already in the itinerary
+          if (error.message && error.message.includes("already in this itinerary")) {
+            console.log("POI is already in this itinerary, switching to itinerary panel to show current state");
+          }
+          // Even if there's an error (like POI already in itinerary), 
+          // still switch to the itinerary panel to show the current state
+          mapStore.setViewingItineraryId(itinerariesQuery.data[0].id);
+          mapStore.setCurrentSidePanelTab("itinerary");
+          // Invalidate queries to refresh the data
+          utils.itinerary.getItinerary.invalidate({ id: itinerariesQuery.data[0].id });
+          utils.map.search.invalidate();
+          utils.itinerary.getAllItineraries.invalidate();
+        }
+      });
+    } 
+    // If no itineraries exist at all, show create itinerary modal
+    else {
+      console.log("No itineraries found, showing create itinerary modal");
+      // If no itineraries exist, show create itinerary modal
+      modalStore.setAction({
+        type: "create-itinerary",
+        options: {
+          longitude: poi.longitude,
+          latitude: poi.latitude,
+        },
+      });
+    }
+  };
+
+  // Function to handle starting an itinerary with this POI
+  const handleStartItinerary = () => {
+    console.log("Start itinerary clicked");
+    console.log("POI data:", poi);
+    // Show create itinerary modal with this POI as the starting point
+    modalStore.setAction({
+      type: "create-itinerary",
+      options: {
+        longitude: poi.longitude,
+        latitude: poi.latitude,
+        poiId: poiId, // Pass the POI ID
+      },
+    });
+  };
+
   return (
     <div className="w-full flex flex-col">
       <div className="w-full aspect-[4/3] relative">
@@ -228,10 +358,27 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
               Navigate
             </a>
           </Button>
-          <Button className="w-full truncate" size="sm">
-            Add to Itinerary
+          <Button 
+            className="w-full truncate" 
+            size="sm"
+            onClick={handleAddToItinerary}
+            disabled={addPOIToItineraryMutation.isPending}
+          >
+            {addPOIToItineraryMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              "Add to Itinerary"
+            )}
           </Button>
-          <Button className="w-full truncate" variant="secondary" size="sm">
+          <Button 
+            className="w-full truncate" 
+            variant="secondary" 
+            size="sm"
+            onClick={handleStartItinerary}
+          >
             Start Itinerary
           </Button>
         </div>

@@ -38,7 +38,10 @@ export function MapModal() {
           <POIReviewDialog options={modalStore.action.options} close={close} />
         )}
         {modalStore.action?.type === "create-itinerary" && (
-          <CreateItineraryDialog close={close} />
+          <CreateItineraryDialog 
+            close={close} 
+            poiId={modalStore.action.options.poiId}
+          />
         )}
       </DialogContent>
     </Dialog>

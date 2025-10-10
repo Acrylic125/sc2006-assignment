@@ -30,8 +30,10 @@ const CreateItineraryFormSchema = z.object({
 
 export function CreateItineraryDialog({
   close,
+  poiId,
 }: {
   close: () => void;
+  poiId?: number;
 }) {
   const mapStore = useMapStore(
     useShallow(({ setViewingItineraryId, setCurrentSidePanelTab }) => ({
@@ -42,6 +44,8 @@ export function CreateItineraryDialog({
   
   const utils = trpc.useUtils();
   const createItineraryMutation = trpc.itinerary.createItinerary.useMutation();
+  // Add mutation for adding POI to itinerary
+  const addPOIToItineraryMutation = trpc.itinerary.addPOIToItinerary.useMutation();
   
   const form = useForm<z.infer<typeof CreateItineraryFormSchema>>({
     resolver: zodResolver(CreateItineraryFormSchema),
@@ -58,6 +62,20 @@ export function CreateItineraryDialog({
       
       // Invalidate and refetch itineraries list
       await utils.itinerary.getAllItineraries.invalidate();
+      
+      // If we have a POI ID, add it to the new itinerary
+      if (poiId !== undefined) {
+        try {
+          await addPOIToItineraryMutation.mutateAsync({
+            itineraryId: newItinerary.id,
+            poiId: poiId,
+          });
+          // Invalidate the new itinerary to show the added POI
+          await utils.itinerary.getItinerary.invalidate({ id: newItinerary.id });
+        } catch (error) {
+          console.error("Failed to add POI to new itinerary:", error);
+        }
+      }
       
       // Set the new itinerary as the viewing itinerary
       mapStore.setViewingItineraryId(newItinerary.id);

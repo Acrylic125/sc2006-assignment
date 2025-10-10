@@ -12,6 +12,7 @@ export type MapModalAction =
       options: {
         longitude: number;
         latitude: number;
+        poiId?: number; // Make poiId optional
       };
     };
 
