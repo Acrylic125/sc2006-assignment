@@ -324,6 +324,7 @@ export function ViewNewPOIPanel({
                   latitude: pos.latitude,
                   name: "",
                   description: "",
+                  images: [],
                 },
               });
             }}

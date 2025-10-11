@@ -227,10 +227,18 @@ export const mapRouter = createTRPCRouter({
           lng: z.number(),
           name: z.string().max(255),
           description: z.string().max(255),
+          images: z.array(z.string()),
         })
       )
       .mutation(async ({ ctx, input }) => {
         const userId = ctx.auth.userId;
+        console.log(input.address);
+        console.log(input.lat);
+        console.log(input.lng);
+        console.log(input.name);
+        console.log(input.description);
+        console.log(input.images[0]);
+
         // TODO: Create a new POI in the database.
         //   db.insert(reviewsTable)...
       }),

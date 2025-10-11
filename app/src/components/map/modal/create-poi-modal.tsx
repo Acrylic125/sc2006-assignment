@@ -21,7 +21,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
-import { UploadButton, UploadDropzone } from "@/components/uploadthing";
+
+import { UTApi } from "uploadthing/server";
+
+import {FilePond, registerPlugin} from 'react-filepond';
+import 'filepond/dist/filepond.min.css'
+import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation'
+import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
+import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css'
+import { useUploadImage } from "@/app/api/uploadthing/client";
+registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview)
 
 const POICreateFormSchema = z.object({
   address: z.string(),
@@ -29,6 +38,7 @@ const POICreateFormSchema = z.object({
   lng: z.number(),
   name: z.string(),
   description: z.string(),
+  images: z.array(z.string())
 });
 
 export function CreatePOIDialog({
@@ -42,16 +52,33 @@ export function CreatePOIDialog({
   const form = useForm<z.infer<typeof POICreateFormSchema>>({
     resolver: zodResolver(POICreateFormSchema),
     defaultValues: {
-      address: options.address, //how to pass the default value into here?
-      lat: options.latitude, //pass a separate default to address so we can be more specific
-      lng: options.longitude, //^
+      address: options.address,
+      lat: options.latitude,
+      lng: options.longitude,
       name: options.name,
       description: options.description,
+      images: [],
     },
   });
 
   const onSubmit = (data: z.infer<typeof POICreateFormSchema>) => {
-    console.log(data);
+    //console.log(data);
+    createPOIMutation.mutate(data, {
+      onError: (err) => {
+        console.error("Error creating POI", err);
+      },
+    });
+  };
+
+  
+  const { uploadImage } = useUploadImage();
+  const handleUpload = async (file: File) => {
+    try {
+      const result = await uploadImage(file);
+      console.log("Uploaded:", result.ufsUrl);
+    } catch (err) {
+      console.error("Upload failed", err);
+    }
   };
 
   return (
@@ -107,33 +134,52 @@ export function CreatePOIDialog({
             />
 
             <div className="form-label-group">
-              <div className="label-main">Upload images near the location: </div>
-              <small className="label-sub">(Image location data must be near the selected area)</small>
+              <div className="label-main">Upload pictures of the location: </div>
+              <small className="label-sub">(These will be displayed when people view the POI)</small>
             </div>
+            
+            <FilePond
+              allowMultiple={true}
+              maxFiles={3}
+              server={{
+                process: async (fieldName, file, metadata, load, error, progress, abort) => {
+                  try {
+                    //convert filepond actualFile to File
+                    const realFile = new File([file], file.name, {
+                      type: file.type,
+                      lastModified: file.lastModified ?? Date.now(),
+                    });
+                    const result = await uploadImage(realFile);
+                    //add image to store
+                    const images = [...(form.getValues("images") ?? []), result.ufsUrl];
+                    form.setValue("images", images, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    load(result.ufsUrl); // tell FilePond it's done
+                  } catch (err: any) {
+                    error(err.message);
+                  }
 
-            <UploadDropzone
-              appearance={{
-                button:
-                  "opacity-50 ut-ready:opacity-100 ut-readying:bg-primary ut-readying:text-primary-foreground ut-ready:bg-primary ut-ready:text-primary-foreground bg-primary text-primary-foreground ut-uploading:cursor-not-allowed",
-                container:
-                  "w-full flex-col rounded-md dark:border-border border-border border-2 bg-card",
-                label: "text-foreground dark:text-foreground",
-                allowedContent:
-                  "flex h-8 flex-col items-center justify-center px-2 text-foreground dark:text-foreground",
+                  return {
+                    abort: () => {
+                      abort();
+                    },
+                  };
+                },
+                revert: (fileUfsUrl, load) => {
+                  console.log(`File Removed: ${fileUfsUrl}`)
+                  //remove the image from the store
+                  const images = (form.getValues("images")).filter(file => file !== fileUfsUrl);
+                  form.setValue("images", images, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  load();
+                },
               }}
-              endpoint="imageUploader"
-              onClientUploadComplete={(res) => {
-                // Do something with the response
-                // TODO: Call backend trpc method to upload images to the database
-                // also check that the files have a location near the pin
-                res.forEach((file) => {
-                  console.log("File: ", file.ufsUrl);
-                });
-              }}
-              onUploadError={(error: Error) => {
-                // Do something with the error.
-                alert(`ERROR! ${error.message}`);
-              }}
+              name="images"
+              labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
             />
 
             {createPOIMutation.isError && (

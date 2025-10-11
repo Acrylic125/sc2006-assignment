@@ -22,6 +22,7 @@ export type MapModalAction =
         latitude: number;
         name: string;
         description: string;
+        images: string[];
       };
     };
 
