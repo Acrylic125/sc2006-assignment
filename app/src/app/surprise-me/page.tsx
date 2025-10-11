@@ -83,6 +83,7 @@ export default function SurpriseMePage() {
           <img
             src={images[index].src}
             alt={images[index].alt}
+            draggable={false}
             style={{ width: "100%", height: "auto", objectFit: "contain", borderTopLeftRadius: "24px", borderTopRightRadius: "24px" }}
           />
         </div>
