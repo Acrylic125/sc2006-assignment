@@ -274,12 +274,14 @@ export const mapRouter = createTRPCRouter({
       }
 
       // Create |P| x 1 matrix containing the preference score for each poi.
-      // poiPreferenceMatrix = poiUserPreferenceMatrix @ poiTagMatrix
+      // poiPreferenceMatrix = poiTagMatrix @ poiUserPreferenceMatrix
       const poiPreferenceMatrix = new Array<number>(pois.length).fill(0);
       for (let i = 0; i < pois.length; i++) {
-        poiPreferenceMatrix[i] = poiUserPreferenceMatrix
-          .map((score, tagIndex) => score * poiTagMatrix[i][tagIndex])
-          .reduce((a, b) => a + b, 0);
+        let score = 0;
+        for (let j = 0; j < tags.length; j++) {
+          score += poiTagMatrix[i][j] * poiUserPreferenceMatrix[j];
+        }
+        poiPreferenceMatrix[i] = score;
       }
       // Normalize the poiPreferenceMatrix.
       const maxPreference = Math.max(...poiPreferenceMatrix);
