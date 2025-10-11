@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/server/client";
 
 import { useUploadImage } from "@/app/api/uploadthing/client";
@@ -83,7 +84,7 @@ export function CreatePOIDialog({
   };
 
   return (
-    <div style={{ height: '600px', overflow: 'scroll' }}>
+    <ScrollArea className="max-h-[85vh] w-auto">
         <DialogHeader>
             <DialogTitle>Add a new POI</DialogTitle>
             <DialogDescription>
@@ -209,6 +210,6 @@ export function CreatePOIDialog({
             </div>
             </form>
         </Form>
-    </div>
+    </ScrollArea>
   );
 }
