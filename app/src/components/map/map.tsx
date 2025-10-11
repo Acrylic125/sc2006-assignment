@@ -38,12 +38,14 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
       ({
         filters,
         viewingItineraryId,
+        viewingPOI,
         setCurrentSidePanelTab,
         setViewingPOI,
       }) => {
         return {
           filters,
           viewingItineraryId,
+          viewingPOI,
           setCurrentSidePanelTab,
           setViewingPOI,
         };
@@ -86,6 +88,14 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
 
       const features = [];
       for (const poi of poisQuery.data) {
+        // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
+        let color = "blue"; // default
+        if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+          color = "red"; // currently selected POI
+        } else if (itineraryPOISSet.has(poi.id)) {
+          color = "green"; // POI in current itinerary
+        }
+
         features.push({
           type: "Feature" as const,
           geometry: {
@@ -94,7 +104,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
           },
           properties: {
             id: poi.id,
-            color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
+            color: color,
           },
         });
       }
@@ -173,7 +183,9 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     poisQuery.data,
     itinerariesQuery.data,
     enabled,
-    mapStore,
+    mapStore.filters,
+    mapStore.viewingItineraryId,
+    mapStore.viewingPOI,
     mapStore.setCurrentSidePanelTab,
     mapStore.setViewingPOI,
   ]);
@@ -185,6 +197,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
       ({
         filters,
         viewingItineraryId,
+        viewingPOI,
         setCurrentSidePanelTab,
         recommend,
         setRecommendFromPos,
@@ -193,6 +206,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
         return {
           filters,
           viewingItineraryId,
+          viewingPOI,
           setCurrentSidePanelTab,
           recommendFromPos: recommend.recommendFromPos,
           setRecommendFromPos,
@@ -279,6 +293,14 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
       if (poisQuery.data) {
         const features = [];
         for (const poi of poisQuery.data) {
+          // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
+          let color = "blue"; // default
+          if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+            color = "red"; // currently selected POI
+          } else if (itineraryPOISSet.has(poi.id)) {
+            color = "green"; // POI in current itinerary
+          }
+
           features.push({
             type: "Feature" as const,
             geometry: {
@@ -287,7 +309,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
             },
             properties: {
               id: poi.id,
-              color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
+              color: color,
             },
           });
         }
@@ -387,7 +409,9 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     poisQuery.data,
     itinerariesQuery.data,
     enabled,
-    mapStore,
+    mapStore.filters,
+    mapStore.viewingItineraryId,
+    mapStore.viewingPOI,
     mapStore.setCurrentSidePanelTab,
     mapStore.recommendFromPos,
     mapStore.setViewingPOI,
