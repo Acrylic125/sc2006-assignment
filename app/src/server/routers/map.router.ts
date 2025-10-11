@@ -292,7 +292,7 @@ export const mapRouter = createTRPCRouter({
             )
           : poiPreferenceMatrix.map(() => 0);
 
-      const weights = [0.3, 0.1, 0.1];
+      const weights = [0.5, 0.3, 0.2];
       const M = [
         normalizedPreferenceMatrix,
         logNormalizedNumberOfPoiReviewsMatrix,
