@@ -22,15 +22,16 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
 
-import { UTApi } from "uploadthing/server";
+import { useUploadImage } from "@/app/api/uploadthing/client";
 
 import {FilePond, registerPlugin} from 'react-filepond';
 import 'filepond/dist/filepond.min.css'
 import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation'
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css'
-import { useUploadImage } from "@/app/api/uploadthing/client";
-registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview)
+import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
+
+registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview, FilePondPluginFileValidateType)
 
 const POICreateFormSchema = z.object({
   address: z.string(),
@@ -82,7 +83,7 @@ export function CreatePOIDialog({
   };
 
   return (
-    <>
+    <div style={{ height: '600px', overflow: 'scroll' }}>
         <DialogHeader>
             <DialogTitle>Add a new POI</DialogTitle>
             <DialogDescription>
@@ -141,6 +142,11 @@ export function CreatePOIDialog({
             <FilePond
               allowMultiple={true}
               maxFiles={3}
+              name="images"
+              acceptedFileTypes={['image/*']}
+              labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
+              //upload the file via uploadthing client upload
+              //we could alternatively set allowFileEncode={true} to encode it into a base 64 string
               server={{
                 process: async (fieldName, file, metadata, load, error, progress, abort) => {
                   try {
@@ -178,8 +184,6 @@ export function CreatePOIDialog({
                   load();
                 },
               }}
-              name="images"
-              labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
             />
 
             {createPOIMutation.isError && (
@@ -205,6 +209,6 @@ export function CreatePOIDialog({
             </div>
             </form>
         </Form>
-    </>
+    </div>
   );
 }

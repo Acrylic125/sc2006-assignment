@@ -98,6 +98,9 @@ importers:
       filepond:
         specifier: 4.32.9
         version: 4.32.9
+      filepond-plugin-file-validate-type:
+        specifier: 1.2.9
+        version: 1.2.9(filepond@4.32.9)
       filepond-plugin-image-exif-orientation:
         specifier: 1.0.11
         version: 1.0.11(filepond@4.32.9)
@@ -2298,6 +2301,11 @@ packages:
   file-selector@2.1.2:
     resolution: {integrity: sha512-QgXo+mXTe8ljeqUFaX3QVHc5osSItJ/Km+xpocx0aSqWGMSCf6qYs/VnzZgS864Pjn5iceMRFigeAV7AfTlaig==}
     engines: {node: '>= 12'}
+
+  filepond-plugin-file-validate-type@1.2.9:
+    resolution: {integrity: sha512-Tzv07aNdZvjUXDRA3XL16QMEvh6llDrXlcZ6W0eTHQ+taHaVg/JKJTFs/AViO+6ZcpPCcQStbhYEL2HoS+vldw==}
+    peerDependencies:
+      filepond: '>=1.x <5.x'
 
   filepond-plugin-image-exif-orientation@1.0.11:
     resolution: {integrity: sha512-hLBc12Fk6Zkj3L8mSAn+elugHOqT5rLUbgVXQQIQjMe0FsGjtpoxqeVR6jt4IWHGat2L9sFAgU2TGmd1mqosCg==}
@@ -5506,6 +5514,10 @@ snapshots:
   file-selector@2.1.2:
     dependencies:
       tslib: 2.8.1
+
+  filepond-plugin-file-validate-type@1.2.9(filepond@4.32.9):
+    dependencies:
+      filepond: 4.32.9
 
   filepond-plugin-image-exif-orientation@1.0.11(filepond@4.32.9):
     dependencies:
