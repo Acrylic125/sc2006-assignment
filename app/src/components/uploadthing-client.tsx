@@ -5,7 +5,7 @@ const { uploadImage } = useUploadImage();
 const handleUpload = async (file: File) => {
   try {
     const result = await uploadImage(file);
-    console.log("Uploaded:", result.url);
+    console.log("Uploaded:", result.ufsUrl);
   } catch (err) {
     console.error("Upload failed", err);
   }
