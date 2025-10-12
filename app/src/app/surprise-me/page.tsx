@@ -124,41 +124,54 @@ export default function SurpriseMePage() {
     >
       {/* Home Button */}
       <button
-        onClick={() => router.push("/")}
+      onClick={() => router.push("/")}
+      style={{
+        position: "absolute",
+        top: 16,
+        left: 16, // Position it on the top-left corner
+        background: "linear-gradient(135deg, #007bff, #0056b3)", // Gradient background
+        color: "#fff",
+        border: "none",
+        borderRadius: "50%",
+        width: 48,
+        height: 48,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)", // Stronger shadow for depth
+        cursor: "pointer",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease", // Smooth hover animation
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.1)"; // Slightly enlarge on hover
+        e.currentTarget.style.boxShadow = "0 6px 16px rgba(0, 0, 0, 0.3)"; // Enhance shadow on hover
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)"; // Reset scale
+        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)"; // Reset shadow
+      }}
+      aria-label="Home"
+    >
+      <svg
+        width="24" // Adjusted width for better alignment
+        height="24" // Adjusted height for better alignment
+        viewBox="0 0 24 24" // Ensure the viewBox is correct
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
         style={{
-          position: "absolute",
-          top: 16,
-          left: 16, // Position it on the top-left corner
-          background: "#007bff",
-          color: "#fff",
-          border: "none",
-          borderRadius: "50%",
-          width: 48,
-          height: 48,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-          cursor: "pointer",
+          display: "block", // Ensures no extra space around the SVG
+          margin: "auto", // Centers the SVG inside the button
         }}
-        aria-label="Home"
       >
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M10 20v-6h4v6m5-10l-7-7-7 7m13 0v10a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-4H9v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V10"
-            stroke="white"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+        <path
+          d="M3 10.5L12 3l9 7.5M5 10v10a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6h2v6a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V10"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
       {/* Name */}
       <div
         style={{
