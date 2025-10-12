@@ -164,7 +164,7 @@ export default function SurpriseMePage() {
         style={{
           width: "100%",
           padding: "16px", // Existing padding
-          paddingTop: "48px", // Add extra padding to push the name below the Home button
+          paddingTop: "70px", // Add extra padding to push the name below the Home button
           textAlign: "center",
           color: "#333",
           fontWeight: "bold",
