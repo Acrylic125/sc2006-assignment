@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 const images = [
@@ -10,6 +11,7 @@ const images = [
 ];
 
 export default function SurpriseMePage() {
+  const router = useRouter();
   const [index, setIndex] = useState(0);
   const [tilt, setTilt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +62,29 @@ export default function SurpriseMePage() {
         userSelect: "none",
       }}
     >
+      {/* Home button at top left */}
+      <button
+        onClick={() => router.back()}
+        style={{
+          position: "absolute",
+          top: 24,
+          left: 24,
+          zIndex: 10,
+          background: "#fff",
+          border: "none",
+          borderRadius: "50%",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          width: 48,
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer"
+        }}
+        aria-label="Go Home"
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l7-7 7 7"/><path d="M5 10v10h4v-6h2v6h4V10"/></svg>
+      </button>
       <motion.div
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
@@ -80,6 +105,25 @@ export default function SurpriseMePage() {
         }}
       >
         <div style={{ width: "100%", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          {/* Image name label on top of image */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "rgba(255,255,255,0.85)",
+              color: "#111",
+              padding: "4px 12px",
+              borderRadius: "12px",
+              fontWeight: 600,
+              fontSize: "1.1rem",
+              zIndex: 2,
+              marginTop: "8px"
+            }}
+          >
+            {images[index].src.split("/").pop()}
+          </div>
           <img
             src={images[index].src}
             alt={images[index].alt}
@@ -139,21 +183,7 @@ export default function SurpriseMePage() {
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
         </svg>
       </button>
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "rgba(255,255,255,0.8)",
-          padding: "6px 16px",
-          borderRadius: "16px",
-          fontWeight: 500,
-          fontSize: "1rem"
-        }}
-      >
-        Swipe left/right or tap buttons
-      </div>
+      {/* ...existing code... */}
     </div>
   );
 }
