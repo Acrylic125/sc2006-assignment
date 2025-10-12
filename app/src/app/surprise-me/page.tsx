@@ -276,6 +276,15 @@ export default function SurpriseMePage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease", // Smooth hover animation
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)"; // Slightly enlarge on hover
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)"; // Enhance shadow on hover
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)"; // Reset scale
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)"; // Reset shadow
           }}
           aria-label="Dislike"
           onClick={handleDislike}
@@ -307,6 +316,7 @@ export default function SurpriseMePage() {
             />
           </svg>
         </button>
+
         {/* Like Button */}
         <button
           style={{
@@ -320,6 +330,15 @@ export default function SurpriseMePage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease", // Smooth hover animation
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)"; // Slightly enlarge on hover
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)"; // Enhance shadow on hover
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)"; // Reset scale
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)"; // Reset shadow
           }}
           aria-label="Like"
           onClick={handleLike}
@@ -332,7 +351,7 @@ export default function SurpriseMePage() {
             xmlns="http://www.w3.org/2000/svg"
           >
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
+          </svg>
         </button>
       </div>
     </div>
