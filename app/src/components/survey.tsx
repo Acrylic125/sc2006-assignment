@@ -67,6 +67,12 @@ export function Survey({
           >
             I like this
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPoiIndex(currentPoiIndex + 1)}
+          >
+            Skip
+          </Button>
         </div>
         <div className="text-sm text-muted-foreground">
           {currentPoiIndex + 1} / {pois.length}
