@@ -23,6 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/server/client";
 
+import { useMapStore } from "@/components/map/map-store";
+
 import { useUploadImage } from "@/app/api/uploadthing/client";
 
 import {FilePond, registerPlugin} from 'react-filepond';
@@ -63,13 +65,22 @@ export function CreatePOIDialog({
     },
   });
 
-  const onSubmit = (data: z.infer<typeof POICreateFormSchema>) => {
+
+  const { setViewingPOI, setCurrentSidePanelTab } = useMapStore();
+  const onSubmit = async (data: z.infer<typeof POICreateFormSchema>) => {
     //console.log(data);
-    createPOIMutation.mutate(data, {
+    await createPOIMutation.mutateAsync(data, {
       onError: (err) => {
         console.error("Error creating POI", err);
       },
+      onSuccess: (data) => {
+        console.log(data.id);
+        setViewingPOI({ type: "existing-poi", poiId: data.id });
+        setCurrentSidePanelTab("place");
+      }
     });
+
+    close(); //close the form
   };
 
   
@@ -212,4 +223,23 @@ export function CreatePOIDialog({
         </Form>
     </ScrollArea>
   );
+}
+
+function refetchPOIs() {
+  throw new Error("Function not implemented.");
+}
+
+
+function setViewingPOI(arg0: { type: string; poiId: any; }) {
+  throw new Error("Function not implemented.");
+}
+
+
+function setCurrentSidePanelTab(arg0: string) {
+  throw new Error("Function not implemented.");
+}
+
+
+function setAddPoiPos(arg0: { latitude: any; longitude: any; }) {
+  throw new Error("Function not implemented.");
 }

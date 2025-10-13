@@ -119,7 +119,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
               const coords = features?.[0]?.geometry?.coordinates; //coords are lng lat
               setAddPoiPos({ latitude: coords[1], longitude: coords[0] });
             }
-            return;
+            return; //can we use this to expose a method in create-poi-modal to reload the map?
           }
         }
         const { lng, lat } = e.lngLat;
@@ -208,6 +208,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           },
         });
       }
@@ -220,6 +221,7 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
             "icon-image": ["concat", "pin-", ["get", "color"]],
             "icon-size": 1,
             "icon-anchor": "bottom",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           },
         });
       }
@@ -424,6 +426,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           },
         });
       }
@@ -438,6 +441,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
             "icon-image": "pin-red",
             "icon-size": 1,
             "icon-anchor": "bottom",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           },
         });
       }

@@ -387,8 +387,8 @@ export const mapRouter = createTRPCRouter({
         const inserted_rows = await db.insert(poiTable).values({
           name: input.name, 
           description: input.description, 
-          latitude: input.lat, 
-          longitude: input.lng,
+          latitude: input.lat.toString(), 
+          longitude: input.lng.toString(),
           address: input.address,
           openingHours: null,
           uploaderId: userId,
@@ -401,6 +401,7 @@ export const mapRouter = createTRPCRouter({
             uploaderId: userId,
           })
         }
+        return {id: poiId};
       }),
   getPOI: publicProcedure
     .input(z.object({ id: z.number() }))
