@@ -384,6 +384,25 @@ export const mapRouter = createTRPCRouter({
 
         // TODO: Create a new POI in the database.
         //   db.insert(reviewsTable)...
+        db.insert(poiTable).values({
+          name: input.name, 
+          description: input.description, 
+          latitude: input.lat.toString(), 
+          longitude: input.lng.toString(),
+          //address: input.address, //address here, need to add field
+          //id: //poiId here
+          //createdAt: //creation date time
+          //creator: userId, //creator id here, need to add field
+        })
+        /*
+        db.insert(poiImagesTable).values({
+          poiId: //id here,
+          imageUrl: input.images[0], //how to mass add all images?
+          //createdAt: //creation date time
+          //uploader: userId, //uploader id here, need to add field
+          //id: //what id is this for? the image?
+        })
+        */
       }),
   getPOI: publicProcedure
     .input(z.object({ id: z.number() }))
