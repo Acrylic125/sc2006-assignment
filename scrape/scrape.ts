@@ -45,7 +45,6 @@ async function processTouristAttractions() {
       latitude: latitude,
       longitude: longitude,
       openingHours: openingHours || null,
-      uploader: "data.gov"
     };
     
     poisToInsert.push(poi);
@@ -56,7 +55,6 @@ async function processTouristAttractions() {
       imagesToInsert.push({
         poiName: pageTitle, // We'll use this to match with inserted POI
         imageUrl: fixedImageUrl,
-        uploader: "data.gov"
       });
     }
   }
@@ -84,7 +82,6 @@ async function processParks() {
       latitude: geometry.coordinates[1].toString(),
       longitude: geometry.coordinates[0].toString(),
       openingHours: null, // Parks data doesn't have opening hours
-      uploader: "data.gov"
     };
     
     poisToInsert.push(poi);
@@ -125,7 +122,6 @@ async function insertPOIs() {
           imagesToInsertWithIds.push({
             poiId: matchedPOI.id,
             imageUrl: image.imageUrl,
-            uploader: "data.gov"
           });
         }
       }

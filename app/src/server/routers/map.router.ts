@@ -376,8 +376,7 @@ export const mapRouter = createTRPCRouter({
       )
       .mutation(async ({ ctx, input }) => {
         const userId = ctx.auth.userId;
-        const username = (await currentUser())?.firstName;
-        console.log(username);
+        //const username = (await currentUser())?.firstName;
         console.log(input.address);
         console.log(input.lat);
         console.log(input.lng);
@@ -393,7 +392,6 @@ export const mapRouter = createTRPCRouter({
           address: input.address,
           openingHours: null,
           uploaderId: userId,
-          uploader: username,
         }).returning({id: poiTable.id})
         const poiId = inserted_rows[0]?.id;
         for (const image of input.images) {
@@ -401,7 +399,6 @@ export const mapRouter = createTRPCRouter({
             poiId: poiId,
             imageUrl: image,
             uploaderId: userId,
-            uploader: username,
           })
         }
       }),

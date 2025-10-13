@@ -54,7 +54,6 @@ export const poiTable = pgTable("poi", {
     .notNull()
     .default(sql`now()`),
   uploaderId: text("uploader_id").default(''),
-  uploader: text("uploader").default(''),
 });
 
 // Since this is Postgres, we split the images into a separate table.
@@ -71,7 +70,6 @@ export const poiImagesTable = pgTable("poi_images", {
     .notNull()
     .default(sql`now()`),
   uploaderId: text("uploader_id").default(''),
-  uploader: text("uploader").default(''),
 });
 
 export const itineraryTable = pgTable("itinerary", {
