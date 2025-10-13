@@ -42,8 +42,11 @@ export const mapRouter = createTRPCRouter({
       if (!input.showVisited && !input.showUnvisited) {
         return [];
       }
-      const conditions = [
-        not(
+      const conditions = [];
+      
+      // If there are excluded tags, only show POIs that have at least one non-excluded tag
+      if (input.excludedTags.length > 0) {
+        conditions.push(
           exists(
             db
               .select()
@@ -51,13 +54,13 @@ export const mapRouter = createTRPCRouter({
               .where(
                 and(
                   eq(poiTagTable.poiId, poiTable.id),
-                  inArray(poiTagTable.tagId, input.excludedTags)
+                  not(inArray(poiTagTable.tagId, input.excludedTags))
                 )
               )
               .limit(1)
           )
-        ),
-      ];
+        );
+      }
       if (input.showVisited !== input.showUnvisited && ctx.auth.userId) {
         const existent = db
           .select()
