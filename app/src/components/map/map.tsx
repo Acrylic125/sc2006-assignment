@@ -202,7 +202,7 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     )
   );
 
-  const poisQuery = trpc.map.search.useQuery(
+  const poisQuery = trpc.map.recommend.useQuery(
     {
       recommendFromLocation: mapStore.recommendFromPos,
       showVisited: mapStore.filters.showVisited,
