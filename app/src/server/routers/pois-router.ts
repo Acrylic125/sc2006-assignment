@@ -22,6 +22,7 @@ export const poisRouter = createTRPCRouter({
         .leftJoin(poiImagesTable, eq(poiTable.id, poiImagesTable.poiId))
         .leftJoin(poiTagTable, eq(poiTable.id, poiTagTable.poiId))
         .leftJoin(tagTable, eq(poiTagTable.tagId, tagTable.id))
+        .where(sql`${poiImagesTable.imageUrl} IS NOT NULL`) // Ensure imageUrl is valid
         .groupBy(poiTable.id, poiImagesTable.imageUrl)
         .orderBy(sql`RANDOM()`) // Randomize the POIs
         .limit(10);

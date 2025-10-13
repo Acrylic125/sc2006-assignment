@@ -239,6 +239,19 @@ export default function SurpriseMePage() {
           </div>
         )}
       </motion.div>
+
+      {/* Progress Indicator */}
+      <div
+        style={{
+          width: "100%",
+          textAlign: "center",
+          fontSize: "1rem",
+          color: "#555",
+          padding: "8px 0",
+        }}
+      >
+  {`Image ${currentIndex + 1} of ${pois.length}`}
+</div>
   
       {/* Description */}
       <div
