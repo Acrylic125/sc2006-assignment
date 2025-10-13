@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { currentUser } from '@clerk/nextjs/server';
 
 async function searchPOIS(
   input: {
@@ -375,7 +376,8 @@ export const mapRouter = createTRPCRouter({
       )
       .mutation(async ({ ctx, input }) => {
         const userId = ctx.auth.userId;
-        console.log(userId);
+        const username = currentUser.name;
+        console.log(username);
         console.log(input.address);
         console.log(input.lat);
         console.log(input.lng);
@@ -389,13 +391,16 @@ export const mapRouter = createTRPCRouter({
           latitude: input.lat.toString(), 
           longitude: input.lng.toString(),
           address: input.address,
-          uploader: userId,
+          openingHours: null,
+          uploaderId: userId,
+          uploader: username,
         }).returning({id: poiTable.id}))
         for (const image of input.images) {
           db.insert(poiImagesTable).values({
             poiId: poiId,
             imageUrl: image,
-            uploader: userId,
+            uploaderId: userId,
+            uploader: username,
           })
         }
       }),

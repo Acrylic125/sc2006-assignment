@@ -53,6 +53,7 @@ export const poiTable = pgTable("poi", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  uploaderId: text("uploader_id").default(''),
   uploader: text("uploader").default(''),
 });
 
@@ -69,6 +70,7 @@ export const poiImagesTable = pgTable("poi_images", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  uploaderId: text("uploader_id").default(''),
   uploader: text("uploader").default(''),
 });
 
