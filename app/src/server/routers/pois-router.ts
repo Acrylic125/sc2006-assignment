@@ -25,7 +25,7 @@ export const poisRouter = createTRPCRouter({
         .where(sql`${poiImagesTable.imageUrl} IS NOT NULL`) // Ensure imageUrl is valid
         .groupBy(poiTable.id, poiImagesTable.imageUrl)
         .orderBy(sql`RANDOM()`) // Randomize the POIs
-        .limit(10);
+        .limit(5);
 
       return pois;
     } catch (error) {
