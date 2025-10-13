@@ -375,6 +375,7 @@ export const mapRouter = createTRPCRouter({
       )
       .mutation(async ({ ctx, input }) => {
         const userId = ctx.auth.userId;
+        console.log(userId);
         console.log(input.address);
         console.log(input.lat);
         console.log(input.lng);
@@ -382,27 +383,21 @@ export const mapRouter = createTRPCRouter({
         console.log(input.description);
         console.log(input.images[0]);
 
-        // TODO: Create a new POI in the database.
-        //   db.insert(reviewsTable)...
-        db.insert(poiTable).values({
+        const poiId = Number(await db.insert(poiTable).values({
           name: input.name, 
           description: input.description, 
           latitude: input.lat.toString(), 
           longitude: input.lng.toString(),
-          //address: input.address, //address here, need to add field
-          //id: //poiId here
-          //createdAt: //creation date time
-          //creator: userId, //creator id here, need to add field
-        })
-        /*
-        db.insert(poiImagesTable).values({
-          poiId: //id here,
-          imageUrl: input.images[0], //how to mass add all images?
-          //createdAt: //creation date time
-          //uploader: userId, //uploader id here, need to add field
-          //id: //what id is this for? the image?
-        })
-        */
+          address: input.address,
+          uploader: userId,
+        }).returning({id: poiTable.id}))
+        for (const image of input.images) {
+          db.insert(poiImagesTable).values({
+            poiId: poiId,
+            imageUrl: image,
+            uploader: userId,
+          })
+        }
       }),
   getPOI: publicProcedure
     .input(z.object({ id: z.number() }))

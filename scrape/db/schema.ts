@@ -48,10 +48,12 @@ export const poiTable = pgTable("poi", {
   description: text("description").notNull(),
   latitude: numeric("latitude").notNull(),
   longitude: numeric("longitude").notNull(),
+  address: text("address").default(''),
   openingHours: text("opening_hours"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  uploader: text("uploader").default(''),
 });
 
 // Since this is Postgres, we split the images into a separate table.
@@ -67,6 +69,7 @@ export const poiImagesTable = pgTable("poi_images", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  uploader: text("uploader").default(''),
 });
 
 export const itineraryTable = pgTable("itinerary", {
