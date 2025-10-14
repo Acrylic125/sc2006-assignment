@@ -445,15 +445,22 @@ export const mapRouter = createTRPCRouter({
         })
         .from(poiImagesTable)
         .where(eq(poiImagesTable.poiId, input.poiId));
+      console.log(images)
       const uploaderIds = [... new Set(images.map(imgData => imgData.uploaderId))]; //deduplicated user ids list
       let uploaderMap = new Map<string, string>();
       for(const userId of uploaderIds) {
         if ((userId !== null) && (!uploaderMap.has(userId)))  {
-          const userName = (await clerkClient.users.getUser(userId)).firstName;
-          uploaderMap.set(userId, userName ?? "database");
+          try {
+            const userName = (await clerkClient.users.getUser(userId)).firstName;
+            uploaderMap.set(userId, userName ?? "database");
+          } catch (err) {
+            console.error(`Failed to fetch userId ${userId}`, err);
+            uploaderMap.set(userId, "database");
+          }
         }
       }
       const uploaderNames = images.map(imgData => uploaderMap.get(imgData.uploaderId ?? ""));
+      console.log(images)
       return {images: images, uploaders: uploaderNames};
     }),
   getAddress: publicProcedure

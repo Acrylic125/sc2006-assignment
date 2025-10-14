@@ -89,7 +89,11 @@ export function POIImageCarouselDialog({
               >
                 <div className="relative inline-block">
                 <img 
-                  src={image.imageUrl} 
+                  src={
+                    image.imageUrl.startsWith("https://")
+                    ? image.imageUrl
+                    : `https://${image.imageUrl}`
+                  } 
                   alt={`Slide ${index}`} 
                 />
                 <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800 opacity-70">
