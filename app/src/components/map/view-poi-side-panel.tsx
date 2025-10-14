@@ -253,7 +253,6 @@ export function ViewNewPOIPanel({
     longitude: number;
   };
 }) {
-  // TODO: Implement this.
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
       return {

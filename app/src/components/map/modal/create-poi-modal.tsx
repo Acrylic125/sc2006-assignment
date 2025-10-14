@@ -33,6 +33,7 @@ import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orien
 import FilePondPluginImagePreview from "filepond-plugin-image-preview";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
+import { useState } from "react";
 
 registerPlugin(
   FilePondPluginImageExifOrientation,
@@ -94,6 +95,7 @@ export function CreatePOIDialog({
     }
   };
 
+  const [filePending,setFilePending] = useState(false); //bool of whether a file is pending
   return (
     <ScrollArea className="max-h-[85vh] w-auto">
       <DialogHeader>
@@ -159,6 +161,8 @@ export function CreatePOIDialog({
             name="images"
             acceptedFileTypes={["image/*"]}
             labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
+            onaddfilestart={()=> setFilePending(true)} //track when a file is being uploaded
+            onprocessfiles={()=> setFilePending(false)} //track when all files are done
             //upload the file via uploadthing client upload
             //we could alternatively set allowFileEncode={true} to encode it into a base 64 string
             server={{
@@ -180,7 +184,6 @@ export function CreatePOIDialog({
                   // const result = await uploadImage(realFile);
                   const result = await handleUpload(realFile);
                   if (!result) {
-                    console.log("FUCK");
                     return;
                   }
                   //add image to store
@@ -190,9 +193,8 @@ export function CreatePOIDialog({
                     shouldDirty: true,
                   });
                   load(result); // tell FilePond it's done
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                } catch (err: any) {
-                  error(err.message);
+                } catch (err) {
+                  console.error("Filepond upload failed", err);
                 }
 
                 return {
@@ -235,10 +237,7 @@ export function CreatePOIDialog({
             </Button>
             <Button
               type="submit"
-              // onClick={(e) => {
-              //   e.preventDefault();
-              // }}
-              disabled={createPOIMutation.isPending}
+              disabled={createPOIMutation.isPending || filePending}
             >
               {createPOIMutation.isPending ? "Creating..." : "New POI"}
             </Button>

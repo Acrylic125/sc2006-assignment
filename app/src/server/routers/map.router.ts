@@ -18,7 +18,7 @@ import {
 } from "@/db/schema";
 import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
-import { currentUser } from "@clerk/nextjs/server";
+//import { currentUser } from "@clerk/nextjs/server";
 
 async function searchPOIS(
   input: {
