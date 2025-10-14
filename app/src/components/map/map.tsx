@@ -254,9 +254,6 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
 }
 
 export default function ExploreMap({ className }: { className: string }) {
-  const [latitude, setLatitude] = useState(1.3521);
-  const [longitude, setLongitude] = useState(103.8198);
-  const [zoom, setZoom] = useState(10);
   const mapStore = useMapStore(
     useShallow(
       ({
@@ -264,22 +261,27 @@ export default function ExploreMap({ className }: { className: string }) {
         setRecommendFromPos,
         setViewingPOI,
         setCurrentSidePanelTab,
+        setViewState,
+        viewState,
       }) => {
         return {
           currentMapTab,
           setRecommendFromPos,
           setViewingPOI,
           setCurrentSidePanelTab,
+          setViewState,
+          viewState,
         };
       }
     )
   );
 
-  const onMove = useCallback((e: ViewStateChangeEvent) => {
-    setLatitude(e.viewState.latitude);
-    setLongitude(e.viewState.longitude);
-    setZoom(e.viewState.zoom);
-  }, []);
+  const onMove = useCallback(
+    (e: ViewStateChangeEvent) => {
+      mapStore.setViewState(e.viewState);
+    },
+    [mapStore]
+  );
   const onLoad = useCallback(async (e: MapEvent) => {
     const map = e.target;
     const ensurePinImage = async (color: keyof typeof pins) => {
@@ -321,10 +323,14 @@ export default function ExploreMap({ className }: { className: string }) {
         }
         return;
       }
-      mapStore.setRecommendFromPos({
-        latitude: e.lngLat.lat,
-        longitude: e.lngLat.lng,
-      });
+
+      // For recommend map.
+      if (mapStore.currentMapTab === "recommend") {
+        mapStore.setRecommendFromPos({
+          latitude: e.lngLat.lat,
+          longitude: e.lngLat.lng,
+        });
+      }
     },
     [mapStore]
   );
@@ -338,9 +344,9 @@ export default function ExploreMap({ className }: { className: string }) {
       //   zoom: 10,
       // }}
       onMove={onMove}
-      latitude={latitude}
-      longitude={longitude}
-      zoom={zoom}
+      latitude={mapStore.viewState.latitude}
+      longitude={mapStore.viewState.longitude}
+      zoom={mapStore.viewState.zoom}
       onLoad={onLoad}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       onClick={onClick}
