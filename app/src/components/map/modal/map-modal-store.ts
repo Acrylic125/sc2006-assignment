@@ -14,7 +14,7 @@ export type MapModalAction =
         latitude: number;
       };
     }
- |  {
+  | {
       type: "create-poi";
       options: {
         address: string;
@@ -23,6 +23,13 @@ export type MapModalAction =
         name: string;
         description: string;
         images: string[];
+      };
+    } 
+  | {
+      type: "poi-image-carousel";
+      options: {
+        poiId: number;
+        name: string;
       };
     };
 

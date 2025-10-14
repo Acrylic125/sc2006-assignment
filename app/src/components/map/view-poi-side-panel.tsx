@@ -163,7 +163,13 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       enabled: poiId !== null,
     }
   );
-
+  const modalStore = useMapModalStore(
+    useShallow(({ setAction }) => {
+      return {
+        setAction,
+      };
+    })
+  );
   if (poiQuery.isLoading) {
     return (
       <div className="w-full flex flex-col gap-2">
@@ -212,7 +218,17 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
             }
             alt={poi.name}
             fill
-            className="object-cover"
+            className="object-cover cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              modalStore.setAction({
+                type: "poi-image-carousel",
+                options: {
+                  poiId: poi.id,
+                  name: poi.name,
+                },
+              });
+            }}
           />
         ) : (
           <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">

@@ -7,6 +7,7 @@ import { useMapModalStore } from "./map-modal-store";
 import { POIReviewDialog } from "./itinerary-poi-review-modal";
 import { CreateItineraryDialog } from "./create-itinerary-modal";
 import { CreatePOIDialog } from "./create-poi-modal";
+import { POIImageCarouselDialog } from "./poi-image-carousel-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -43,6 +44,9 @@ export function MapModal() {
         )}
         {modalStore.action?.type === "create-poi" && (
           <CreatePOIDialog options={modalStore.action.options} close={close} />
+        )}
+        {modalStore.action?.type === "poi-image-carousel" && (
+          <POIImageCarouselDialog options={modalStore.action.options} close={close} />
         )}
       </DialogContent>
     </Dialog>

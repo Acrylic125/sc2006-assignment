@@ -18,7 +18,11 @@ import {
 } from "@/db/schema";
 import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { Input } from "@/components/ui/input";
 //import { currentUser } from "@clerk/nextjs/server";
+import { createClerkClient } from '@clerk/backend'
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
 
 async function searchPOIS(
   input: {
@@ -429,6 +433,28 @@ export const mapRouter = createTRPCRouter({
         .from(poiImagesTable)
         .where(eq(poiImagesTable.poiId, input.id));
       return { ...poi[0], images: poiImages.map((image) => image.imageUrl) };
+    }),
+  getPOIImages: publicProcedure
+    .input(z.object({ poiId: z.number() }))
+    .query(async ({ input }) => {
+      const images = await db
+        .select({ 
+          imageUrl: poiImagesTable.imageUrl, 
+          uploaderId: poiImagesTable.uploaderId, 
+          creationDate: poiImagesTable.createdAt 
+        })
+        .from(poiImagesTable)
+        .where(eq(poiImagesTable.poiId, input.poiId));
+      const uploaderIds = [... new Set(images.map(imgData => imgData.uploaderId))]; //deduplicated user ids list
+      let uploaderMap = new Map<string, string>();
+      for(const userId of uploaderIds) {
+        if ((userId !== null) && (!uploaderMap.has(userId)))  {
+          const userName = (await clerkClient.users.getUser(userId)).firstName;
+          uploaderMap.set(userId, userName ?? "database");
+        }
+      }
+      const uploaderNames = images.map(imgData => uploaderMap.get(imgData.uploaderId ?? ""));
+      return {images: images, uploaders: uploaderNames};
     }),
   getAddress: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))

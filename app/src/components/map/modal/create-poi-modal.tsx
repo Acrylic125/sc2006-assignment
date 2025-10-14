@@ -247,19 +247,3 @@ export function CreatePOIDialog({
     </ScrollArea>
   );
 }
-
-// function refetchPOIs() {
-//   throw new Error("Function not implemented.");
-// }
-
-// function setViewingPOI(arg0: { type: string; poiId: any }) {
-//   throw new Error("Function not implemented.");
-// }
-
-// function setCurrentSidePanelTab(arg0: string) {
-//   throw new Error("Function not implemented.");
-// }
-
-// function setAddPoiPos(arg0: { latitude: any; longitude: any }) {
-//   throw new Error("Function not implemented.");
-// }

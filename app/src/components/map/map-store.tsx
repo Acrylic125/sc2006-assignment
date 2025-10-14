@@ -25,6 +25,11 @@ type ViewingPOI =
         latitude: number;
         longitude: number;
       };
+    }
+  | {
+      type: "poi-image-carousel";
+      poiId: number;
+      name: string;
     };
 
 type MapStore = {
