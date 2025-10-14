@@ -26,53 +26,16 @@ import { Skeleton } from "../ui/skeleton";
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
 
-  // TODO: Retrieve personal reviews + other reviews using the Reviews Router.
-  const reviews = [
-    {
-      id: 1,
-      liked: false,
-      comment: "This is a review",
-      images: ["/example.png", "/example.png", "/example.png"],
-      age: 30000,
-      // createdAt: new Date(),
-      // User needs to be retrieved from clerk.
-      // See https://clerk.com/docs/reference/backend/user/get-user-list
-      // Filter by `userId`. Note the limit is 100. We will only ever
-      // retrieve up to 50 reviews at a time so this limit will never
-      // be reached.
-      user: {
-        id: "user_123",
-        name: "User 1",
-        profilePicture: "https://github.com/shadcn.png",
-      },
-      itinerary: {
-        id: 1,
-        name: "Itinerary 1",
-      },
-    },
-    {
-      id: 2,
-      liked: true,
-      comment: "This is a review",
-      images: ["/example.png", "/example.png", "/example.png"],
-      age: 86400000,
-      // createdAt: new Date(),
-      // User needs to be retrieved from clerk.
-      // See https://clerk.com/docs/reference/backend/user/get-user-list
-      // Filter by `userId`. Note the limit is 100. We will only ever
-      // retrieve up to 50 reviews at a time so this limit will never
-      // be reached.
-      user: {
-        id: "user_123",
-        name: "User 1",
-        profilePicture: "https://github.com/shadcn.png",
-      },
-      itinerary: {
-        id: 1,
-        name: "Itinerary 1",
-      },
-    },
-  ];
+  // Get reviews from the backend
+  const reviewsQuery = trpc.review.getReviews.useQuery({ poiId });
+  const userReviewQuery = trpc.review.getUserReview.useQuery(
+    { poiId },
+    { enabled: !!auth.isSignedIn }
+  );
+
+  // Delete review mutation
+  const deleteReviewMutation = trpc.review.deleteReview.useMutation();
+  const utils = trpc.useUtils();
 
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
@@ -82,10 +45,57 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
     })
   );
 
+  const handleDeleteReview = (reviewId: number) => {
+    if (confirm("Are you sure you want to delete your review?")) {
+      deleteReviewMutation.mutate({ reviewId }, {
+        onSuccess: () => {
+          // Invalidate queries to refresh data
+          utils.review.getReviews.invalidate({ poiId });
+          utils.review.getUserReview.invalidate({ poiId });
+        },
+        onError: (error) => {
+          alert(`Failed to delete review: ${error.message}`);
+        }
+      });
+    }
+  };
+
+  if (reviewsQuery.isLoading) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-row items-center justify-between">
+          <h3 className="font-medium">Reviews</h3>
+          <Button
+            variant="default"
+            size="sm"
+            disabled={!auth.isSignedIn}
+            onClick={() => {
+              modalStore.setAction({
+                type: "itinerary-poi-review",
+                options: {
+                  poiId: poiId,
+                },
+              });
+            }}
+          >
+            <Plus /> {userReviewQuery.data ? "Edit Review" : "Review"}
+          </Button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const reviews = reviewsQuery.data || [];
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-row items-center justify-between">
-        <h3 className="font-medium">Reviews</h3>
+        <h3 className="font-medium">Reviews ({reviews.length})</h3>
         <Button
           variant="default"
           size="sm"
@@ -99,58 +109,97 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
             });
           }}
         >
-          <Plus /> Review
+          <Plus /> {userReviewQuery.data ? "Edit Review" : "Review"}
         </Button>
       </div>
       <div className="flex flex-col gap-2">
-        {reviews.map((review) => (
-          <div
-            key={review.id}
-            className="flex flex-col border border-border rounded-md p-2 bg-secondary gap-2"
-          >
-            <div className="flex flex-row items-center justify-between gap-2">
-              <div className="flex flex-row items-center gap-2">
-                <Avatar>
-                  <AvatarImage src={review.user.profilePicture} />
-                  <AvatarFallback>Profile</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{review.user.name}</span>
-              </div>
-
-              {review.liked ? (
-                <LikeButton active />
-              ) : (
-                // <ThumbsUp className="size-4 stroke-primary dark:fill-primary/25" />
-                <DislikeButton active />
-                // <ThumbsDown className="size-4 stroke-red-400 fill-red-200/25 dark:fill-red-700/25" />
-              )}
-            </div>
-            <p className="text-sm font-light text-foreground">
-              {review.comment}
-            </p>
-            <div className="flex flex-row items-center gap-2">
-              {review.images.map((image, i) => (
-                <div className="w-1/3 aspect-square relative" key={i}>
-                  <Image
-                    src={image}
-                    alt={review.comment}
-                    className="object-cover"
-                    fill
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-row justify-between">
-              <span className="text-sm flex-1 truncate">
-                {(auth.userId === review.user.id || true) &&
-                  review.itinerary.name}
-              </span>
-              <span className="flex flex-row items-center text-muted-foreground text-sm flex-1 truncate justify-end">
-                {formatDurationToClosestUnit(review.age)} ago
-              </span>
-            </div>
+        {reviews.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground">
+            No reviews yet. Be the first to review this place!
           </div>
-        ))}
+        ) : (
+          reviews.map((review) => {
+            const isCurrentUser = review.userId === auth.userId;
+            return (
+              <div
+                key={review.id}
+                className="flex flex-col border border-border rounded-md p-2 bg-secondary gap-2"
+              >
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <div className="flex flex-row items-center gap-2">
+                    <Avatar>
+                      <AvatarImage src={review.user?.imageUrl || "https://github.com/shadcn.png"} />
+                      <AvatarFallback>
+                        {isCurrentUser ? "You" : (review.user?.firstName?.[0] || review.userId.slice(0, 2).toUpperCase())}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">
+                      {isCurrentUser 
+                        ? "You" 
+                        : (review.user?.firstName && review.user?.lastName)
+                          ? `${review.user.firstName} ${review.user.lastName}`
+                          : review.user?.username || review.userId
+                      }
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {review.liked ? (
+                      <LikeButton active />
+                    ) : (
+                      <DislikeButton active />
+                    )}
+                    {isCurrentUser && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteReview(review.id)}
+                        disabled={deleteReviewMutation.isPending}
+                        className="text-red-500 hover:text-red-700 p-1 h-auto"
+                      >
+                        {deleteReviewMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Delete"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {review.comment && (
+                  <p className="text-sm font-light text-foreground">
+                    {review.comment}
+                  </p>
+                )}
+                {/* Always show example image for now */}
+                <div className="flex flex-row items-center gap-2">
+                  <div className="w-1/3 aspect-square relative">
+                    <Image
+                      src="/example.png"
+                      alt={review.comment || "Review image"}
+                      className="object-cover rounded"
+                      fill
+                    />
+                  </div>
+                  {review.images && review.images.length > 1 && (
+                    <>
+                      {review.images.slice(1, 3).map((image, i) => (
+                        <div className="w-1/3 aspect-square relative" key={i}>
+                          <Image
+                            src={image}
+                            alt={review.comment || "Review image"}
+                            className="object-cover rounded"
+                            fill
+                          />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
