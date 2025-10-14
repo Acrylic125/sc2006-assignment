@@ -90,18 +90,72 @@ export default function SurpriseMePage() {
 
   if (currentIndex >= pois.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
-        <h2 className="text-2xl font-bold mb-4">You've completed the carousel!</h2>
+      <div
+        className="flex flex-col items-center justify-start h-screen bg-black text-white overflow-y-auto"
+        style={{ paddingTop: "32px" }} // Increased padding to ensure the first POI is fully visible
+      >
+        <h2 className="text-2xl font-bold mb-6">You've completed the carousel!</h2>
+        {likedPOIs.length > 0 ? (
+          <div className="w-full max-w-2xl">
+            <ul className="space-y-6">
+            {likedPOIs.map((poi) => (
+            <li
+              key={poi.id}
+              className="p-4 bg-gray-800 rounded-lg shadow-md"
+            >
+              <h4 className="text-lg font-bold">{poi.name}</h4>
+              <p className="text-sm text-gray-400">{poi.description}</p>
+              {poi.imageUrl && (
+                <img
+                  src={
+                    poi.imageUrl.startsWith("http")
+                      ? poi.imageUrl
+                      : `https://${poi.imageUrl}`
+                  }
+                  alt={poi.name}
+                  className="mt-2 rounded-lg max-h-48 object-cover w-full"
+                />
+              )}
+              {/* Google Maps Link with Map SVG Icon */}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  poi.name
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center justify-center bg-white text-red-500 rounded-full w-10 h-10 shadow-md hover:bg-red-500 hover:text-white hover:scale-110 transition-transform"
+                aria-label={`View ${poi.name} on Google Maps`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-7 h-7"
+                >
+                  <path
+                    d="M12 2C8.686 2 6 4.686 6 8c0 4.418 6 12 6 12s6-7.582 6-12c0-3.314-2.686-6-6-6zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"
+                  />
+                </svg>
+              </a>
+            </li>
+          ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-gray-400 mb-4">
+            You haven't liked any POIs yet.
+          </p>
+        )}
         <button
           onClick={() => router.push("/")}
-          className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition"
+          className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition mt-6"
         >
           Exit
         </button>
       </div>
     );
   }
-
+  
   return (
     <div
       style={{
