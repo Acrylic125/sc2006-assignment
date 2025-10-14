@@ -204,7 +204,11 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       <div className="w-full aspect-[4/3] relative">
         {poi.images.length > 0 && poi.images[0] !== "" ? (
           <Image
-            src={`https://${poi.images[0]}`}
+            src={
+              poi.images[0].startsWith("https://")
+                ? poi.images[0]
+                : `https://${poi.images[0]}`
+            }
             alt={poi.name}
             fill
             className="object-cover"
@@ -257,32 +261,28 @@ export function ViewNewPOIPanel({
       };
     })
   );
-  const addrQuery = trpc.map.getAddress.useQuery(
-    {
-      lat: pos.latitude,
-      lng: pos.longitude
-    }
-  );
+  const addrQuery = trpc.map.getAddress.useQuery({
+    lat: pos.latitude,
+    lng: pos.longitude,
+  });
   if (addrQuery.isLoading) {
-    (
-      <div className="w-full flex flex-col gap-2">
-        <div className="w-full aspect-[4/3] relative">
-          <Skeleton className="w-full h-full" />
-        </div>
-        <div className="flex flex-col p-1 gap-2">
-          <Skeleton className="w-24 h-6" />
-          <Skeleton className="w-full h-4" />
-          <Skeleton className="w-full h-4" />
-          <Skeleton className="w-1/2 h-4" />
-        </div>
+    <div className="w-full flex flex-col gap-2">
+      <div className="w-full aspect-[4/3] relative">
+        <Skeleton className="w-full h-full" />
       </div>
-    );
+      <div className="flex flex-col p-1 gap-2">
+        <Skeleton className="w-24 h-6" />
+        <Skeleton className="w-full h-4" />
+        <Skeleton className="w-full h-4" />
+        <Skeleton className="w-1/2 h-4" />
+      </div>
+    </div>;
   }
 
   const addr = addrQuery.data;
   const coords = `Lat: ${pos.latitude.toFixed(2)}, Long: ${pos.longitude.toFixed(2)}`;
-  const image = "" //image placeholder
-  
+  const image = ""; //image placeholder
+
   return (
     <div className="w-full flex flex-col">
       <div className="w-full aspect-[4/3] relative">
@@ -312,8 +312,9 @@ export function ViewNewPOIPanel({
               Navigate
             </a>
           </Button>
-          <Button 
-            className="w-full truncate" size="sm"
+          <Button
+            className="w-full truncate"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               modalStore.setAction({
@@ -348,8 +349,7 @@ export function ViewPOIPanel() {
 
   if (mapStore.viewingPOI?.type === "existing-poi") {
     return <ViewExistingPOIPanel poiId={mapStore.viewingPOI.poiId} />;
-  }
-  else if (mapStore.viewingPOI?.type === "new-poi") {
+  } else if (mapStore.viewingPOI?.type === "new-poi") {
     return <ViewNewPOIPanel pos={mapStore.viewingPOI.pos} />;
   }
 

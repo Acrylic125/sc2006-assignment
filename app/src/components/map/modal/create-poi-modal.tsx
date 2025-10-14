@@ -3,8 +3,8 @@ import { ExtractOptions } from "./map-modal-store";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-    Dialog,
-    DialogContent,
+  Dialog,
+  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -27,14 +27,18 @@ import { useMapStore } from "@/components/map/map-store";
 
 import { useUploadImage } from "@/app/api/uploadthing/client";
 
-import {FilePond, registerPlugin} from 'react-filepond';
-import 'filepond/dist/filepond.min.css'
-import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation'
-import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
-import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css'
-import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
+import { FilePond, registerPlugin } from "react-filepond";
+import "filepond/dist/filepond.min.css";
+import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orientation";
+import FilePondPluginImagePreview from "filepond-plugin-image-preview";
+import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
+import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
 
-registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview, FilePondPluginFileValidateType)
+registerPlugin(
+  FilePondPluginImageExifOrientation,
+  FilePondPluginImagePreview,
+  FilePondPluginFileValidateType
+);
 
 const POICreateFormSchema = z.object({
   address: z.string(),
@@ -42,7 +46,7 @@ const POICreateFormSchema = z.object({
   lng: z.number(),
   name: z.string(),
   description: z.string(),
-  images: z.array(z.string())
+  images: z.array(z.string()),
 });
 
 export function CreatePOIDialog({
@@ -65,30 +69,26 @@ export function CreatePOIDialog({
     },
   });
 
-
   const { setViewingPOI, setCurrentSidePanelTab } = useMapStore();
   const onSubmit = async (data: z.infer<typeof POICreateFormSchema>) => {
     //console.log(data);
-    await createPOIMutation.mutateAsync(data, {
+    createPOIMutation.mutate(data, {
       onError: (err) => {
         console.error("Error creating POI", err);
       },
       onSuccess: (data) => {
-        console.log(data.id);
         setViewingPOI({ type: "existing-poi", poiId: data.id });
         setCurrentSidePanelTab("place");
-      }
+        close(); //close the form
+      },
     });
-
-    close(); //close the form
   };
 
-  
   const { uploadImage } = useUploadImage();
   const handleUpload = async (file: File) => {
     try {
       const result = await uploadImage(file);
-      console.log("Uploaded:", result.ufsUrl);
+      return result.ufsUrl;
     } catch (err) {
       console.error("Upload failed", err);
     }
@@ -96,150 +96,171 @@ export function CreatePOIDialog({
 
   return (
     <ScrollArea className="max-h-[85vh] w-auto">
-        <DialogHeader>
-            <DialogTitle>Add a new POI</DialogTitle>
-            <DialogDescription>
-            Know a nice place? Add it to our map!
-            </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                    <Input placeholder="Address of your POI" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
+      <DialogHeader>
+        <DialogTitle>Add a new POI</DialogTitle>
+        <DialogDescription>
+          Know a nice place? Add it to our map!
+        </DialogDescription>
+      </DialogHeader>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Address</FormLabel>
+                <FormControl>
+                  <Input placeholder="Address of your POI" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Location Name</FormLabel>
-                    <FormControl>
-                    <Input placeholder="Name of your POI" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Location Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Name of your POI" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                    <Input placeholder="Describe this place" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Input placeholder="Describe this place" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <div className="form-label-group">
-              <div className="label-main">Upload pictures of the location: </div>
-              <small className="label-sub">(These will be displayed when people view the POI)</small>
-            </div>
-            
-            <FilePond
-              allowMultiple={true}
-              maxFiles={3}
-              name="images"
-              acceptedFileTypes={['image/*']}
-              labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
-              //upload the file via uploadthing client upload
-              //we could alternatively set allowFileEncode={true} to encode it into a base 64 string
-              server={{
-                process: async (fieldName, file, metadata, load, error, progress, abort) => {
-                  try {
-                    //convert filepond actualFile to File
-                    const realFile = new File([file], file.name, {
-                      type: file.type,
-                      lastModified: file.lastModified ?? Date.now(),
-                    });
-                    const result = await uploadImage(realFile);
-                    //add image to store
-                    const images = [...(form.getValues("images") ?? []), result.ufsUrl];
-                    form.setValue("images", images, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    });
-                    load(result.ufsUrl); // tell FilePond it's done
-                  } catch (err: any) {
-                    error(err.message);
+          <div className="form-label-group">
+            <div className="label-main">Upload pictures of the location: </div>
+            <small className="label-sub">
+              (These will be displayed when people view the POI)
+            </small>
+          </div>
+
+          <FilePond
+            allowMultiple={true}
+            maxFiles={3}
+            name="images"
+            acceptedFileTypes={["image/*"]}
+            labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
+            //upload the file via uploadthing client upload
+            //we could alternatively set allowFileEncode={true} to encode it into a base 64 string
+            server={{
+              process: async (
+                fieldName,
+                file,
+                metadata,
+                load,
+                error,
+                progress,
+                abort
+              ) => {
+                try {
+                  //convert filepond actualFile to File
+                  const realFile = new File([file], file.name, {
+                    type: file.type,
+                    lastModified: file.lastModified ?? Date.now(),
+                  });
+                  // const result = await uploadImage(realFile);
+                  const result = await handleUpload(realFile);
+                  if (!result) {
+                    console.log("FUCK");
+                    return;
                   }
-
-                  return {
-                    abort: () => {
-                      abort();
-                    },
-                  };
-                },
-                revert: (fileUfsUrl, load) => {
-                  console.log(`File Removed: ${fileUfsUrl}`)
-                  //remove the image from the store
-                  const images = (form.getValues("images")).filter(file => file !== fileUfsUrl);
+                  //add image to store
+                  const images = [...(form.getValues("images") ?? []), result];
                   form.setValue("images", images, {
                     shouldValidate: true,
                     shouldDirty: true,
                   });
-                  load();
-                },
-              }}
-            />
+                  load(result); // tell FilePond it's done
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } catch (err: any) {
+                  error(err.message);
+                }
 
-            {createPOIMutation.isError && (
-                <Alert variant="error">
-                <AlertTitle>Unable to create POI.</AlertTitle>
-                <AlertDescription>
-                    <p>{createPOIMutation.error.message}</p>
-                </AlertDescription>
-                </Alert>
-            )}
+                return {
+                  abort: () => {
+                    abort();
+                  },
+                };
+              },
+              revert: (fileUfsUrl, load) => {
+                console.log(`File Removed: ${fileUfsUrl}`);
+                //remove the image from the store
+                const images = form
+                  .getValues("images")
+                  .filter((file) => file !== fileUfsUrl);
+                form.setValue("images", images, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                load();
+              },
+            }}
+          />
 
-            <div className="flex flex-row gap-2">
-                <Button
-                variant="outline"
-                onClick={close}
-                disabled={createPOIMutation.isPending}
-                >
-                Cancel
-                </Button>
-                <Button type="submit" disabled={createPOIMutation.isPending}>
-                {createPOIMutation.isPending ? "Creating..." : "New POI"}
-                </Button>
-            </div>
-            </form>
-        </Form>
+          {createPOIMutation.isError && (
+            <Alert variant="error">
+              <AlertTitle>Unable to create POI.</AlertTitle>
+              <AlertDescription>
+                <p>{createPOIMutation.error.message}</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={close}
+              disabled={createPOIMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              // onClick={(e) => {
+              //   e.preventDefault();
+              // }}
+              disabled={createPOIMutation.isPending}
+            >
+              {createPOIMutation.isPending ? "Creating..." : "New POI"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </ScrollArea>
   );
 }
 
-function refetchPOIs() {
-  throw new Error("Function not implemented.");
-}
+// function refetchPOIs() {
+//   throw new Error("Function not implemented.");
+// }
 
+// function setViewingPOI(arg0: { type: string; poiId: any }) {
+//   throw new Error("Function not implemented.");
+// }
 
-function setViewingPOI(arg0: { type: string; poiId: any; }) {
-  throw new Error("Function not implemented.");
-}
+// function setCurrentSidePanelTab(arg0: string) {
+//   throw new Error("Function not implemented.");
+// }
 
-
-function setCurrentSidePanelTab(arg0: string) {
-  throw new Error("Function not implemented.");
-}
-
-
-function setAddPoiPos(arg0: { latitude: any; longitude: any; }) {
-  throw new Error("Function not implemented.");
-}
+// function setAddPoiPos(arg0: { latitude: any; longitude: any }) {
+//   throw new Error("Function not implemented.");
+// }

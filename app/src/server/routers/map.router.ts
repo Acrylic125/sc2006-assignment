@@ -18,7 +18,7 @@ import {
 } from "@/db/schema";
 import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser } from "@clerk/nextjs/server";
 
 async function searchPOIS(
   input: {
@@ -364,45 +364,47 @@ export const mapRouter = createTRPCRouter({
       // return pois;
     }),
   createPOI: protectedProcedure
-      .input(
-        z.object({
-          address: z.string().max(255),
-          lat: z.number(),
-          lng: z.number(),
-          name: z.string().max(255),
-          description: z.string().max(255),
-          images: z.array(z.string()),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const userId = ctx.auth.userId;
-        //const username = (await currentUser())?.firstName;
-        console.log(input.address);
-        console.log(input.lat);
-        console.log(input.lng);
-        console.log(input.name);
-        console.log(input.description);
-        console.log(input.images[0]);
+    .input(
+      z.object({
+        address: z.string().max(255),
+        lat: z.number(),
+        lng: z.number(),
+        name: z.string().max(255),
+        description: z.string().max(255),
+        images: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
 
-        const inserted_rows = await db.insert(poiTable).values({
-          name: input.name, 
-          description: input.description, 
-          latitude: input.lat.toString(), 
-          longitude: input.lng.toString(),
-          address: input.address,
-          openingHours: null,
-          uploaderId: userId,
-        }).returning({id: poiTable.id})
-        const poiId = inserted_rows[0]?.id;
-        for (const image of input.images) {
-          db.insert(poiImagesTable).values({
-            poiId: poiId,
-            imageUrl: image,
+      // Use transaction so that if either insert fails, the other insert is rolled back.
+      const transaction = await db.transaction(async (tx) => {
+        const inserted = await tx
+          .insert(poiTable)
+          .values({
+            name: input.name,
+            description: input.description,
+            latitude: input.lat.toString(),
+            longitude: input.lng.toString(),
+            address: input.address,
+            openingHours: null,
             uploaderId: userId,
           })
+          .returning({ id: poiTable.id });
+        const poiId = inserted[0]?.id;
+        if (input.images.length > 0) {
+          await tx.insert(poiImagesTable).values(
+            input.images.map((image) => ({
+              poiId: poiId,
+              imageUrl: image,
+              uploaderId: userId,
+            }))
+          );
         }
-        return {id: poiId};
-      }),
+        return poiId;
+      });
+      return { id: transaction };
+    }),
   getPOI: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -429,8 +431,8 @@ export const mapRouter = createTRPCRouter({
       return { ...poi[0], images: poiImages.map((image) => image.imageUrl) };
     }),
   getAddress: publicProcedure
-    .input(z.object({lat: z.number(), lng: z.number()}))
-    .query( async({input}) => {
+    .input(z.object({ lat: z.number(), lng: z.number() }))
+    .query(async ({ input }) => {
       const token = env.NEXT_PUBLIC_MAPBOX_PK;
       const url = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${input.lng}&latitude=${input.lat}&access_token=${token}`;
       try {
@@ -439,12 +441,12 @@ export const mapRouter = createTRPCRouter({
           throw new Error(`Mapbox API error: ${response.statusText}`);
         }
         const data = await response.json(); //this data is kinda hard to validate...
-        const place = data?.features?.[0]?.properties?.name_preferred || 'Unknown location';
+        const place =
+          data?.features?.[0]?.properties?.name_preferred || "Unknown location";
         return place;
-
       } catch (error) {
-        console.error('Reverse geocoding error:', error);
-        throw new Error('Failed to fetch reverse geocode data');
+        console.error("Reverse geocoding error:", error);
+        throw new Error("Failed to fetch reverse geocode data");
       }
     }),
 });
