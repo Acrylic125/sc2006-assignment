@@ -21,6 +21,7 @@ import { useMapStore } from "./map-store";
 import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
 import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
+import { useUser } from "@clerk/nextjs";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -281,6 +282,7 @@ export function ViewNewPOIPanel({
   const addr = addrQuery.data;
   const coords = `Lat: ${pos.latitude.toFixed(2)}, Long: ${pos.longitude.toFixed(2)}`;
   const image = ""; //image placeholder
+  const user = useUser().isSignedIn;
 
   return (
     <div className="w-full flex flex-col">
@@ -314,6 +316,7 @@ export function ViewNewPOIPanel({
           <Button
             className="w-full truncate"
             size="sm"
+            disabled={!user}
             onClick={(e) => {
               e.stopPropagation();
               modalStore.setAction({
@@ -328,7 +331,7 @@ export function ViewNewPOIPanel({
                 },
               });
             }}
-          >
+          > 
             Upload your own POI here
           </Button>
         </div>
