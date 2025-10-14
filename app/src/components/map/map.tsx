@@ -1,24 +1,14 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback, useMemo } from "react";
-import mapboxgl, {
-  CircleLayer,
-  MapEvent,
-  MapMouseEvent,
-  SymbolLayerSpecification,
-} from "mapbox-gl";
+import { useCallback, useMemo } from "react";
+import { MapEvent, MapMouseEvent } from "mapbox-gl";
 import { env } from "@/lib/env";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useMapStore } from "./map-store";
 import { useShallow } from "zustand/react/shallow";
 import { trpc } from "@/server/client";
-import Map, {
-  Layer,
-  MapRef,
-  Source,
-  ViewStateChangeEvent,
-} from "react-map-gl/mapbox";
+import Map, { Layer, Source, ViewStateChangeEvent } from "react-map-gl/mapbox";
 
 function createPinURL(color: string) {
   return (
