@@ -311,17 +311,18 @@ export default function ExploreMap({ className }: { className: string }) {
   const onClick = useCallback(
     (e: MapMouseEvent) => {
       const map = e.target;
-      const poiPins = map.queryRenderedFeatures(e.point, {
-        layers: ["poi-pins"],
-      });
-      console.log(poiPins);
-      if (poiPins.length > 0) {
-        const poiId = poiPins[0].properties?.id;
-        if (poiId) {
-          mapStore.setViewingPOI({ type: "existing-poi", poiId });
-          mapStore.setCurrentSidePanelTab("place");
+      if (map.getLayer("poi-pins")) {
+        const poiPins = map.queryRenderedFeatures(e.point, {
+          layers: ["poi-pins"],
+        });
+        if (poiPins.length > 0) {
+          const poiId = poiPins[0].properties?.id;
+          if (poiId) {
+            mapStore.setViewingPOI({ type: "existing-poi", poiId });
+            mapStore.setCurrentSidePanelTab("place");
+          }
+          return;
         }
-        return;
       }
 
       // For recommend map.
@@ -331,6 +332,9 @@ export default function ExploreMap({ className }: { className: string }) {
           longitude: e.lngLat.lng,
         });
       }
+
+      // For explore map.
+      // TODO: Add stuff here for explore map.
     },
     [mapStore]
   );
