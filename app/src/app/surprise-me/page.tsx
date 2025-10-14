@@ -79,9 +79,9 @@ export default function SurpriseMePage() {
     const bounds = container.getBoundingClientRect();
     const x = info.point.x;
 
-    if (x > bounds.right - 25) {
+    if (x > bounds.right - 350) {
       handleLike();
-    } else if (x < bounds.left + 25) {
+    } else if (x < bounds.left + 350) {
       handleDislike();
     } else {
       setTilt(0);
