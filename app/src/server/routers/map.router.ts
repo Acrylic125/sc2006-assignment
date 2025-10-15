@@ -470,6 +470,7 @@ export const mapRouter = createTRPCRouter({
     .input(z.object({ 
       poiId: z.number(),
       excludedTags: z.array(z.number()),
+      tagIdOrder: z.array(z.number()),
     }))
     .query(async ({ input }) => {
       const tags = await db
@@ -489,14 +490,25 @@ export const mapRouter = createTRPCRouter({
       //console.log(tags)
       //console.log(tagNames)
       const filteredTagNames = tags.map(tag => ({ tag: tagNames.find(tagName => tagName.tagId === tag.tag), filtered: input.excludedTags.includes(tag.tag) }));
-      const sortedTagNames = [...filteredTagNames.sort((a, b) => {
-        if (a.filtered === b.filtered) return 0; //if filter state is same, keep order
-        else if (a.filtered) return 1; //if a has been filtered away but not b, place at the end
-        else return -1 //else place it infront of b
-      })]
-      console.log(sortedTagNames)
+      
+      if(input.tagIdOrder.length === 0) {
+        //console.log(sortedTagNames)
+        const sortedTagNames = [...filteredTagNames.sort((a, b) => {
+          if (a.filtered === b.filtered) return 0; //if filter state is same, keep order
+          else if (a.filtered) return 1; //if a has been filtered away but not b, place at the end
+          else return -1 //else place it infront of b
+        })]
+        const tagOrderData = sortedTagNames
+          .map(item => item.tag?.tagId ?? -1);
+        return {tagsData: sortedTagNames, tagOrder: tagOrderData};
+      }
       //console.log(filteredTagNames)
-      return sortedTagNames;
+      const sortedTagNames = [...filteredTagNames.sort((a, b) => {
+          if (input.tagIdOrder.indexOf(a.tag?.tagId ?? -1) === input.tagIdOrder.indexOf(b.tag?.tagId ?? -1)) return 0; //if id is same, keep order
+          else if (input.tagIdOrder.indexOf(a.tag?.tagId ?? -1) > input.tagIdOrder.indexOf(b.tag?.tagId ?? -1)) return 1; //if a has been filtered away but not b, place at the end
+          else return -1 //else place it infront of b
+        })]
+      return {tagsData: sortedTagNames, tagOrder: input.tagIdOrder};
     }),
   getAddress: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))

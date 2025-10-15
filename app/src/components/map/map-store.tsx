@@ -37,6 +37,7 @@ type MapStore = {
   viewingPOI: ViewingPOI | null;
   currentMapTab: "explore" | "recommend";
   currentSidePanelTab: "itinerary" | "place";
+  tagBadgeOrder: number[];
   viewState: {
     latitude: number;
     longitude: number;
@@ -69,6 +70,7 @@ type MapStore = {
   setRecommendViewPos: (pos: Coordinates) => void;
   setExplorePos: (pos: Coordinates) => void;
   setViewingPOI: (poi: ViewingPOI) => void;
+  setTagBadgeOrder: (tagIdOrder: number[]) => void;
 };
 
 export const useMapStore = create<MapStore>((set) => ({
@@ -76,6 +78,7 @@ export const useMapStore = create<MapStore>((set) => ({
   viewingPOI: null,
   currentMapTab: "explore",
   currentSidePanelTab: "place",
+  tagBadgeOrder: [],
   viewState: {
     latitude: 1.3521,
     longitude: 103.8198,
@@ -117,6 +120,8 @@ export const useMapStore = create<MapStore>((set) => ({
   setExplorePos: (pos: Coordinates) =>
     set({ explore: { explorePos: pos } }),
   setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
+  setTagBadgeOrder: (tagIdOrder: number[]) =>
+    set({ tagBadgeOrder: tagIdOrder })
 
   //   setExplorePois: (pois: { id: number; pos: Coordinates }[]) =>
   //     set({ explore: { pois } }),

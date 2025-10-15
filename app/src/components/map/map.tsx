@@ -325,6 +325,7 @@ export default function ExploreMap({ className }: { className: string }) {
         setCurrentSidePanelTab,
         setViewState,
         viewState,
+        setTagBadgeOrder,
       }) => {
         return {
           currentMapTab,
@@ -335,6 +336,7 @@ export default function ExploreMap({ className }: { className: string }) {
           setCurrentSidePanelTab,
           setViewState,
           viewState,
+          setTagBadgeOrder,
         };
       }
     )
@@ -384,6 +386,7 @@ export default function ExploreMap({ className }: { className: string }) {
         if (poiPins.length > 0) {
           const poiId = poiPins[0].properties?.id;
           if (poiId) {
+            mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
             mapStore.setViewingPOI({ type: "existing-poi", poiId });
             mapStore.setCurrentSidePanelTab("place");
             if (poiPins[0].geometry?.type === 'Point') {

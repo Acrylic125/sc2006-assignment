@@ -23,6 +23,7 @@ import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -169,9 +170,15 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     useShallow(
       ({
         filters,
+        setFilterExcludedTags,
+        tagBadgeOrder,
+        setTagBadgeOrder,
       }) => {
         return {
-          filters,
+          excludedTags: filters.excludedTags,
+          setFilterExcludedTags,
+          tagBadgeOrder,
+          setTagBadgeOrder,
         };
       }
     )
@@ -185,7 +192,8 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   );
   const poiTagQuery = trpc.map.getPOITags.useQuery(
     { poiId: poiId ?? 0,
-      excludedTags: Array.from(mapStore.filters.excludedTags),
+      excludedTags: Array.from(mapStore.excludedTags),
+      tagIdOrder: mapStore.tagBadgeOrder,
     }
   );
 
@@ -206,7 +214,8 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   }
 
   const poi = poiQuery.data;
-  const poiTags = poiTagQuery.data;
+  const poiTags = poiTagQuery.data?.tagsData;
+  const poiTagsOrder = poiTagQuery.data?.tagOrder ?? [];
 
   if (poi === null || poi === undefined || poiTags === null || poiTags === undefined) {
     return (
@@ -268,13 +277,26 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
         <h1 className="text-base font-bold">{poi.name}</h1>
         <p className="text-sm text-muted-foreground mb-2">{poi.description}</p>
         <div className="flex flex-wrap gap-1">
-          {poiTags.map((tagdata, index) => (
+          {poiTags.map((tagdata) => (
             <Badge 
-              key={index} 
+              key={tagdata.tag?.tagId} 
               variant="secondary"
-              className={`${
-                !tagdata.filtered ? "bg-green-300 text-green-800" : "bg-gray-400 text-gray-800"
-              }`}
+              className={`
+                ${!tagdata.filtered ? "bg-green-300 text-green-800" : "bg-gray-400 text-gray-800"}
+                cursor-pointer
+                `}
+              onClick={(e) => {
+                e.stopPropagation();
+                mapStore.setTagBadgeOrder(poiTagsOrder);
+                const currentExcludedTags = new Set(mapStore.excludedTags);
+                if (mapStore.excludedTags.has(tagdata.tag?.tagId ?? -1)) {
+                  currentExcludedTags.delete(tagdata.tag?.tagId ?? -1);
+                  mapStore.setFilterExcludedTags(currentExcludedTags);
+                } else {
+                  currentExcludedTags.add(tagdata.tag?.tagId ?? -1);
+                  mapStore.setFilterExcludedTags(currentExcludedTags);
+                }
+              }}
             >
               {tagdata.tag?.tagName}
             </Badge>
