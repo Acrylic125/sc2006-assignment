@@ -103,8 +103,10 @@ export function CreatePOIDialog({
   return (
     <ScrollArea className="max-h-[85vh] w-[30vw]">
       <DialogHeader>
-        <DialogTitle>Add a new POI</DialogTitle>
-        <DialogDescription>
+        <DialogTitle className="mb-0">
+          Add a new POI
+        </DialogTitle>
+        <DialogDescription className="mb-5 -mt-1">
           Know a nice place? Add it to our map!
         </DialogDescription>
       </DialogHeader>
@@ -151,9 +153,13 @@ export function CreatePOIDialog({
               </FormItem>
             )}
           />
-          <p className="text-sm mb-2">
-            Select a pin on the map to view more information.
-          </p>
+          
+          <div className="form-label-group mb-1">
+            <div className="label-main">Tags </div>
+            <small className="label-sub">
+              (Select at least 1)
+            </small>
+          </div>
           <div className="flex flex-wrap gap-1">
             {tagsQuery.data?.map((tag) => (
               <Badge 
@@ -263,7 +269,7 @@ export function CreatePOIDialog({
             </Button>
             <Button
               type="submit"
-              disabled={createPOIMutation.isPending || filePending}
+              disabled={createPOIMutation.isPending || filePending || selectedTags.length === 0 || form.getValues("address").length === 0  || form.getValues("name").length === 0 || form.getValues("description").length === 0 }
             >
               {createPOIMutation.isPending ? "Creating..." : "New POI"}
             </Button>
