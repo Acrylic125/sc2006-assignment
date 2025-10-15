@@ -22,6 +22,7 @@ import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
 import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
 import { useUser } from "@clerk/nextjs";
+import { Badge } from "@/components/ui/badge"
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -157,12 +158,6 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
 }
 
 export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
-  const poiQuery = trpc.map.getPOI.useQuery(
-    { id: poiId ?? 0 },
-    {
-      enabled: poiId !== null,
-    }
-  );
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
       return {
@@ -170,7 +165,31 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       };
     })
   );
-  if (poiQuery.isLoading) {
+  const mapStore = useMapStore(
+    useShallow(
+      ({
+        filters,
+      }) => {
+        return {
+          filters,
+        };
+      }
+    )
+  );
+
+  const poiQuery = trpc.map.getPOI.useQuery(
+    { id: poiId ?? 0 },
+    {
+      enabled: poiId !== null,
+    }
+  );
+  const poiTagQuery = trpc.map.getPOITags.useQuery(
+    { poiId: poiId ?? 0,
+      excludedTags: Array.from(mapStore.filters.excludedTags),
+    }
+  );
+
+  if (poiQuery.isLoading || poiTagQuery.isLoading) {
     return (
       <div className="w-full flex flex-col gap-2">
         <div className="w-full aspect-[4/3] relative">
@@ -187,8 +206,9 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   }
 
   const poi = poiQuery.data;
+  const poiTags = poiTagQuery.data;
 
-  if (poi === null || poi === undefined) {
+  if (poi === null || poi === undefined || poiTags === null || poiTags === undefined) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
         <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
@@ -246,7 +266,20 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       </div>
       <div className="flex flex-col p-1">
         <h1 className="text-base font-bold">{poi.name}</h1>
-        <p className="text-sm text-muted-foreground">{poi.description}</p>
+        <p className="text-sm text-muted-foreground mb-2">{poi.description}</p>
+        <div className="flex flex-wrap gap-1">
+          {poiTags.map((tagdata, index) => (
+            <Badge 
+              key={index} 
+              variant="secondary"
+              className={`${
+                !tagdata.filtered ? "bg-green-300 text-green-800" : "bg-gray-400 text-gray-800"
+              }`}
+            >
+              {tagdata.tag?.tagName}
+            </Badge>
+          ))}
+        </div>
         <div className="flex flex-col gap-1 py-4">
           <Button variant="ghost" asChild className="w-fit p-0">
             <a

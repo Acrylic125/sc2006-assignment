@@ -466,6 +466,38 @@ export const mapRouter = createTRPCRouter({
       console.log(images)
       return {images: images, uploaders: uploaderNames};
     }),
+    getPOITags: publicProcedure
+    .input(z.object({ 
+      poiId: z.number(),
+      excludedTags: z.array(z.number()),
+    }))
+    .query(async ({ input }) => {
+      const tags = await db
+        .select({ 
+          tag: poiTagTable.tagId, 
+        })
+        .from(poiTagTable)
+        .where(eq(poiTagTable.poiId, input.poiId));
+      const tagNames = await db
+        .select({
+          tagId: tagTable.id,
+          tagName: tagTable.name,
+        })
+        .from(tagTable)
+        .where(inArray(tagTable.id, tags.map(tag => tag.tag)));
+      //console.log(input.excludedTags)
+      //console.log(tags)
+      //console.log(tagNames)
+      const filteredTagNames = tags.map(tag => ({ tag: tagNames.find(tagName => tagName.tagId === tag.tag), filtered: input.excludedTags.includes(tag.tag) }));
+      const sortedTagNames = [...filteredTagNames.sort((a, b) => {
+        if (a.filtered === b.filtered) return 0; //if filter state is same, keep order
+        else if (a.filtered) return 1; //if a has been filtered away but not b, place at the end
+        else return -1 //else place it infront of b
+      })]
+      console.log(sortedTagNames)
+      //console.log(filteredTagNames)
+      return sortedTagNames;
+    }),
   getAddress: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
     .query(async ({ input }) => {
