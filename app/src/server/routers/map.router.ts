@@ -446,6 +446,27 @@ export const mapRouter = createTRPCRouter({
         .where(eq(poiImagesTable.poiId, input.id));
       return { ...poi[0], images: poiImages.map((image) => image.imageUrl) };
     }),
+  uploadPOIImage: protectedProcedure
+    .input(
+      z.object({
+        poiId: z.number(),
+        name: z.string().max(255),
+        images: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
+
+      if(input.images.length > 0) {
+        await db.insert(poiImagesTable).values(
+          input.images.map((image) => ({
+            poiId: input.poiId,
+            imageUrl: image,
+            uploaderId: userId,
+          }))
+        );
+      }
+    }),
   getPOIImages: publicProcedure
     .input(z.object({ poiId: z.number() }))
     .query(async ({ input }) => {

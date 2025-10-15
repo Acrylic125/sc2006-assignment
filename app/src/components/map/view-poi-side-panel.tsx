@@ -12,6 +12,7 @@ import {
   Plus,
   ThumbsDown,
   ThumbsUp,
+  Upload,
 } from "lucide-react";
 import Image from "next/image";
 import { useQueryState, parseAsInteger } from "nuqs";
@@ -23,7 +24,6 @@ import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge"
-import { useState } from "react";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -216,6 +216,7 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   const poi = poiQuery.data;
   const poiTags = poiTagQuery.data?.tagsData;
   const poiTagsOrder = poiTagQuery.data?.tagOrder ?? [];
+  const user = useUser().isSignedIn;
 
   if (poi === null || poi === undefined || poiTags === null || poiTags === undefined) {
     return (
@@ -265,11 +266,43 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
                 {poi.images.length} Image{poi.images.length > 1 ? 's' : ''}
               </p>
             </div>
+            <Upload
+              size={32}
+              className={`absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg ${!user ? 'pointer-events-none opacity-30' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                modalStore.setAction({
+                  type: "upload-poi-image",
+                  options: {
+                    poiId: poi.id,
+                    name: poi.name,
+                    images: [],
+                  },
+                });
+              }}
+            />
           </div>
         ) : (
-          <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
-            <ImageIcon className="size-8" />
-            No Image
+          <div className="relative inline-block h-full w-full">
+            <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
+              <ImageIcon className="size-8" />
+              No Image
+            </div>
+            <Upload
+              size={32}
+              className={`absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg ${!user ? 'pointer-events-none opacity-30' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                modalStore.setAction({
+                  type: "upload-poi-image",
+                  options: {
+                    poiId: poi.id,
+                    name: poi.name,
+                    images: [],
+                  },
+                });
+              }}
+            />
           </div>
         )}
       </div>

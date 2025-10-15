@@ -31,6 +31,14 @@ export type MapModalAction =
         poiId: number;
         name: string;
       };
+    }
+  | {
+      type: "upload-poi-image";
+      options: {
+        poiId: number;
+        name: string;
+        images: string[];
+      };
     };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<
