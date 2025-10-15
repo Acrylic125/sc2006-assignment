@@ -123,7 +123,7 @@ export function POIImageCarouselDialog({
                 />
                 <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800 opacity-70">
                   <h3 className="text-s text-white font-bold">
-                    Uploaded by: {usernames[index] ?? ''}
+                    Uploaded by: {usernames[index] ?? 'Unknown'}
                   </h3> 
                   <p className="text-s text-gray-300">
                     {image.creationDate}
