@@ -110,10 +110,11 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 1,
+            "icon-size": 0.5,
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           }}
         />
       </Source>
@@ -201,10 +202,11 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 1,
+            "icon-size": 0.5,
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           }}
         />
       </Source>
