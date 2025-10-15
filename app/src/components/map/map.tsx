@@ -272,7 +272,6 @@ export default function ExploreMap({ className }: { className: string }) {
     useShallow(
       ({
         currentMapTab,
-        setMapInstance,
         setRecommendFromPos,
         setViewingPOI,
         setCurrentSidePanelTab,
@@ -281,7 +280,6 @@ export default function ExploreMap({ className }: { className: string }) {
       }) => {
         return {
           currentMapTab,
-          setMapInstance,
           setRecommendFromPos,
           setViewingPOI,
           setCurrentSidePanelTab,
@@ -300,8 +298,6 @@ export default function ExploreMap({ className }: { className: string }) {
   );
   const onLoad = useCallback(async (e: MapEvent) => {
     const map = e.target;
-    // Set the map instance in the store for centering functionality
-    mapStore.setMapInstance(map);
     
     const ensurePinImage = async (color: keyof typeof pins) => {
       if (map.hasImage(`pin-${color}`)) return;

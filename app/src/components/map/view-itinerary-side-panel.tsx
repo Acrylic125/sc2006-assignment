@@ -65,12 +65,12 @@ export function ItineraryPOISortableItem({
     })
   );
   const mapStore = useMapStore(
-    useShallow(({ viewingItineraryId, setViewingPOI, setCurrentSidePanelTab, centerMapOnPOI }) => {
+    useShallow(({ viewingItineraryId, setViewingPOI, setCurrentSidePanelTab, setViewState }) => {
       return {
         viewingItineraryId,
         setViewingPOI,
         setCurrentSidePanelTab,
-        centerMapOnPOI,
+        setViewState,
       };
     })
   );
@@ -109,7 +109,11 @@ export function ItineraryPOISortableItem({
       const poiData = await utils.map.getPOI.fetch({ id: poiId });
       if (poiData) {
         // Center the map on the POI
-        mapStore.centerMapOnPOI(poiData.latitude, poiData.longitude);
+        mapStore.setViewState({
+          latitude: Number(poiData.latitude),
+          longitude: Number(poiData.longitude),
+          zoom: 15,
+        });
       }
       // Set the viewing POI to this POI
       mapStore.setViewingPOI({ type: "existing-poi", poiId: poiId });
