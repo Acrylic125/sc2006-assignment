@@ -29,7 +29,7 @@ const pins = {
   green: createPinURL("#10B981"),
   // yellow: createPinURL("#EAB308"),
   // purple: createPinURL("#8B5CF6"),
-  // orange: createPinURL("#F59E0B"),
+  orange: createPinURL("#F59E0B"),
   // pink: createPinURL("#EC4899"),
 };
 
@@ -172,6 +172,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           setCurrentSidePanelTab,
           setViewingPOI,
           recommendFromPos: recommend.recommendFromPos,
+          recommendViewPos: recommend.recommendViewPos,
         };
       }
     )
@@ -275,6 +276,39 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           }}
         />
       </Source>
+      {mapStore.recommendViewPos && (
+        <Source
+          id="pin-view"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.recommendViewPos.longitude,
+                    mapStore.recommendViewPos.latitude,
+                  ],
+                },
+                properties: { color: "orange" },
+              },
+            ],
+          }}
+        >
+          <Layer
+            id="pin-view"
+            type="symbol"
+            source="pin-from"
+            layout={{
+              "icon-image": "pin-orange",
+              "icon-size": 0.7,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
     </>
   );
 }
@@ -285,6 +319,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ({
         currentMapTab,
         setRecommendFromPos,
+        setRecommendViewPos,
         setExplorePos,
         setViewingPOI,
         setCurrentSidePanelTab,
@@ -294,6 +329,7 @@ export default function ExploreMap({ className }: { className: string }) {
         return {
           currentMapTab,
           setRecommendFromPos,
+          setRecommendViewPos,
           setExplorePos,
           setViewingPOI,
           setCurrentSidePanelTab,
@@ -333,6 +369,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("red"),
       ensurePinImage("green"),
       ensurePinImage("blue"),
+      ensurePinImage("orange"),
     ]);
   }, []);
 
@@ -352,6 +389,7 @@ export default function ExploreMap({ className }: { className: string }) {
             if (poiPins[0].geometry?.type === 'Point') {
               const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
               mapStore.setExplorePos({ latitude: coords[1], longitude: coords[0] });
+              mapStore.setRecommendViewPos({ latitude: coords[1], longitude: coords[0] });
             }
           }
           return;

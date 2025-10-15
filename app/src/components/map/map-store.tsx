@@ -44,6 +44,7 @@ type MapStore = {
   };
   recommend: {
     recommendFromPos: Coordinates;
+    recommendViewPos: Coordinates | null;
   };
   explore: {
     explorePos: Coordinates;
@@ -65,6 +66,7 @@ type MapStore = {
   setFilterShowVisited: (showVisited: boolean) => void;
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
+  setRecommendViewPos: (pos: Coordinates) => void;
   setExplorePos: (pos: Coordinates) => void;
   setViewingPOI: (poi: ViewingPOI) => void;
 };
@@ -81,6 +83,7 @@ export const useMapStore = create<MapStore>((set) => ({
   },
   recommend: {
     recommendFromPos: { latitude: 1.3521, longitude: 103.8198 },
+    recommendViewPos: null,
   },
   explore: {
     explorePos: { latitude: 1.3521, longitude: 103.8198 },
@@ -108,7 +111,9 @@ export const useMapStore = create<MapStore>((set) => ({
   setFilterShowUnvisited: (showUnvisited: boolean) =>
     set((prev) => ({ filters: { ...prev.filters, showUnvisited } })),
   setRecommendFromPos: (pos: Coordinates) =>
-    set({ recommend: { recommendFromPos: pos } }),
+    set((prev) => ({ recommend: { ...prev.recommend, recommendFromPos: pos } })),
+  setRecommendViewPos: (pos: Coordinates) =>
+    set((prev) => ({ recommend: { ...prev.recommend, recommendViewPos: pos } })),
   setExplorePos: (pos: Coordinates) =>
     set({ explore: { explorePos: pos } }),
   setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
