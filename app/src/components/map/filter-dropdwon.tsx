@@ -96,14 +96,10 @@ export function FilterTagsDropdown() {
             variant="ghost"
             className="w-full flex flex-row items-center gap-2 justify-start px-2"
             onClick={() => {
-              console.log(allTags.length);
-              console.log(mapStore.excludedTags.size);
               if(allTags.length === mapStore.excludedTags.size) {
-                console.log("CCC");
                 mapStore.setFilterExcludedTags(new Set());
                 console.log(mapStore.excludedTags);
               } else {
-                console.log("BBB");
                 mapStore.setFilterExcludedTags(new Set(allTags));
                 console.log(mapStore.excludedTags);
               }
