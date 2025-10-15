@@ -379,6 +379,7 @@ export const mapRouter = createTRPCRouter({
         name: z.string().max(255),
         description: z.string().max(255),
         images: z.array(z.string()),
+        tags: z.array(z.number()),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -405,6 +406,14 @@ export const mapRouter = createTRPCRouter({
               poiId: poiId,
               imageUrl: image,
               uploaderId: userId,
+            }))
+          );
+        }
+        if (input.tags.length > 0) {
+          await tx.insert(poiTagTable).values(
+            input.tags.map((tagId) => ({
+              tagId: tagId,
+              poiId: poiId,
             }))
           );
         }

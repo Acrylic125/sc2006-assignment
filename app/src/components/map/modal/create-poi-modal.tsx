@@ -48,6 +48,7 @@ const POICreateFormSchema = z.object({
   lng: z.number(),
   name: z.string(),
   description: z.string(),
+  tags: z.array(z.number()),
   images: z.array(z.string()),
 });
 
@@ -67,6 +68,7 @@ export function CreatePOIDialog({
       lng: options.longitude,
       name: options.name,
       description: options.description,
+      tags: [],
       images: [],
     },
   });
@@ -169,9 +171,19 @@ export function CreatePOIDialog({
                 onClick={(e) => {
                   e.stopPropagation();
                   if (selectedTags.includes(tag.id)) {
-                    setSelectedTags((prev) => prev.filter((id) => id !== tag.id))
+                    const newTags = selectedTags.filter((id) => id !== tag.id);
+                    form.setValue("tags", selectedTags, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    setSelectedTags(newTags)
                   } else {
-                    setSelectedTags([...selectedTags, tag.id])
+                    const newTags = [...selectedTags, tag.id]
+                    form.setValue("tags", newTags, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    setSelectedTags(newTags)
                   }
                 }}
               >
