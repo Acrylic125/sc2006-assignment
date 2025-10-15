@@ -51,7 +51,7 @@ export function POIImageCarouselDialog({
 
   if (imagesQuery.isLoading || imagesQuery.isFetching) {
     return (
-      <div className="h-[75vh] overflow-hidden">
+      <div className="h-[75vh] min-w-[20vw] overflow-hidden">
          <DialogHeader>
           <DialogTitle className="mb-4">
             {options.name}
