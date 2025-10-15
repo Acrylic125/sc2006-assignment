@@ -77,6 +77,8 @@ export function FilterTagsDropdown() {
     })
   );
 
+  const allTags = tagsQuery.data?.map((tag) => tag.id) || [];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -89,6 +91,32 @@ export function FilterTagsDropdown() {
       <DropdownMenuContent className="max-h-64 overflow-y-auto">
         <DropdownMenuLabel>Tags</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <div>
+          <Button
+            variant="ghost"
+            className="w-full flex flex-row items-center gap-2 justify-start px-2"
+            onClick={() => {
+              console.log(allTags.length);
+              console.log(mapStore.excludedTags.size);
+              if(allTags.length === mapStore.excludedTags.size) {
+                console.log("CCC");
+                mapStore.setFilterExcludedTags(new Set());
+                console.log(mapStore.excludedTags);
+              } else {
+                console.log("BBB");
+                mapStore.setFilterExcludedTags(new Set(allTags));
+                console.log(mapStore.excludedTags);
+              }
+            }}
+          >
+            <span className="w-4">
+              {allTags.length !== mapStore.excludedTags.size && (
+                <Check className="size-4" />
+              )}
+            </span>
+            <span>[Select All]</span>
+          </Button>
+        </div>
         {tagsQuery.data?.map((tag) => (
           <Button
             key={tag.id}
