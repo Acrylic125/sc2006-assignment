@@ -8,6 +8,7 @@ import {
   ImageIcon,
   Loader2,
   MapPin,
+  MessageSquareWarning,
   Navigation,
   Plus,
   ThumbsDown,
@@ -333,14 +334,24 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
           ))}
         </div>
         <div className="flex flex-col gap-1 py-4">
-          <Button variant="ghost" asChild className="w-fit p-0">
-            <a
-              href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
-            >
-              <Navigation />
-              Navigate
-            </a>
-          </Button>
+          <div className="flex w-full items-center justify-between">
+            <Button variant="ghost" asChild className="w-fit p-0">
+              <a
+                href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+              >
+                <Navigation />
+                Navigate
+              </a>
+            </Button>
+            <Button variant="ghost" asChild className="w-fit p-0">
+              <a
+                href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}
+              >
+                <MessageSquareWarning />
+                Report
+              </a>
+            </Button>
+          </div>
           <Button className="w-full truncate" size="sm">
             Add to Itinerary
           </Button>
