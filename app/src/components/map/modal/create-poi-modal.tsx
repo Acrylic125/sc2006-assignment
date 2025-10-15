@@ -34,6 +34,7 @@ import FilePondPluginImagePreview from "filepond-plugin-image-preview";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 registerPlugin(
   FilePondPluginImageExifOrientation,
@@ -70,6 +71,8 @@ export function CreatePOIDialog({
     },
   });
 
+  const tagsQuery = trpc.map.getTags.useQuery();
+
   const { setViewingPOI, setCurrentSidePanelTab } = useMapStore();
   const onSubmit = async (data: z.infer<typeof POICreateFormSchema>) => {
     //console.log(data);
@@ -96,6 +99,7 @@ export function CreatePOIDialog({
   };
 
   const [filePending,setFilePending] = useState(false); //bool of whether a file is pending
+  const [selectedTags, setSelectedTags] = useState<number[]>([]); //array of selected tag ids
   return (
     <ScrollArea className="max-h-[85vh] w-[30vw]">
       <DialogHeader>
@@ -147,6 +151,28 @@ export function CreatePOIDialog({
               </FormItem>
             )}
           />
+          <p className="text-sm mb-2">
+            Select a pin on the map to view more information.
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {tagsQuery.data?.map((tag) => (
+              <Badge 
+                key={tag.id} 
+                variant="secondary"
+                className={`${selectedTags.includes(tag.id) ? "bg-green-300" : ""} cursor-pointer`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedTags.includes(tag.id)) {
+                    setSelectedTags((prev) => prev.filter((id) => id !== tag.id))
+                  } else {
+                    setSelectedTags([...selectedTags, tag.id])
+                  }
+                }}
+              >
+                {tag.name}
+              </Badge>
+            ))}
+          </div>
 
           <div className="form-label-group">
             <div className="label-main">Upload pictures of the location: </div>

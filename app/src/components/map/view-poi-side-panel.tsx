@@ -281,10 +281,7 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
             <Badge 
               key={tagdata.tag?.tagId} 
               variant="secondary"
-              className={`
-                ${!tagdata.filtered ? "bg-green-300 text-green-800" : "bg-gray-400 text-gray-800"}
-                cursor-pointer
-                `}
+              className={`${!tagdata.filtered ? "bg-green-300" : ""} cursor-pointer`}
               onClick={(e) => {
                 e.stopPropagation();
                 mapStore.setTagBadgeOrder(poiTagsOrder);
