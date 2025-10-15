@@ -288,18 +288,20 @@ export function ViewNewPOIPanel({
     lat: pos.latitude,
     lng: pos.longitude,
   });
-  if (addrQuery.isLoading) {
-    <div className="w-full flex flex-col gap-2">
-      <div className="w-full aspect-[4/3] relative">
-        <Skeleton className="w-full h-full" />
+  if (addrQuery.isLoading || addrQuery.isFetching) {
+    return(
+      <div className="w-full flex flex-col gap-2">
+        <div className="w-full aspect-[4/3] relative">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="flex flex-col p-1 gap-2">
+          <Skeleton className="w-24 h-6" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-1/2 h-4" />
+        </div>
       </div>
-      <div className="flex flex-col p-1 gap-2">
-        <Skeleton className="w-24 h-6" />
-        <Skeleton className="w-full h-4" />
-        <Skeleton className="w-full h-4" />
-        <Skeleton className="w-1/2 h-4" />
-      </div>
-    </div>;
+    );
   }
 
   const addr = addrQuery.data;
