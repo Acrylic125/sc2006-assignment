@@ -121,12 +121,12 @@ export function CreatePOIDialog({
               <FormItem>
                 <FormLabel>Address</FormLabel>
                 <FormControl>
-                  <>
+                  <div>
                     <Input placeholder="Address of your POI" {...field} />
-                    <p className="text-sm text-muted-foreground -mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       Pin at: {options.address}, Lat: {form.getValues("lat").toFixed(2) || "—"}, Lng: {form.getValues("lng").toFixed(2) || "—"}
                     </p>
-                  </>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
