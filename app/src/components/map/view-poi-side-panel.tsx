@@ -369,6 +369,7 @@ export function ViewNewPOIPanel({
       };
     })
   );
+  const user = useUser().isSignedIn;
   const addrQuery = trpc.map.getAddress.useQuery({
     lat: pos.latitude,
     lng: pos.longitude,
@@ -392,8 +393,7 @@ export function ViewNewPOIPanel({
   const addr = addrQuery.data;
   const coords = `Lat: ${pos.latitude.toFixed(2)}, Long: ${pos.longitude.toFixed(2)}`;
   const image = ""; //image placeholder
-  const user = useUser().isSignedIn;
-
+  
   return (
     <div className="w-full flex flex-col">
       <div className="w-full aspect-[4/3] relative">
