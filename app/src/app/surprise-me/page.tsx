@@ -98,6 +98,38 @@ export default function SurpriseMePage() {
     }
   }, [recentlyCreatedItinerary]);
 
+  // Show loading while checking authentication
+  if (!auth.isLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!auth.isSignedIn) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
+        <div className="text-center max-w-md mx-auto px-6">
+          <h1 className="text-3xl font-bold mb-4">Sign In Required</h1>
+          <p className="text-gray-400 mb-6">
+            You need to be signed in to use the Surprise Me feature. This helps us personalize your recommendations and save your liked places.
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return <div>Loading...</div>;
   }

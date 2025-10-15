@@ -23,12 +23,15 @@ import {
 import { ItineraryDropdown } from "@/components/map/itinerary-dropdown";
 import { MapViewTabGroup } from "@/components/map/map-view-tab-group";
 import dynamic from "next/dynamic";
+import { useAuth } from "@clerk/nextjs";
 
 const _ExploreMap = dynamic(() => import("../components/map/map"), {
   ssr: false,
 });
 
 export default function Home() {
+  const auth = useAuth();
+  
   return (
     <div className="w-full h-full flex flex-col items-center bg-background">
       <MainNavbar />
@@ -44,7 +47,7 @@ export default function Home() {
             <div className="flex-1 flex flex-row items-center gap-2 lg:hidden justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
+                  <Button variant="outline" disabled={!auth.isSignedIn}>
                     <Sparkles />{" "}
                     <span className="hidden sm:block">Surprise Me</span>
                   </Button>
@@ -55,26 +58,43 @@ export default function Home() {
                   <DropdownMenuCheckboxItem>Explore</DropdownMenuCheckboxItem>
                   <DropdownMenuCheckboxItem>Recommend</DropdownMenuCheckboxItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/surprise-me">
+                  {auth.isSignedIn ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/surprise-me">
+                        <div className="flex items-center gap-2">
+                          <span>Take a quiz!</span>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem disabled>
                       <div className="flex items-center gap-2">
-                        <span>Take a quiz!</span>
+                        <span>Sign in to use Surprise Me</span>
                       </div>
-                    </Link>
-                  </DropdownMenuItem>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
             <div className="flex-1 hidden lg:flex flex-row justify-end items-center gap-1">
-              <Button variant="outline" className="px-2.5" asChild>
-                <Link href="/surprise-me">
+              {auth.isSignedIn ? (
+                <Button variant="outline" className="px-2.5" asChild>
+                  <Link href="/surprise-me">
+                    <div className="bg-background rounded-sm px-3 py-1.5 flex items-center gap-2">
+                      <Sparkles />
+                      <span className="hidden lg:block">Surprise Me!</span>
+                    </div>
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" className="px-2.5" disabled>
                   <div className="bg-background rounded-sm px-3 py-1.5 flex items-center gap-2">
                     <Sparkles />
                     <span className="hidden lg:block">Surprise Me!</span>
                   </div>
-                </Link>
-              </Button>
+                </Button>
+              )}
 
               <MapViewTabGroup />
             </div>
