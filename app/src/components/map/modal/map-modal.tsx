@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCallback } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMapModalStore } from "./map-modal-store";
@@ -35,6 +35,9 @@ export function MapModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
+      <DialogTitle className="sr-only">
+        Pop-up menu for {modalStore.action?.type}
+      </DialogTitle>
       <DialogContent className="w-auto sm:max-w-[80vw]">
         {modalStore.action?.type === "itinerary-poi-review" && (
           <POIReviewDialog options={modalStore.action.options} close={close} />
