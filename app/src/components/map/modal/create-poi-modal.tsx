@@ -97,7 +97,7 @@ export function CreatePOIDialog({
 
   const [filePending,setFilePending] = useState(false); //bool of whether a file is pending
   return (
-    <ScrollArea className="max-h-[85vh] w-auto">
+    <ScrollArea className="max-h-[85vh] w-[30vw]">
       <DialogHeader>
         <DialogTitle>Add a new POI</DialogTitle>
         <DialogDescription>

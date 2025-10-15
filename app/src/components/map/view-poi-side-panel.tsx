@@ -210,26 +210,33 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     <div className="w-full flex flex-col">
       <div className="w-full aspect-[4/3] relative">
         {poi.images.length > 0 && poi.images[0] !== "" ? (
-          <Image
-            src={
-              poi.images[0].startsWith("https://")
-                ? poi.images[0]
-                : `https://${poi.images[0]}`
-            }
-            alt={poi.name}
-            fill
-            className="object-cover cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              modalStore.setAction({
-                type: "poi-image-carousel",
-                options: {
-                  poiId: poi.id,
-                  name: poi.name,
-                },
-              });
-            }}
-          />
+          <div className="inline-block">
+            <Image
+              src={
+                poi.images[0].startsWith("https://")
+                  ? poi.images[0]
+                  : `https://${poi.images[0]}`
+              }
+              alt={poi.name}
+              fill
+              className="object-cover cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                modalStore.setAction({
+                  type: "poi-image-carousel",
+                  options: {
+                    poiId: poi.id,
+                    name: poi.name,
+                  },
+                });
+              }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800 opacity-70">
+              <p className="text-xs text-gray-300">
+                {poi.images.length} Image{poi.images.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
             <ImageIcon className="size-8" />
