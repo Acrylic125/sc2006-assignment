@@ -33,8 +33,6 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
     { enabled: !!auth.isSignedIn }
   );
 
-  // Delete review mutation
-  const deleteReviewMutation = trpc.review.deleteReview.useMutation();
   const utils = trpc.useUtils();
 
   const modalStore = useMapModalStore(
@@ -46,18 +44,13 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
   );
 
   const handleDeleteReview = (reviewId: number) => {
-    if (confirm("Are you sure you want to delete your review?")) {
-      deleteReviewMutation.mutate({ reviewId }, {
-        onSuccess: () => {
-          // Invalidate queries to refresh data
-          utils.review.getReviews.invalidate({ poiId });
-          utils.review.getUserReview.invalidate({ poiId });
-        },
-        onError: (error) => {
-          alert(`Failed to delete review: ${error.message}`);
-        }
-      });
-    }
+    modalStore.setAction({
+      type: "delete-review",
+      options: {
+        reviewId,
+        poiId,
+      },
+    });
   };
 
   if (reviewsQuery.isLoading) {
@@ -154,14 +147,9 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteReview(review.id)}
-                        disabled={deleteReviewMutation.isPending}
                         className="text-red-500 hover:text-red-700 p-1 h-auto"
                       >
-                        {deleteReviewMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          "Delete"
-                        )}
+                        Delete
                       </Button>
                     )}
                   </div>

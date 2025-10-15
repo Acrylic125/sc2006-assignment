@@ -82,7 +82,6 @@ export function ItineraryPOISortableItem({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const updateItineraryPOI = trpc.itinerary.updateItineraryPOI.useMutation();
-  const removePOIFromItinerary = trpc.itinerary.removePOIFromItinerary.useMutation();
   const utils = trpc.useUtils();
 
   // Function to handle POI deletion
@@ -92,25 +91,15 @@ export function ItineraryPOISortableItem({
     
     if (!mapStore.viewingItineraryId) return;
     
-    if (confirm(`Are you sure you want to remove "${poi.name}" from this itinerary?`)) {
-      removePOIFromItinerary.mutate(
-        {
-          itineraryId: mapStore.viewingItineraryId,
-          poiId: poi.id,
-        },
-        {
-          onSuccess: () => {
-            // Invalidate and refetch the itinerary data
-            utils.itinerary.getItinerary.invalidate({ id: mapStore.viewingItineraryId! });
-            // Also invalidate the map search to refresh POI colors
-            utils.map.search.invalidate();
-          },
-          onError: (error) => {
-            console.error("Failed to remove POI from itinerary:", error);
-          },
-        }
-      );
-    }
+    // Open the remove POI modal instead of using confirm
+    modalStore.setAction({
+      type: "remove-poi-from-itinerary",
+      options: {
+        itineraryId: mapStore.viewingItineraryId,
+        poiId: poi.id,
+        poiName: poi.name,
+      },
+    });
   };
 
   // Function to handle POI click and center map
@@ -259,7 +248,6 @@ export function ItineraryPOISortableItem({
         size="sm"
         className="h-8 w-8 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
         onClick={handleDeletePOI}
-        disabled={removePOIFromItinerary.isPending}
         data-no-dnd="true"
       >
         <Trash2 className="h-4 w-4" />
