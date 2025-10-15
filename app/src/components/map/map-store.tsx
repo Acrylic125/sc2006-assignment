@@ -37,6 +37,11 @@ type MapStore = {
   viewingPOI: ViewingPOI | null;
   currentMapTab: "explore" | "recommend";
   currentSidePanelTab: "itinerary" | "place";
+  viewState: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  };
   recommend: {
     recommendFromPos: Coordinates;
   };
@@ -45,6 +50,11 @@ type MapStore = {
     showUnvisited: boolean;
     excludedTags: Set<number>;
   };
+  setViewState: (viewState: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  }) => void;
   setViewingItineraryId: (itineraryId: number | null) => void;
   setCurrentMapTab: (tab: "explore" | "recommend") => void;
   setCurrentSidePanelTab: (tab: "itinerary" | "place") => void;
@@ -60,6 +70,11 @@ export const useMapStore = create<MapStore>((set) => ({
   viewingPOI: null,
   currentMapTab: "explore",
   currentSidePanelTab: "place",
+  viewState: {
+    latitude: 1.3521,
+    longitude: 103.8198,
+    zoom: 10,
+  },
   recommend: {
     recommendFromPos: { latitude: 1.3521, longitude: 103.8198 },
   },
@@ -68,6 +83,11 @@ export const useMapStore = create<MapStore>((set) => ({
     showUnvisited: true,
     excludedTags: new Set(),
   },
+  setViewState: (viewState: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  }) => set({ viewState }),
   setViewingItineraryId: (itineraryId: number | null) =>
     set({ viewingItineraryId: itineraryId }),
   setCurrentMapTab: (tab: "explore" | "recommend") =>
