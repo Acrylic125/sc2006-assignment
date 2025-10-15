@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MapEvent, MapMouseEvent } from "mapbox-gl";
 import { env } from "@/lib/env";
 
@@ -41,16 +41,19 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         viewingItineraryId,
         setCurrentSidePanelTab,
         setViewingPOI,
+        explore
       }) => {
         return {
           filters,
           viewingItineraryId,
           setCurrentSidePanelTab,
           setViewingPOI,
+          explorePos: explore.explorePos,
         };
       }
     )
   );
+
   const poisQuery = trpc.map.search.useQuery(
     {
       showVisited: mapStore.filters.showVisited,
@@ -115,6 +118,37 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+      </Source>
+      <Source
+        id="pin-from"
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [
+                  mapStore.explorePos.longitude,
+                  mapStore.explorePos.latitude,
+                ],
+              },
+              properties: { color: "red" },
+            },
+          ],
+        }}
+      >
+        <Layer
+          id="pin-from"
+          type="symbol"
+          source="pin-from"
+          layout={{
+            "icon-image": "pin-red",
+            "icon-size": 1,
+            "icon-anchor": "bottom",
           }}
         />
       </Source>
@@ -251,6 +285,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ({
         currentMapTab,
         setRecommendFromPos,
+        setExplorePos,
         setViewingPOI,
         setCurrentSidePanelTab,
         setViewState,
@@ -259,6 +294,7 @@ export default function ExploreMap({ className }: { className: string }) {
         return {
           currentMapTab,
           setRecommendFromPos,
+          setExplorePos,
           setViewingPOI,
           setCurrentSidePanelTab,
           setViewState,
@@ -300,6 +336,7 @@ export default function ExploreMap({ className }: { className: string }) {
     ]);
   }, []);
 
+  
   const onClick = useCallback(
     (e: MapMouseEvent) => {
       const map = e.target;
@@ -312,6 +349,10 @@ export default function ExploreMap({ className }: { className: string }) {
           if (poiId) {
             mapStore.setViewingPOI({ type: "existing-poi", poiId });
             mapStore.setCurrentSidePanelTab("place");
+            if (poiPins[0].geometry?.type === 'Point') {
+              const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
+              mapStore.setExplorePos({ latitude: coords[1], longitude: coords[0] });
+            }
           }
           return;
         }
@@ -323,10 +364,15 @@ export default function ExploreMap({ className }: { className: string }) {
           latitude: e.lngLat.lat,
           longitude: e.lngLat.lng,
         });
-      }
-
+      } 
       // For explore map.
-      // TODO: Add stuff here for explore map.
+      else if (mapStore.currentMapTab == "explore") {
+        // TODO: Add stuff here for explore map.
+        const pos = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
+        mapStore.setExplorePos(pos);
+        mapStore.setViewingPOI({ type: "new-poi", pos });
+        mapStore.setCurrentSidePanelTab("place");
+      }
     },
     [mapStore]
   );
