@@ -38,9 +38,78 @@ export default function SurpriseMePage() {
 
   const router = useRouter();
   const auth = useAuth();
+  // Get user tag preferences (returns id, name, likedScore where missing -> 0)
+  const tagPrefsQuery = trpc.map.getUserTagPreferences.useQuery(undefined, {
+    enabled: auth.isLoaded, // load when auth is ready
+  });
+
+  // Mutation to record user liking a POI (server still records per-POI liked boolean)
+  const indicatePreferenceMutation = trpc.experimental.indicatePreference.useMutation();
+  // Mutation to log tag weights on server
+  const logTagWeightsMutation = trpc.experimental.logTagWeights.useMutation();
+
+  // Local ordered POIs computed from preferences (falls back to server POIs order)
+  const [orderedPois, setOrderedPois] = useState<POI[] | null>(null);
 
   // Fetch POIs using tRPC
   const { data: pois, isLoading, error } = trpc.pois.getPois.useQuery<POI[]>();
+
+  // Helper: shuffle array (declare before any early returns so hooks order is stable)
+  const shuffle = <T,>(arr: T[]) => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  // Build ordered POIs when pois or preferences change
+  useEffect(() => {
+    if (!pois) return;
+
+    const tagPrefs = tagPrefsQuery.data ?? [];
+    // Map tag name -> score
+    const tagScoreMap = new Map<string, number>();
+    tagPrefs.forEach((t) => tagScoreMap.set(t.name, t.likedScore ?? 0));
+
+    // Preferred tags: those with score > 0
+    const preferredTags = new Set<string>();
+    for (const [name, score] of tagScoreMap.entries()) {
+      if (score > 0) preferredTags.add(name);
+    }
+
+    // Split POIs into preferred (has at least one preferred tag) and others
+    const preferred = pois.filter((p) => p.tags.some((tag) => preferredTags.has(tag)));
+    const others = pois.filter((p) => !p.tags.some((tag) => preferredTags.has(tag)));
+
+    // Shuffle both lists
+    const prefShuffled = shuffle(preferred);
+    const otherShuffled = shuffle(others);
+
+    // Build the first 5: up to 3 from preferred, up to 2 random from others
+    const firstFive: POI[] = [];
+    for (let i = 0; i < 3 && i < prefShuffled.length; i++) firstFive.push(prefShuffled[i]);
+    for (let i = 0; i < 2 && i < otherShuffled.length; i++) firstFive.push(otherShuffled[i]);
+
+    // If we didn't reach 5, fill from remaining shuffled combined
+    const remaining = shuffle(pois.filter((p) => !firstFive.includes(p)));
+    while (firstFive.length < Math.min(5, pois.length) && remaining.length > 0) {
+      firstFive.push(remaining.shift() as POI);
+    }
+
+    // Final ordered list: firstFive followed by rest (excluding any already in firstFive)
+    const rest = pois.filter((p) => !firstFive.includes(p));
+    setOrderedPois([...firstFive, ...rest]);
+  }, [pois, tagPrefsQuery.data]);
+
+  // Initialize local tagWeights from server preferences (tag name -> score)
+  useEffect(() => {
+    if (!tagPrefsQuery.data) return;
+    const m = new Map<string, number>();
+    tagPrefsQuery.data.forEach((t) => m.set(t.name, t.likedScore ?? 0));
+    setTagWeights(m);
+  }, [tagPrefsQuery.data]);
   
   // Get user's itineraries (only if authenticated)
   const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery(undefined, {
@@ -142,7 +211,8 @@ export default function SurpriseMePage() {
     return <div>No POIs available</div>;
   }
 
-  const currentPOI = pois[currentIndex];
+  const currentPOI = (orderedPois ?? pois)[currentIndex];
+
 
   // Function to handle adding POI to an itinerary
   const handleAddToItinerary = (poiId: number, itineraryId?: number) => {
@@ -206,13 +276,23 @@ export default function SurpriseMePage() {
     setLikedPOIs((prev) => [...prev, currentPOI]);
 
     // Update tag weights
-    currentPOI.tags.forEach((tag) => {
-      setTagWeights((prev) => {
-        const newWeights = new Map(prev);
-        newWeights.set(tag, (newWeights.get(tag) || 0) + 1);
-        return newWeights;
+    // Increase local tag weight by 1, cap at 5
+    setTagWeights((prev) => {
+      const newWeights = new Map(prev);
+      currentPOI.tags.forEach((tag) => {
+        const prevScore = newWeights.get(tag) ?? 0;
+        const next = Math.min(5, prevScore + 1);
+        newWeights.set(tag, next);
       });
+      return newWeights;
     });
+
+    // Record preference on server (per-POI). Server aggregation is separate.
+    try {
+      indicatePreferenceMutation.mutate({ poiId: currentPOI.id, liked: true });
+    } catch (e) {
+      console.error("Failed to indicate preference:", e);
+    }
 
     // Move to the next POI
     setCurrentIndex((prev) => prev + 1);
@@ -221,6 +301,23 @@ export default function SurpriseMePage() {
 
   const handleDislike = () => {
     if (!currentPOI) return;
+    // Decrease local tag weight by 1, floor at -5
+    setTagWeights((prev) => {
+      const newWeights = new Map(prev);
+      currentPOI.tags.forEach((tag) => {
+        const prevScore = newWeights.get(tag) ?? 0;
+        const next = Math.max(-5, prevScore - 1);
+        newWeights.set(tag, next);
+      });
+      return newWeights;
+    });
+
+    // Record dislike on server (per-POI). Server aggregation is separate.
+    try {
+      indicatePreferenceMutation.mutate({ poiId: currentPOI.id, liked: false });
+    } catch (e) {
+      console.error("Failed to indicate preference (dislike):", e);
+    }
 
     // Move to the next POI
     setCurrentIndex((prev) => prev + 1);
@@ -268,7 +365,26 @@ export default function SurpriseMePage() {
             >
               <h4 className="text-lg font-bold">{poi.name}</h4>
               <p className="text-sm text-gray-400">{poi.description}</p>
-              
+              {/* Tags for liked POI */}
+              {poi.tags && poi.tags.length > 0 && (
+                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {poi.tags.map((tag) => (
+                    <span
+                      key={`${poi.id}-tag-${tag}`}
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        color: "#ddd",
+                        padding: "4px 8px",
+                        borderRadius: 9999,
+                        fontSize: "0.8rem",
+                        border: "1px solid rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* POI Image */}
               {poi.imageUrl && (
                 <img
@@ -398,7 +514,16 @@ export default function SurpriseMePage() {
           </p>
         )}
         <button
-          onClick={() => router.push("/")}
+          onClick={async () => {
+            try {
+              const obj: Record<string, number> = {};
+              tagWeights.forEach((v, k) => (obj[k] = v));
+              await logTagWeightsMutation.mutateAsync(obj);
+            } catch (e) {
+              console.error("Failed to log tag weights on server:", e);
+            }
+            router.push("/");
+          }}
           className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition mt-6"
         >
           Exit
@@ -441,7 +566,16 @@ export default function SurpriseMePage() {
       >
         {/* Home Button Overlay */}
         <button
-        onClick={() => router.push("/")}
+        onClick={async () => {
+          try {
+            const obj: Record<string, number> = {};
+            tagWeights.forEach((v, k) => (obj[k] = v));
+            await logTagWeightsMutation.mutateAsync(obj);
+          } catch (e) {
+            console.error("Failed to log tag weights on server:", e);
+          }
+          router.push("/");
+        }}
         style={{
           position: "absolute",
           top: 16,
@@ -626,7 +760,7 @@ export default function SurpriseMePage() {
         </div>
       </motion.div>
   
-      {/* Name and Description */}
+      {/* Name, Description, and Tags */}
       <div
         style={{
           textAlign: "center",
@@ -636,6 +770,27 @@ export default function SurpriseMePage() {
       >
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{currentPOI.name}</h1>
         <p style={{ fontSize: "1rem", color: "#ccc" }}>{currentPOI.description}</p>
+
+        {/* Tags */}
+        {currentPOI.tags && currentPOI.tags.length > 0 && (
+          <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            {currentPOI.tags.map((tag) => (
+              <span
+                key={tag}
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  color: "#ddd",
+                  padding: "6px 10px",
+                  borderRadius: 9999,
+                  fontSize: "0.85rem",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
   
       {/* Progress Indicator */}

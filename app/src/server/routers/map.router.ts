@@ -5,6 +5,7 @@ import {
   publicOrProtectedProcedure,
   publicProcedure,
 } from "../trpc";
+import { cookies } from "next/headers";
 import { db } from "@/db";
 import {
   itineraryPOITable,
@@ -124,6 +125,33 @@ export const mapRouter = createTRPCRouter({
       .select({ id: tagTable.id, name: tagTable.name })
       .from(tagTable);
     return tags;
+  }),
+  getUserTagPreferences: publicOrProtectedProcedure.query(async ({ ctx }) => {
+    const tags = await db
+      .select({ id: tagTable.id, name: tagTable.name })
+      .from(tagTable);
+    // Prefer authenticated Clerk user id, but fall back to the experimental cookie-based fakeUserId
+    const c = await cookies();
+    const fakeUserId = c.get("fakeUserId")?.value;
+    const effectiveUserId = ctx.auth.userId ?? fakeUserId;
+
+    if (!effectiveUserId) {
+      return tags.map((t) => ({ id: t.id, name: t.name, likedScore: 0 }));
+    }
+
+    const userPreferences = await db
+      .select({ tagId: poiTagTable.tagId, likedScore: sql<number>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)` })
+      .from(userSurpriseMePreferencesTable)
+      .innerJoin(poiTagTable, eq(userSurpriseMePreferencesTable.poiId, poiTagTable.poiId))
+      .where(eq(userSurpriseMePreferencesTable.userId, effectiveUserId))
+      .groupBy(poiTagTable.tagId);
+
+    const prefMap = new Map<number, number>();
+    for (const p of userPreferences) {
+      prefMap.set(p.tagId, p.likedScore);
+    }
+
+    return tags.map((t) => ({ id: t.id, name: t.name, likedScore: prefMap.get(t.id) || 0 }));
   }),
   search: publicProcedure
     .input(

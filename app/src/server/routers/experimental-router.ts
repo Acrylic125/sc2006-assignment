@@ -16,11 +16,13 @@ export const experimentalRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const c = await cookies();
 
+      // Prefer authenticated Clerk user id, fallback to cookie-based fakeUserId
       const fakeUserId = c.get("fakeUserId")?.value;
-      if (!fakeUserId) {
+      const effectiveUserId = ctx.auth?.userId ?? fakeUserId;
+      if (!effectiveUserId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "No fake user id",
+          message: "No user id available",
         });
       }
       await db
@@ -28,7 +30,7 @@ export const experimentalRouter = createTRPCRouter({
         .values({
           poiId: input.poiId,
           liked: input.liked,
-          userId: fakeUserId,
+          userId: effectiveUserId,
         })
         .onConflictDoUpdate({
           target: [
@@ -39,5 +41,16 @@ export const experimentalRouter = createTRPCRouter({
             liked: input.liked,
           },
         });
+    }),
+  // Log tag weights sent from client for server-side terminal output
+  logTagWeights: publicProcedure
+    .input(z.record(z.string(), z.number()))
+    .mutation(async ({ input }) => {
+      try {
+        console.log("SurpriseMe tag weights (server):", input);
+      } catch (e) {
+        console.error("Failed to log tag weights on server:", e);
+      }
+      return { ok: true };
     }),
 });
