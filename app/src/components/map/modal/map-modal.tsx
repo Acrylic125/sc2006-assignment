@@ -22,35 +22,21 @@ export function MapModal() {
       };
     })
   );
-  
+
   const utils = trpc.useUtils();
-  
+
   const setOpen = useCallback(
     (open: boolean) => {
       modalStore.setAction(null);
     },
     [modalStore]
   );
-  
+
   const close = useCallback(() => {
-    console.log("closing");
     modalStore.setAction(null);
   }, [modalStore]);
 
-  const handleItinerarySuccess = useCallback(() => {
-    // Invalidate itinerary queries to refresh the dropdown
-    utils.itinerary.getAllItineraries.invalidate();
-  }, [utils]);
-
-  const handlePOIRemovalSuccess = useCallback((itineraryId: number) => {
-    // Invalidate specific itinerary and map search queries
-    utils.itinerary.getItinerary.invalidate({ id: itineraryId });
-    utils.map.search.invalidate();
-  }, [utils]);
-
-  console.log(modalStore.action);
   const isOpen = modalStore.action !== null;
-  console.log(isOpen);
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
@@ -62,8 +48,8 @@ export function MapModal() {
           <POIReviewDialog options={modalStore.action.options} close={close} />
         )}
         {modalStore.action?.type === "create-itinerary" && (
-          <CreateItineraryDialog 
-            close={close} 
+          <CreateItineraryDialog
+            close={close}
             poiId={modalStore.action.options.poiId}
           />
         )}
@@ -72,7 +58,6 @@ export function MapModal() {
             itineraryId={modalStore.action.options.itineraryId}
             itineraryName={modalStore.action.options.itineraryName}
             close={close}
-            onSuccess={handleItinerarySuccess}
           />
         )}
         {modalStore.action?.type === "rename-itinerary" && (
@@ -80,7 +65,6 @@ export function MapModal() {
             itineraryId={modalStore.action.options.itineraryId}
             currentName={modalStore.action.options.currentName}
             close={close}
-            onSuccess={handleItinerarySuccess}
           />
         )}
         {modalStore.action?.type === "remove-poi-from-itinerary" && (
@@ -89,7 +73,6 @@ export function MapModal() {
             poiId={modalStore.action.options.poiId}
             poiName={modalStore.action.options.poiName}
             close={close}
-            onSuccess={() => handlePOIRemovalSuccess((modalStore.action as any).options.itineraryId)}
           />
         )}
         {modalStore.action?.type === "delete-review" && (

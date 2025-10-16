@@ -22,23 +22,25 @@ import { Loader2, Pen } from "lucide-react";
 import { useEffect } from "react";
 
 const RenameItineraryFormSchema = z.object({
-  name: z.string().min(1, "Itinerary name is required").max(128, "Name must be less than 128 characters"),
+  name: z
+    .string()
+    .min(1, "Itinerary name is required")
+    .max(128, "Name must be less than 128 characters"),
 });
 
 export function RenameItineraryModal({
   itineraryId,
   currentName,
   close,
-  onSuccess,
 }: {
   itineraryId: number;
   currentName: string;
   close: () => void;
-  onSuccess?: () => void;
 }) {
+  const utils = trpc.useUtils();
   const renameItineraryMutation = trpc.itinerary.renameItinerary.useMutation({
     onSuccess: () => {
-      onSuccess?.();
+      utils.itinerary.getAllItineraries.invalidate();
       close();
     },
     onError: (error) => {
@@ -55,7 +57,9 @@ export function RenameItineraryModal({
 
   // Focus and select the input text when modal opens
   useEffect(() => {
-    const input = document.querySelector('input[name="name"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[name="name"]'
+    ) as HTMLInputElement;
     if (input) {
       input.focus();
       input.select();
@@ -64,7 +68,7 @@ export function RenameItineraryModal({
 
   const onSubmit = (data: z.infer<typeof RenameItineraryFormSchema>) => {
     const trimmedName = data.name.trim();
-    
+
     // Don't submit if name hasn't changed
     if (trimmedName === currentName.trim()) {
       close();
