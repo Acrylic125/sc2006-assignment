@@ -35,6 +35,7 @@ import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 registerPlugin(
   FilePondPluginImageExifOrientation,
@@ -171,8 +172,15 @@ export function CreatePOIDialog({
             {tagsQuery.data?.map((tag) => (
               <Badge 
                 key={tag.id} 
-                variant="secondary"
-                className={`${selectedTags.includes(tag.id) ? "bg-green-300" : ""} cursor-pointer`}
+                className={cn({
+                  "dark:bg-green-300": selectedTags.includes(tag.id),
+                  "dark:text-neutral-100": !selectedTags.includes(tag.id),
+                  "bg-green-400": selectedTags.includes(tag.id),
+                  "text-black": true,
+                }, "cursor-pointer")}
+                variant={!selectedTags.includes(tag.id) ? "secondary" : "default"}
+                //variant="secondary"
+                //className={`${selectedTags.includes(tag.id) ? "bg-green-300" : ""} cursor-pointer`}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (selectedTags.includes(tag.id)) {
