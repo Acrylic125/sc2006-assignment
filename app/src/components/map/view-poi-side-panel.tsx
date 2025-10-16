@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { formatDurationToClosestUnit } from "@/lib/utils";
+import { cn, formatDurationToClosestUnit } from "@/lib/utils";
 import { useAuth } from "@clerk/nextjs";
 import {
   ImageIcon,
@@ -25,6 +25,7 @@ import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
+import { useMemo } from "react";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -242,10 +243,52 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     }
   );
   const poiTagQuery = trpc.map.getPOITags.useQuery({
-    poiId: poiId ?? 0,
-    excludedTags: Array.from(mapStore.excludedTags),
-    tagIdOrder: mapStore.tagBadgeOrder,
+    poiId,
+    // excludedTags: Array.from(mapStore.excludedTags),
+    // tagIdOrder: mapStore.tagBadgeOrder,
   });
+
+  const sortedTags = useMemo(() => {
+    const tagNames = poiTagQuery.data;
+    if (tagNames === undefined) {
+      return { tagsData: [], tagOrder: [] };
+    }
+    // Do sorting in here using poiTagQuery.data
+    const filteredTagNames = tagNames.map((tag) => ({
+      tagId: tag.tagId,
+      name: tag.name,
+      excluded: mapStore.excludedTags.has(tag.tagId),
+    }));
+
+    if (mapStore.tagBadgeOrder.length === 0) {
+      //console.log(sortedTagNames)
+      const sortedTagNames = [
+        ...filteredTagNames.sort((a, b) => {
+          if (a.excluded === b.excluded)
+            return 0; //if filter state is same, keep order
+          else if (a.excluded)
+            return 1; //if a has been filtered away but not b, place at the end
+          else return -1; //else place it infront of b
+        }),
+      ];
+      const tagOrderData = sortedTagNames.map((item) => item.tagId);
+      return { tagsData: sortedTagNames, tagOrder: tagOrderData };
+    }
+    //console.log(filteredTagNames)
+    const sortedTagNames = [
+      ...filteredTagNames.sort((a, b) => {
+        const aIndex = mapStore.tagBadgeOrder.indexOf(a.tagId);
+        const bIndex = mapStore.tagBadgeOrder.indexOf(b.tagId);
+        if (aIndex === bIndex)
+          return 0; //if id is same, keep order
+        else if (aIndex > bIndex)
+          return 1; //if a has been filtered away but not b, place at the end
+        else return -1; //else place it infront of b
+      }),
+    ];
+    const tagOrderData = sortedTagNames.map((item) => item.tagId);
+    return { tagsData: sortedTagNames, tagOrder: tagOrderData };
+  }, [poiTagQuery.data, mapStore.excludedTags, mapStore.tagBadgeOrder]);
 
   // Get user's itineraries
   const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
@@ -290,10 +333,11 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   }
 
   const poi = poiQuery.data;
-  const poiTags = poiTagQuery.data?.tagsData;
+  const poiTags = sortedTags.tagsData;
   // TODO: Whats the purpose of this?
-  const poiTagsOrder = poiTagQuery.data?.tagOrder ?? [];
+  const poiTagsOrder = sortedTags.tagOrder;
 
+  console.log(poiTags);
   if (
     poi === null ||
     poi === undefined ||
@@ -529,6 +573,33 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       <div className="flex flex-col p-1">
         <h1 className="text-base font-bold">{poi.name}</h1>
         <p className="text-sm text-muted-foreground">{poi.description}</p>
+        <div className="flex flex-wrap gap-1 p-2">
+          {poiTags.map((tagdata) => (
+            <Badge
+              key={tagdata.tagId}
+              // className={cn({
+              //   "dark:bg-green-300": !tagdata.excluded,
+              //   "dark:bg-red-300": tagdata.excluded,
+              // })}
+              variant={tagdata.excluded ? "secondary" : "default"}
+              // className={`${!tagdata.excluded ? "bg-green-300" : ""} cursor-pointer`}
+              onClick={(e) => {
+                e.stopPropagation();
+                mapStore.setTagBadgeOrder(poiTagsOrder);
+                const currentExcludedTags = new Set(mapStore.excludedTags);
+                if (mapStore.excludedTags.has(tagdata.tagId ?? -1)) {
+                  currentExcludedTags.delete(tagdata.tagId ?? -1);
+                  mapStore.setFilterExcludedTags(currentExcludedTags);
+                } else {
+                  currentExcludedTags.add(tagdata.tagId ?? -1);
+                  mapStore.setFilterExcludedTags(currentExcludedTags);
+                }
+              }}
+            >
+              {tagdata.name}
+            </Badge>
+          ))}
+        </div>
         <div className="flex flex-col gap-1 py-4">
           <Button variant="ghost" asChild className="w-fit p-0">
             <a

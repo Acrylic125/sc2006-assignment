@@ -42,7 +42,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         viewingPOI,
         setCurrentSidePanelTab,
         setViewingPOI,
-        explore
+        explore,
       }) => {
         return {
           filters,
@@ -81,12 +81,15 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue"; // default
-      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
         color = "red"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
-      
+
       return {
         id: poi.id,
         color: color,
@@ -217,12 +220,15 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue"; // default
-      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
         color = "red"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
-      
+
       return {
         id: poi.id,
         color: color,
@@ -374,7 +380,7 @@ export default function ExploreMap({ className }: { className: string }) {
   );
   const onLoad = useCallback(async (e: MapEvent) => {
     const map = e.target;
-    
+
     const ensurePinImage = async (color: keyof typeof pins) => {
       if (map.hasImage(`pin-${color}`)) return;
       const img = new Image();
@@ -398,9 +404,8 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("blue"),
       ensurePinImage("orange"),
     ]);
-  }, [mapStore]);
+  }, []);
 
-  
   const onClick = useCallback(
     (e: MapMouseEvent) => {
       const map = e.target;
@@ -414,10 +419,16 @@ export default function ExploreMap({ className }: { className: string }) {
             mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
             mapStore.setViewingPOI({ type: "existing-poi", poiId });
             mapStore.setCurrentSidePanelTab("place");
-            if (poiPins[0].geometry?.type === 'Point') {
+            if (poiPins[0].geometry?.type === "Point") {
               const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
-              mapStore.setExplorePos({ latitude: coords[1], longitude: coords[0] });
-              mapStore.setRecommendViewPos({ latitude: coords[1], longitude: coords[0] });
+              mapStore.setExplorePos({
+                latitude: coords[1],
+                longitude: coords[0],
+              });
+              mapStore.setRecommendViewPos({
+                latitude: coords[1],
+                longitude: coords[0],
+              });
             }
           }
           return;
@@ -430,7 +441,7 @@ export default function ExploreMap({ className }: { className: string }) {
           latitude: e.lngLat.lat,
           longitude: e.lngLat.lng,
         });
-      } 
+      }
       // For explore map.
       else if (mapStore.currentMapTab == "explore") {
         // TODO: Add stuff here for explore map.

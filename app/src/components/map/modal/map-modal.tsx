@@ -40,7 +40,7 @@ export function MapModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent className="max-w-none w-fit">
         <VisuallyHidden>
           <DialogTitle>Modal</DialogTitle>
         </VisuallyHidden>
