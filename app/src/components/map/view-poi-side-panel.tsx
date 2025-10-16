@@ -11,6 +11,7 @@ import {
   MessageSquareWarning,
   Navigation,
   Plus,
+  Pointer,
   ThumbsDown,
   ThumbsUp,
   Upload,
@@ -244,8 +245,6 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   );
   const poiTagQuery = trpc.map.getPOITags.useQuery({
     poiId,
-    // excludedTags: Array.from(mapStore.excludedTags),
-    // tagIdOrder: mapStore.tagBadgeOrder,
   });
 
   const sortedTags = useMemo(() => {
@@ -577,12 +576,13 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
           {poiTags.map((tagdata) => (
             <Badge
               key={tagdata.tagId}
-              // className={cn({
-              //   "dark:bg-green-300": !tagdata.excluded,
-              //   "dark:bg-red-300": tagdata.excluded,
-              // })}
+               className={cn({
+                 "dark:bg-green-300": !tagdata.excluded,
+                 "dark:text-neutral-100": tagdata.excluded,
+                 "bg-green-400": !tagdata.excluded,
+                 "text-black": true,
+               }, "cursor-pointer")}
               variant={tagdata.excluded ? "secondary" : "default"}
-              // className={`${!tagdata.excluded ? "bg-green-300" : ""} cursor-pointer`}
               onClick={(e) => {
                 e.stopPropagation();
                 mapStore.setTagBadgeOrder(poiTagsOrder);
@@ -601,18 +601,28 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
           ))}
         </div>
         <div className="flex flex-col gap-1 py-4">
-          <Button variant="ghost" asChild className="w-fit p-0">
-            <a
-              href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
-              //if wanna open directions mode right away in G maps
-              //href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(poi.name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Navigation />
-              Navigate
-            </a>
-          </Button>
+          <div className="flex w-full items-center justify-between">
+            <Button variant="ghost" asChild className="w-fit p-0">
+              <a
+                href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+                //if wanna open directions mode right away in G maps
+                //href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(poi.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Navigation />
+                Navigate
+              </a>
+            </Button>
+            <Button variant="ghost" asChild className="w-fit p-0">
+              <a
+                href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}
+              >
+                <MessageSquareWarning />
+                Report
+              </a>
+            </Button>
+          </div>
           <Button
             className="w-full truncate"
             size="sm"
