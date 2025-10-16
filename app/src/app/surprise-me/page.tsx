@@ -107,7 +107,7 @@ export default function SurpriseMePage() {
   useEffect(() => {
     if (!tagPrefsQuery.data) return;
     const m = new Map<string, number>();
-    tagPrefsQuery.data.forEach((t) => m.set(t.name, t.likedScore ?? 0));
+    tagPrefsQuery.data.forEach((t) => m.set(t.name, Number(t.likedScore ?? 0)));
     setTagWeights(m);
   }, [tagPrefsQuery.data]);
   
@@ -517,7 +517,7 @@ export default function SurpriseMePage() {
           onClick={async () => {
             try {
               const obj: Record<string, number> = {};
-              tagWeights.forEach((v, k) => (obj[k] = v));
+              tagWeights.forEach((v, k) => (obj[k] = Number(v)));
               await logTagWeightsMutation.mutateAsync(obj);
             } catch (e) {
               console.error("Failed to log tag weights on server:", e);
@@ -569,7 +569,7 @@ export default function SurpriseMePage() {
         onClick={async () => {
           try {
             const obj: Record<string, number> = {};
-            tagWeights.forEach((v, k) => (obj[k] = v));
+            tagWeights.forEach((v, k) => (obj[k] = Number(v)));
             await logTagWeightsMutation.mutateAsync(obj);
           } catch (e) {
             console.error("Failed to log tag weights on server:", e);
