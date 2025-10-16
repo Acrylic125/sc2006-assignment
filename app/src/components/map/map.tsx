@@ -39,12 +39,14 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       ({
         filters,
         viewingItineraryId,
+        viewingPOI,
         setCurrentSidePanelTab,
         setViewingPOI,
       }) => {
         return {
           filters,
           viewingItineraryId,
+          viewingPOI,
           setCurrentSidePanelTab,
           setViewingPOI,
         };
@@ -73,12 +75,22 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
-    return poisQuery.data?.map((poi) => ({
-      id: poi.id,
-      color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
-      coordinates: [poi.pos.longitude, poi.pos.latitude],
-    }));
-  }, [poisQuery.data, itinerariesQuery.data]);
+    return poisQuery.data?.map((poi) => {
+      // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
+      let color = "blue"; // default
+      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+        color = "red"; // currently selected POI
+      } else if (itineraryPOISSet.has(poi.id)) {
+        color = "green"; // POI in current itinerary
+      }
+      
+      return {
+        id: poi.id,
+        color: color,
+        coordinates: [poi.pos.longitude, poi.pos.latitude],
+      };
+    });
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
@@ -127,6 +139,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
       ({
         filters,
         viewingItineraryId,
+        viewingPOI,
         setCurrentSidePanelTab,
         setViewingPOI,
         recommend,
@@ -134,6 +147,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         return {
           filters,
           viewingItineraryId,
+          viewingPOI,
           setCurrentSidePanelTab,
           setViewingPOI,
           recommendFromPos: recommend.recommendFromPos,
@@ -164,12 +178,22 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
-    return poisQuery.data?.map((poi) => ({
-      id: poi.id,
-      color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
-      coordinates: [poi.pos.longitude, poi.pos.latitude],
-    }));
-  }, [poisQuery.data, itinerariesQuery.data]);
+    return poisQuery.data?.map((poi) => {
+      // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
+      let color = "blue"; // default
+      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+        color = "red"; // currently selected POI
+      } else if (itineraryPOISSet.has(poi.id)) {
+        color = "green"; // POI in current itinerary
+      }
+      
+      return {
+        id: poi.id,
+        color: color,
+        coordinates: [poi.pos.longitude, poi.pos.latitude],
+      };
+    });
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
@@ -274,6 +298,7 @@ export default function ExploreMap({ className }: { className: string }) {
   );
   const onLoad = useCallback(async (e: MapEvent) => {
     const map = e.target;
+    
     const ensurePinImage = async (color: keyof typeof pins) => {
       if (map.hasImage(`pin-${color}`)) return;
       const img = new Image();
@@ -296,7 +321,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("green"),
       ensurePinImage("blue"),
     ]);
-  }, []);
+  }, [mapStore]);
 
   const onClick = useCallback(
     (e: MapMouseEvent) => {

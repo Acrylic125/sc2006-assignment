@@ -3,7 +3,7 @@
 import { useMapStore } from "@/components/map/map-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Check, List } from "lucide-react";
+import { Check, List, Trash2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import {
   arrayMove,
@@ -65,9 +65,12 @@ export function ItineraryPOISortableItem({
     })
   );
   const mapStore = useMapStore(
-    useShallow(({ viewingItineraryId }) => {
+    useShallow(({ viewingItineraryId, setViewingPOI, setCurrentSidePanelTab, setViewState }) => {
       return {
         viewingItineraryId,
+        setViewingPOI,
+        setCurrentSidePanelTab,
+        setViewState,
       };
     })
   );
@@ -80,6 +83,49 @@ export function ItineraryPOISortableItem({
 
   const updateItineraryPOI = trpc.itinerary.updateItineraryPOI.useMutation();
   const utils = trpc.useUtils();
+
+  // Function to handle POI deletion
+  const handleDeletePOI = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    if (!mapStore.viewingItineraryId) return;
+    
+    // Open the remove POI modal instead of using confirm
+    modalStore.setAction({
+      type: "remove-poi-from-itinerary",
+      options: {
+        itineraryId: mapStore.viewingItineraryId,
+        poiId: poi.id,
+        poiName: poi.name,
+      },
+    });
+  };
+
+  // Function to handle POI click and center map
+  const handlePOIClick = async (poiId: number) => {
+    try {
+      // Get POI details including coordinates
+      const poiData = await utils.map.getPOI.fetch({ id: poiId });
+      if (poiData) {
+        // Center the map on the POI
+        mapStore.setViewState({
+          latitude: Number(poiData.latitude),
+          longitude: Number(poiData.longitude),
+          zoom: 15,
+        });
+      }
+      // Set the viewing POI to this POI
+      mapStore.setViewingPOI({ type: "existing-poi", poiId: poiId });
+      // Switch to the place tab to show the POI details
+      mapStore.setCurrentSidePanelTab("place");
+    } catch (error) {
+      console.error("Failed to get POI data:", error);
+      // Still switch to the POI view even if centering fails
+      mapStore.setViewingPOI({ type: "existing-poi", poiId: poiId });
+      mapStore.setCurrentSidePanelTab("place");
+    }
+  };
 
   return (
     <div
@@ -187,9 +233,29 @@ export function ItineraryPOISortableItem({
           })}
         />
       </div>
-      <div className="flex flex-row items-center h-full flex-1">
-        <h3>{poi.name}</h3>
+
+      {/* Clickable POI content */}
+      <div 
+        className="flex flex-row items-center h-full flex-1 cursor-pointer hover:bg-accent/50 rounded-sm px-2 py-1 transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          handlePOIClick(poi.id);
+        }}
+      >
+        <h3 className="select-none flex-1">{poi.name}</h3>
       </div>
+
+      {/* Delete button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        onClick={handleDeletePOI}
+        data-no-dnd="true"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -203,9 +269,18 @@ export function ViewItineraryPanel() {
     })
   );
   const sensors = useSensors(
-    // useSensor(PointerSensor),
-    useSensor(TouchSensor),
-    useSensor(MouseSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 500, // 500ms long press for touch devices
+        tolerance: 5,
+      },
+    }),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        delay: 300, // 300ms long press for mouse
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -223,14 +298,16 @@ export function ViewItineraryPanel() {
   const updateItineraryPOIOrderMutation =
     trpc.itinerary.updateItineraryPOIOrder.useMutation({
       onSuccess: (data, input) => {
-        // We treat the itinerary as our single source of truth
-        // for the itinerary data.
+        // Update the itinerary data in the cache
         utils.itinerary.getItinerary.setData(
           {
             id: input.itineraryId,
           },
           data
         );
+      },
+      onError: (error) => {
+        console.error("Failed to update POI order:", error);
       },
     });
 
@@ -249,40 +326,22 @@ export function ViewItineraryPanel() {
       if (oldIndex === newIndex) return;
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const pois = arrayMove(itinerary.pois, oldIndex, newIndex);
-      pois.forEach((poi, i) => {
-        poi.orderPriority = i;
+      const updatedPOIs = arrayMove(itinerary.pois, oldIndex, newIndex);
+      updatedPOIs.forEach((poi, index) => {
+        poi.orderPriority = index + 1; // Use 1-based ordering to match existing data
       });
 
+      // Optimistically update the cache
       utils.itinerary.getItinerary.setData(
-        {
-          id: itineraryId,
-        },
-        {
-          ...itinerary,
-          pois: pois,
-        }
+        { id: itineraryId },
+        { ...itinerary, pois: updatedPOIs }
       );
-      updateItineraryPOIOrderMutation.mutate(
-        {
-          itineraryId: itineraryId,
-          pois: pois.map((poi) => ({
-            id: poi.id,
-            orderPriority: poi.orderPriority,
-          })),
-        },
-        {
-          onError: (error) => {
-            console.error(error);
-            utils.itinerary.getItinerary.setData(
-              {
-                id: itineraryId,
-              },
-              itinerary
-            );
-          },
-        }
-      );
+
+      // Send the update to the server
+      updateItineraryPOIOrderMutation.mutate({
+        itineraryId,
+        pois: updatedPOIs.map((poi) => ({ id: poi.id, orderPriority: poi.orderPriority })),
+      });
     }
   };
 

@@ -63,7 +63,7 @@ type MapStore = {
   setViewingPOI: (poi: ViewingPOI) => void;
 };
 
-export const useMapStore = create<MapStore>((set) => ({
+export const useMapStore = create<MapStore>((set, get) => ({
   viewingItineraryId: null,
   viewingPOI: null,
   currentMapTab: "explore",
