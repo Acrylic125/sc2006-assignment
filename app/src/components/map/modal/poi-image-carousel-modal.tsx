@@ -88,7 +88,7 @@ export function POIImageCarouselDialog({
 
   //overflow-hidden is needed or swiper slides will flicker
   return (
-    <div className="h-[75vh] overflow-hidden">
+    <div className="w-full overflow-hidden">
       <DialogHeader>
         <DialogTitle className="mb-4">{options.name}</DialogTitle>
       </DialogHeader>
@@ -108,7 +108,7 @@ export function POIImageCarouselDialog({
         mousewheel={{ enabled: true }}
         navigation={{ enabled: false }}
         centeredSlides={true}
-        className="h-[70vh]"
+        className="w-full"
       >
         {images.map((image, index) => (
           <SwiperSlide key={index} virtualIndex={index}>
@@ -118,17 +118,20 @@ export function POIImageCarouselDialog({
                   <Skeleton className="absolute inset-0 w-full h-full rounded-md" />
                 </div>
               )}
-              <Image
-                src={
-                  image.imageUrl.startsWith("https://")
-                    ? image.imageUrl
-                    : `https://${image.imageUrl}`
-                }
-                alt={`${options.name} Image ${index}`}
-                onLoad={() => setLoading(false)}
-                onError={() => setLoading(false)}
-                className="w-full h-[65vh] object-contain ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity "
-              />
+              <div className="w-full aspect-[4/3] relative">
+                <Image
+                  src={
+                    image.imageUrl.startsWith("https://")
+                      ? image.imageUrl
+                      : `https://${image.imageUrl}`
+                  }
+                  alt={`${options.name} Image ${index}`}
+                  fill
+                  onLoad={() => setLoading(false)}
+                  onError={() => setLoading(false)}
+                  className={`w-full object-fit ${loading ? "opacity-0" : "opacity-100"} transition-opacity `}
+                />
+              </div>
               <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800 opacity-70">
                 <h3 className="text-s text-white font-bold">
                   Uploaded by: {usernames[index] ?? "Unknown"}

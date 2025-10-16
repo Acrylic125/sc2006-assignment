@@ -40,10 +40,7 @@ export function MapModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent className="max-w-none w-fit">
-        <VisuallyHidden>
-          <DialogTitle>Modal</DialogTitle>
-        </VisuallyHidden>
+      <DialogContent className="w-fit sm:max-w-none">
         {modalStore.action?.type === "itinerary-poi-review" && (
           <POIReviewDialog options={modalStore.action.options} close={close} />
         )}
