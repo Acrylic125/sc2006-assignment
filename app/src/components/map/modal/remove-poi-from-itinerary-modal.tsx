@@ -7,29 +7,32 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
 import { Loader2, AlertTriangle } from "lucide-react";
+import { useCallback } from "react";
 
 export function RemovePOIFromItineraryModal({
   itineraryId,
   poiId,
   poiName,
   close,
-  onSuccess,
 }: {
   itineraryId: number;
   poiId: number;
   poiName: string;
   close: () => void;
-  onSuccess?: () => void;
 }) {
-  const removePOIFromItinerary = trpc.itinerary.removePOIFromItinerary.useMutation({
-    onSuccess: () => {
-      onSuccess?.();
-      close();
-    },
-    onError: (error) => {
-      console.error("Failed to remove POI from itinerary:", error);
-    },
-  });
+  const utils = trpc.useUtils();
+  const removePOIFromItinerary =
+    trpc.itinerary.removePOIFromItinerary.useMutation({
+      onSuccess: () => {
+        // Invalidate specific itinerary and map search queries
+        utils.itinerary.getItinerary.invalidate({ id: itineraryId });
+        utils.map.search.invalidate();
+        close();
+      },
+      onError: (error) => {
+        console.error("Failed to remove POI from itinerary:", error);
+      },
+    });
 
   const handleRemove = () => {
     removePOIFromItinerary.mutate({
@@ -46,14 +49,17 @@ export function RemovePOIFromItineraryModal({
           Remove POI from Itinerary
         </DialogTitle>
         <DialogDescription>
-          This will remove the place from your itinerary. You can add it back later if needed.
+          This will remove the place from your itinerary. You can add it back
+          later if needed.
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
         <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
           <p className="text-sm">
-            Are you sure you want to remove <span className="font-semibold">"{poiName}"</span> from this itinerary?
+            Are you sure you want to remove{" "}
+            <span className="font-semibold">{`"${poiName}"`}</span> from this
+            itinerary?
           </p>
         </div>
 

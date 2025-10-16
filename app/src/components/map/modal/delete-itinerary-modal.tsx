@@ -14,12 +14,10 @@ export function DeleteItineraryModal({
   itineraryId,
   itineraryName,
   close,
-  onSuccess,
 }: {
   itineraryId: number;
   itineraryName: string;
   close: () => void;
-  onSuccess?: () => void;
 }) {
   const mapStore = useMapStore(
     useShallow(({ viewingItineraryId, setViewingItineraryId }) => ({
@@ -28,13 +26,14 @@ export function DeleteItineraryModal({
     }))
   );
 
+  const utils = trpc.useUtils();
   const deleteItineraryMutation = trpc.itinerary.deleteItinerary.useMutation({
     onSuccess: () => {
       // If the deleted itinerary was currently selected, clear the selection
       if (mapStore.viewingItineraryId === itineraryId) {
         mapStore.setViewingItineraryId(null);
       }
-      onSuccess?.();
+      utils.itinerary.getAllItineraries.invalidate();
       close();
     },
     onError: (error) => {
@@ -54,14 +53,16 @@ export function DeleteItineraryModal({
           Delete Itinerary
         </DialogTitle>
         <DialogDescription>
-          This action cannot be undone. This will permanently delete your itinerary and all associated data.
+          This action cannot be undone. This will permanently delete your
+          itinerary and all associated data.
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
         <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm">
-            Are you sure you want to delete <span className="font-semibold">"{itineraryName}"</span>?
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">{`"${itineraryName}"`}</span>?
           </p>
         </div>
 
