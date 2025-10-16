@@ -12,6 +12,36 @@ export type MapModalAction =
       options: {
         longitude: number;
         latitude: number;
+        poiId?: number; // Make poiId optional
+      };
+    }
+  | {
+      type: "delete-itinerary";
+      options: {
+        itineraryId: number;
+        itineraryName: string;
+      };
+    }
+  | {
+      type: "rename-itinerary";
+      options: {
+        itineraryId: number;
+        currentName: string;
+      };
+    }
+  | {
+      type: "remove-poi-from-itinerary";
+      options: {
+        itineraryId: number;
+        poiId: number;
+        poiName: string;
+      };
+    }
+  | {
+      type: "delete-review";
+      options: {
+        reviewId: number;
+        poiId: number;
       };
     }
   | {

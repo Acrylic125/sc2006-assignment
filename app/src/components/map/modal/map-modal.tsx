@@ -9,6 +9,11 @@ import { CreateItineraryDialog } from "./create-itinerary-modal";
 import { CreatePOIDialog } from "./create-poi-modal";
 import { POIImageCarouselDialog } from "./poi-image-carousel-modal";
 import { UploadImageDialog } from "./upload-poi-image-modal";
+import { VisuallyHidden } from "@/components/ui/visually-hidden";
+import { DeleteItineraryModal } from "./delete-itinerary-modal";
+import { RenameItineraryModal } from "./rename-itinerary-modal";
+import { RemovePOIFromItineraryModal } from "./remove-poi-from-itinerary-modal";
+import { DeleteReviewModal } from "./delete-review-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -19,41 +24,78 @@ export function MapModal() {
       };
     })
   );
+
   const setOpen = useCallback(
     (open: boolean) => {
       modalStore.setAction(null);
     },
     [modalStore]
   );
+
   const close = useCallback(() => {
-    console.log("closing");
     modalStore.setAction(null);
   }, [modalStore]);
 
-  console.log(modalStore.action);
   const isOpen = modalStore.action !== null;
-  console.log(isOpen);
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogTitle className="sr-only">
-        Pop-up menu for {modalStore.action?.type}
-      </DialogTitle>
-      <DialogContent className="w-auto sm:max-w-[80vw]">
+      <DialogContent>
+        <VisuallyHidden>
+          <DialogTitle>Modal</DialogTitle>
+        </VisuallyHidden>
         {modalStore.action?.type === "itinerary-poi-review" && (
           <POIReviewDialog options={modalStore.action.options} close={close} />
         )}
         {modalStore.action?.type === "create-itinerary" && (
-          <CreateItineraryDialog close={close} />
+          <CreateItineraryDialog
+            close={close}
+            poiId={modalStore.action.options.poiId}
+          />
+        )}
+        {modalStore.action?.type === "delete-itinerary" && (
+          <DeleteItineraryModal
+            itineraryId={modalStore.action.options.itineraryId}
+            itineraryName={modalStore.action.options.itineraryName}
+            close={close}
+          />
+        )}
+        {modalStore.action?.type === "rename-itinerary" && (
+          <RenameItineraryModal
+            itineraryId={modalStore.action.options.itineraryId}
+            currentName={modalStore.action.options.currentName}
+            close={close}
+          />
+        )}
+        {modalStore.action?.type === "remove-poi-from-itinerary" && (
+          <RemovePOIFromItineraryModal
+            itineraryId={modalStore.action.options.itineraryId}
+            poiId={modalStore.action.options.poiId}
+            poiName={modalStore.action.options.poiName}
+            close={close}
+          />
+        )}
+        {modalStore.action?.type === "delete-review" && (
+          <DeleteReviewModal
+            reviewId={modalStore.action.options.reviewId}
+            poiId={modalStore.action.options.poiId}
+            close={close}
+          />
         )}
         {modalStore.action?.type === "create-poi" && (
           <CreatePOIDialog options={modalStore.action.options} close={close} />
         )}
         {modalStore.action?.type === "poi-image-carousel" && (
-          <POIImageCarouselDialog options={modalStore.action.options} close={close} />
+          <POIImageCarouselDialog
+            options={modalStore.action.options}
+            close={close}
+          />
         )}
         {modalStore.action?.type === "upload-poi-image" && (
-          <UploadImageDialog options={modalStore.action.options} close={close} />
+          <UploadImageDialog
+            options={modalStore.action.options}
+            close={close}
+          />
         )}
       </DialogContent>
     </Dialog>

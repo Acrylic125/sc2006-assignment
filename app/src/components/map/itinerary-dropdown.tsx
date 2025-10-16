@@ -28,6 +28,26 @@ export function ItineraryDropdown() {
   const modalStore = useMapModalStore();
   const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
 
+  const handleDeleteItinerary = (itineraryId: number, itineraryName: string) => {
+    modalStore.setAction({
+      type: "delete-itinerary",
+      options: {
+        itineraryId,
+        itineraryName,
+      },
+    });
+  };
+
+  const handleRenameItinerary = (itineraryId: number, currentName: string) => {
+    modalStore.setAction({
+      type: "rename-itinerary",
+      options: {
+        itineraryId,
+        currentName,
+      },
+    });
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -86,10 +106,16 @@ export function ItineraryDropdown() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>
-                  <Pen className="size-3" /> Rename
+                <DropdownMenuItem
+                  onClick={() => handleRenameItinerary(itinerary.id, itinerary.name)}
+                >
+                  <Pen className="size-3" /> 
+                  Rename
                 </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive">
+                <DropdownMenuItem 
+                  variant="destructive"
+                  onClick={() => handleDeleteItinerary(itinerary.id, itinerary.name)}
+                >
                   <Trash2 className="size-3" />
                   Delete
                 </DropdownMenuItem>

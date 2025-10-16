@@ -214,25 +214,64 @@ export const itineraryRouter = createTRPCRouter({
         itineraryId: z.number(),
         pois: z.array(
           z.object({
-            id: z.number(), // Itinerary POI id
+            id: z.number(),
             orderPriority: z.number(),
           })
         ),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // TODO: Update itineraryPOITable with the new order priority. Remember to update and return the updated itinerary.
-      // See https://orm.drizzle.team/docs/update#with-update-clause
-      //   db.update(itineraryPOITable)...
+      const userId = ctx.auth.userId;
 
-      // For now, we hardcode the itinerary.
-      input.pois.forEach((poi) => {
-        itinerary.pois.find((p) => p.id === poi.id)!.orderPriority =
-          poi.orderPriority;
-      });
-      itinerary.pois.sort((a, b) => a.orderPriority - b.orderPriority);
+      // Verify the itinerary belongs to the user
+      const itinerary = await db
+        .select()
+        .from(itineraryTable)
+        .where(
+          and(
+            eq(itineraryTable.id, input.itineraryId),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
 
-      return itinerary;
+      if (itinerary.length === 0) {
+        throw new Error("Itinerary not found or access denied");
+      }
+
+      // Update the order priorities of the POIs
+      await Promise.all(
+        input.pois.map((poi) =>
+          db
+            .update(itineraryPOITable)
+            .set({ orderPriority: poi.orderPriority })
+            .where(
+              and(
+                eq(itineraryPOITable.itineraryId, input.itineraryId),
+                eq(itineraryPOITable.poiId, poi.id)
+              )
+            )
+        )
+      );
+
+      // Return the updated itinerary
+      const updatedPOIs = await db
+        .select({
+          id: itineraryPOITable.poiId,
+          name: sql<string>`${poiTable.name}`,
+          checked: itineraryPOITable.checked,
+          orderPriority: itineraryPOITable.orderPriority,
+        })
+        .from(itineraryPOITable)
+        .innerJoin(poiTable, eq(poiTable.id, itineraryPOITable.poiId))
+        .where(eq(itineraryPOITable.itineraryId, input.itineraryId))
+        .orderBy(itineraryPOITable.orderPriority);
+
+      return {
+        id: input.itineraryId,
+        name: itinerary[0].name,
+        pois: updatedPOIs,
+      };
     }),
   updateItineraryPOI: protectedProcedure
     .input(
@@ -283,5 +322,143 @@ export const itineraryRouter = createTRPCRouter({
         return null;
       }
       return review[0];
+    }),
+
+  deleteItinerary: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
+
+      // First verify the itinerary belongs to the user
+      const itinerary = await db
+        .select()
+        .from(itineraryTable)
+        .where(
+          and(
+            eq(itineraryTable.id, input.id),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (itinerary.length === 0) {
+        throw new Error("Itinerary not found or access denied");
+      }
+
+      // Delete all POIs associated with this itinerary first
+      await db
+        .delete(itineraryPOITable)
+        .where(eq(itineraryPOITable.itineraryId, input.id));
+
+      // Delete the itinerary
+      await db
+        .delete(itineraryTable)
+        .where(eq(itineraryTable.id, input.id));
+
+      return { success: true };
+    }),
+
+  renameItinerary: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().min(1, "Itinerary name is required").max(128),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      // Update the itinerary name (the WHERE clause ensures user ownership)
+      const [updatedItinerary] = await db
+        .update(itineraryTable)
+        .set({
+          name: input.name,
+        })
+        .where(
+          and(
+            eq(itineraryTable.id, input.id),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .returning({
+          id: itineraryTable.id,
+          name: itineraryTable.name,
+        });
+
+      if (!updatedItinerary) {
+        throw new Error("Itinerary not found or access denied");
+      }
+
+      return updatedItinerary;
+    }),
+
+  removePOIFromItinerary: protectedProcedure
+    .input(
+      z.object({
+        itineraryId: z.number(),
+        poiId: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      // Verify the itinerary belongs to the user and the POI exists in the itinerary
+      const itineraryPOI = await db
+        .select({
+          itineraryId: itineraryPOITable.itineraryId,
+          poiId: itineraryPOITable.poiId,
+          orderPriority: itineraryPOITable.orderPriority,
+        })
+        .from(itineraryPOITable)
+        .innerJoin(itineraryTable, eq(itineraryPOITable.itineraryId, itineraryTable.id))
+        .where(
+          and(
+            eq(itineraryPOITable.itineraryId, input.itineraryId),
+            eq(itineraryPOITable.poiId, input.poiId),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (itineraryPOI.length === 0) {
+        throw new Error("POI not found in itinerary or access denied");
+      }
+
+      const removedOrderPriority = itineraryPOI[0].orderPriority;
+
+      // Delete the POI from the itinerary
+      await db
+        .delete(itineraryPOITable)
+        .where(
+          and(
+            eq(itineraryPOITable.itineraryId, input.itineraryId),
+            eq(itineraryPOITable.poiId, input.poiId)
+          )
+        );
+
+      // Update order priorities of remaining POIs to fill the gap
+      await db
+        .update(itineraryPOITable)
+        .set({
+          orderPriority: sql`${itineraryPOITable.orderPriority} - 1`,
+        })
+        .where(
+          and(
+            eq(itineraryPOITable.itineraryId, input.itineraryId),
+            sql`${itineraryPOITable.orderPriority} > ${removedOrderPriority}`
+          )
+        );
+
+      return { success: true };
     }),
 });

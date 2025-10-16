@@ -16,13 +16,15 @@ import {
   tagTable,
   userSurpriseMePreferencesTable,
 } from "@/db/schema";
-import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
+import { and, asc, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { Input } from "@/components/ui/input";
 //import { currentUser } from "@clerk/nextjs/server";
-import { createClerkClient } from '@clerk/backend'
+import { createClerkClient } from "@clerk/backend";
 
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
 
 async function searchPOIS(
   input: {
@@ -41,7 +43,7 @@ async function searchPOIS(
     return [];
   }
   const conditions = [];
-  
+
   // If there are excluded tags, only show POIs that have at least one non-excluded tag
   if (input.excludedTags.length > 0) {
     conditions.push(
@@ -457,7 +459,7 @@ export const mapRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
 
-      if(input.images.length > 0) {
+      if (input.images.length > 0) {
         await db.insert(poiImagesTable).values(
           input.images.map((image) => ({
             poiId: input.poiId,
@@ -471,43 +473,50 @@ export const mapRouter = createTRPCRouter({
     .input(z.object({ poiId: z.number() }))
     .query(async ({ input }) => {
       const images = await db
-        .select({ 
-          imageUrl: poiImagesTable.imageUrl, 
-          uploaderId: poiImagesTable.uploaderId, 
-          creationDate: poiImagesTable.createdAt 
+        .select({
+          imageUrl: poiImagesTable.imageUrl,
+          uploaderId: poiImagesTable.uploaderId,
+          creationDate: poiImagesTable.createdAt,
         })
         .from(poiImagesTable)
         .where(eq(poiImagesTable.poiId, input.poiId));
-      console.log(images)
-      const uploaderIds = [... new Set(images.map(imgData => imgData.uploaderId))]; //deduplicated user ids list
-      let uploaderMap = new Map<string, string>();
-      for(const userId of uploaderIds) {
-        if ((userId !== null) && (userId !== "") && (!uploaderMap.has(userId)))  {
+      console.log(images);
+      const uploaderIds = [
+        ...new Set(images.map((imgData) => imgData.uploaderId)),
+      ]; //deduplicated user ids list
+      const uploaderMap = new Map<string, string>();
+      for (const userId of uploaderIds) {
+        if (userId !== null && userId !== "" && !uploaderMap.has(userId)) {
           try {
-            const userName = (await clerkClient.users.getUser(userId)).firstName;
+            const userName = (await clerkClient.users.getUser(userId))
+              .firstName;
             uploaderMap.set(userId, userName ?? "Unknown");
           } catch (err) {
             console.error(`Failed to fetch userId ${userId}`, err);
             uploaderMap.set(userId, "Unknown");
           }
-        } else if(userId !== null) {
+        } else if (userId !== null) {
           uploaderMap.set(userId, "database");
         }
       }
-      const uploaderNames = images.map(imgData => uploaderMap.get(imgData.uploaderId ?? ""));
-      console.log(images)
-      return {images: images, uploaders: uploaderNames};
+      const uploaderNames = images.map((imgData) =>
+        uploaderMap.get(imgData.uploaderId ?? "")
+      );
+      console.log(images);
+      return { images: images, uploaders: uploaderNames };
     }),
-    getPOITags: publicProcedure
-    .input(z.object({ 
-      poiId: z.number(),
-      excludedTags: z.array(z.number()),
-      tagIdOrder: z.array(z.number()),
-    }))
+  getPOITags: publicProcedure
+    .input(
+      z.object({
+        poiId: z.number(),
+        excludedTags: z.array(z.number()),
+        tagIdOrder: z.array(z.number()),
+      })
+    )
     .query(async ({ input }) => {
       const tags = await db
-        .select({ 
-          tag: poiTagTable.tagId, 
+        .select({
+          tag: poiTagTable.tagId,
         })
         .from(poiTagTable)
         .where(eq(poiTagTable.poiId, input.poiId));
@@ -517,30 +526,54 @@ export const mapRouter = createTRPCRouter({
           tagName: tagTable.name,
         })
         .from(tagTable)
-        .where(inArray(tagTable.id, tags.map(tag => tag.tag)));
+        .where(
+          inArray(
+            tagTable.id,
+            tags.map((tag) => tag.tag)
+          )
+        );
       //console.log(input.excludedTags)
       //console.log(tags)
       //console.log(tagNames)
-      const filteredTagNames = tags.map(tag => ({ tag: tagNames.find(tagName => tagName.tagId === tag.tag), filtered: input.excludedTags.includes(tag.tag) }));
-      
-      if(input.tagIdOrder.length === 0) {
+      const filteredTagNames = tags.map((tag) => ({
+        tag: tagNames.find((tagName) => tagName.tagId === tag.tag),
+        filtered: input.excludedTags.includes(tag.tag),
+      }));
+
+      if (input.tagIdOrder.length === 0) {
         //console.log(sortedTagNames)
-        const sortedTagNames = [...filteredTagNames.sort((a, b) => {
-          if (a.filtered === b.filtered) return 0; //if filter state is same, keep order
-          else if (a.filtered) return 1; //if a has been filtered away but not b, place at the end
-          else return -1 //else place it infront of b
-        })]
-        const tagOrderData = sortedTagNames
-          .map(item => item.tag?.tagId ?? -1);
-        return {tagsData: sortedTagNames, tagOrder: tagOrderData};
+        const sortedTagNames = [
+          ...filteredTagNames.sort((a, b) => {
+            if (a.filtered === b.filtered)
+              return 0; //if filter state is same, keep order
+            else if (a.filtered)
+              return 1; //if a has been filtered away but not b, place at the end
+            else return -1; //else place it infront of b
+          }),
+        ];
+        const tagOrderData = sortedTagNames.map(
+          (item) => item.tag?.tagId ?? -1
+        );
+        return { tagsData: sortedTagNames, tagOrder: tagOrderData };
       }
       //console.log(filteredTagNames)
-      const sortedTagNames = [...filteredTagNames.sort((a, b) => {
-          if (input.tagIdOrder.indexOf(a.tag?.tagId ?? -1) === input.tagIdOrder.indexOf(b.tag?.tagId ?? -1)) return 0; //if id is same, keep order
-          else if (input.tagIdOrder.indexOf(a.tag?.tagId ?? -1) > input.tagIdOrder.indexOf(b.tag?.tagId ?? -1)) return 1; //if a has been filtered away but not b, place at the end
-          else return -1 //else place it infront of b
-        })]
-      return {tagsData: sortedTagNames, tagOrder: input.tagIdOrder};
+      // TODO:
+      const sortedTagNames = [
+        ...filteredTagNames.sort((a, b) => {
+          if (
+            input.tagIdOrder.indexOf(a.tag?.tagId ?? -1) ===
+            input.tagIdOrder.indexOf(b.tag?.tagId ?? -1)
+          )
+            return 0; //if id is same, keep order
+          else if (
+            input.tagIdOrder.indexOf(a.tag?.tagId ?? -1) >
+            input.tagIdOrder.indexOf(b.tag?.tagId ?? -1)
+          )
+            return 1; //if a has been filtered away but not b, place at the end
+          else return -1; //else place it infront of b
+        }),
+      ];
+      return { tagsData: sortedTagNames, tagOrder: input.tagIdOrder };
     }),
   getAddress: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))

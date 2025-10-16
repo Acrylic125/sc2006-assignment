@@ -73,7 +73,7 @@ type MapStore = {
   setTagBadgeOrder: (tagIdOrder: number[]) => void;
 };
 
-export const useMapStore = create<MapStore>((set) => ({
+export const useMapStore = create<MapStore>((set, get) => ({
   viewingItineraryId: null,
   viewingPOI: null,
   currentMapTab: "explore",
