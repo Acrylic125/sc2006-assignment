@@ -222,9 +222,6 @@ export const itineraryRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
 
       // Verify the itinerary belongs to the user
       const itinerary = await db
@@ -335,9 +332,6 @@ export const itineraryRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
 
       // First verify the itinerary belongs to the user
       const itinerary = await db
