@@ -27,9 +27,9 @@ function createBubbleURL(color: string) {
   return (
     "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(`
-    <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="256" cy="256" r="240" fill="${color}" fill-opacity="0.5" />
-      <circle cx="256" cy="256" r="48" fill="white" />
+    <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="0.5" />
+      <circle cx="32" cy="32" r="6" fill="white" />
     </svg>
     `)
   );
@@ -43,6 +43,7 @@ const pins = {
   // purple: createPinURL("#8B5CF6"),
   orange: createPinURL("#F59E0B"),
   // pink: createPinURL("#EC4899"),
+  blue_bubble: createBubbleURL("#3B82F6"),
 };
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
@@ -101,7 +102,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
   );
 
   const MIN_PIN_SIZE = 0.5;
-  const MAX_PIN_SIZE = 2;
+  const MAX_PIN_SIZE = 1;
   const poiPins = useMemo(() => {
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
@@ -115,12 +116,12 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     }
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
-      let color = "blue"; // default
+      let color = "blue_bubble"; // default
       if (
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
-        color = "red"; // currently selected POI
+        color = "blue_bubble"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
@@ -145,6 +146,9 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       <Source
         id="pins"
         type="geojson"
+        cluster={true}
+        clusterRadius={40}
+        clusterMaxZoom={12}
         data={{
           type: "FeatureCollection",
           features:
@@ -166,13 +170,30 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         }}
       >
         <Layer
+          id="clusters"
+          type="circle"
+          source="pins"
+          filter={["has", "point_count"]}
+          paint={{
+            "circle-color": "#51bbd6",
+            "circle-radius": [
+              "step",
+              ["get", "point_count"],
+              25,     // radius for clusters with less than 10 points
+              10, 35, // radius for clusters with 10-30 points
+              30, 45  // radius for clusters with 30+ points
+            ],
+            "circle-opacity": 0.6,
+          }}
+        />
+        <Layer
           id="poi-pins"
           type="symbol"
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
             "icon-size": ["get", "scale"],
-            "icon-anchor": "bottom",
+            "icon-anchor": "center",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
@@ -180,7 +201,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         />
       </Source>
       <Source
-        id="pin-from"
+        id="explore-pin-from"
         type="geojson"
         data={{
           type: "FeatureCollection",
@@ -200,9 +221,9 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         }}
       >
         <Layer
-          id="pin-from"
+          id="explore-pin-from"
           type="symbol"
-          source="pin-from"
+          source="explore-pin-from"
           layout={{
             "icon-image": "pin-red",
             "icon-size": 1,
@@ -267,7 +288,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
-        color = "red"; // currently selected POI
+        color = "blue"; // currently selected POI //larger orange pin displays over this anyway
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
@@ -319,7 +340,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         />
       </Source>
       <Source
-        id="pin-from"
+        id="recommend-pin-from"
         type="geojson"
         data={{
           type: "FeatureCollection",
@@ -339,9 +360,9 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         }}
       >
         <Layer
-          id="pin-from"
+          id="recommend-pin-from"
           type="symbol"
-          source="pin-from"
+          source="recommend-pin-from"
           layout={{
             "icon-image": "pin-red",
             "icon-size": 1,
@@ -373,7 +394,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           <Layer
             id="pin-view"
             type="symbol"
-            source="pin-from"
+            source="recommend-pin-from"
             layout={{
               "icon-image": "pin-orange",
               "icon-size": 0.7,
@@ -446,6 +467,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("green"),
       ensurePinImage("blue"),
       ensurePinImage("orange"),
+      ensurePinImage("blue_bubble"),
     ]);
   }, []);
 
@@ -475,6 +497,27 @@ export default function ExploreMap({ className }: { className: string }) {
             }
           }
           return;
+        }
+      } 
+      if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
+        const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+        if (features.length) {
+          const clusterFeature = features[0];
+          const clusterId = clusterFeature.properties?.cluster_id;
+          const source = map.getSource("pins");
+          if (source && "getClusterExpansionZoom" in source) {
+            (source as mapboxgl.GeoJSONSource).getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err || zoom == null) return;
+
+              if (clusterFeature.geometry.type === "Point") {
+                const [lng, lat] = clusterFeature.geometry.coordinates;
+                map.easeTo({
+                  center: [lng, lat],
+                  zoom: zoom,
+                });
+              }
+            });
+          }
         }
       }
 
