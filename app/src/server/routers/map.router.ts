@@ -372,6 +372,131 @@ export const mapRouter = createTRPCRouter({
       // }
       // return pois;
     }),
+poiByPopularityScore: publicOrProtectedProcedure
+    .input(
+      z.object({
+        showVisited: z.boolean(),
+        showUnvisited: z.boolean(),
+        excludedTags: z.array(z.number()),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const [tags, pois] = await Promise.all([
+        db
+          .select({
+            id: tagTable.id,
+            name: tagTable.name,
+          })
+          .from(tagTable),
+        searchPOIS(input, ctx),
+      ]);
+
+      const [poiTags, poiReviews] = await Promise.all([
+        db
+          .select({
+            poiId: poiTagTable.poiId,
+            tagId: poiTagTable.tagId,
+          })
+          .from(poiTagTable)
+          .where(
+            inArray(
+              poiTagTable.poiId,
+              pois.map((poi) => poi.id)
+            )
+          ),
+        db
+          .select({
+            poiId: reviewTable.poiId,
+            numberOfReviews: sql<number>`COUNT(${reviewTable.id})`,
+            likesProportion: sql<number>`COUNT(CASE WHEN ${reviewTable.liked} = true THEN 1 END)`,
+          })
+          .from(reviewTable)
+          .where(
+            inArray(
+              reviewTable.poiId,
+              pois.map((poi) => poi.id)
+            )
+          )
+          .groupBy(reviewTable.poiId),
+      ]);
+
+      // Create tag mapping to index.
+      const tagMapping = new Map<number, number>();
+      for (let i = 0; i < tags.length; i++) {
+        tagMapping.set(tags[i].id, i);
+      }
+
+      // Create poi mapping to index.
+      const poiMapping = new Map<number, number>();
+      for (let i = 0; i < pois.length; i++) {
+        poiMapping.set(pois[i].id, i);
+      }
+
+      // Let |P| be the number of pois and |T| be the number of tags.
+      // Create |P| x |T| matrix containing 1 if poi has tag, 0 otherwise.
+      const poiTagMatrix = new Array(pois.length)
+        .fill(0)
+        .map(() => new Array(tags.length).fill(0));
+      for (const poiTag of poiTags) {
+        const tagIndex = tagMapping.get(poiTag.tagId);
+        if (tagIndex === undefined) {
+          continue;
+        }
+        const poiIndex = poiMapping.get(poiTag.poiId);
+        if (poiIndex === undefined) {
+          continue;
+        }
+        poiTagMatrix[poiIndex][tagIndex] = 1;
+      }
+
+      // Create |P| x 1 matrix containing the number of reviews for each poi.
+      // Create |P| x 1 matrix containing the likes proportion for each poi.
+      const numberOfPoiReviewsMatrix = new Array(pois.length).fill(0);
+      // Already normalized.
+      const poiLikesProportionMatrix = new Array(pois.length).fill(0);
+      for (const poiReview of poiReviews) {
+        const poiIndex = poiMapping.get(poiReview.poiId);
+        if (poiIndex === undefined) {
+          continue;
+        }
+        numberOfPoiReviewsMatrix[poiIndex] = poiReview.numberOfReviews;
+        poiLikesProportionMatrix[poiIndex] = poiReview.likesProportion;
+      }
+
+      // We use log to avoid domination by outliers.
+      const maxLogNormalizedNumberOfPoiReviews = Math.log2(
+        1 + Math.max(...numberOfPoiReviewsMatrix)
+      );
+      const logNormalizedNumberOfPoiReviewsMatrix =
+        maxLogNormalizedNumberOfPoiReviews > 0
+          ? numberOfPoiReviewsMatrix.map(
+              (score) =>
+                Math.log2(score + 1) / maxLogNormalizedNumberOfPoiReviews
+            )
+          : new Array<number>(pois.length).fill(0);
+
+      //const weights = [0.5, 0.3];
+      const weights = [0.5, 0.3];
+      const M = [
+        logNormalizedNumberOfPoiReviewsMatrix,
+        poiLikesProportionMatrix,
+      ];
+
+      // Now we compute the preference scores for each poi.
+      const poiScores = new Array<{ index: number; score: number }>(pois.length)
+        .fill({ index: 0, score: 0 })
+        .map((_, i) => ({ index: i, score: 0 }));
+      // poiScores = M @ weights
+      for (let i = 0; i < pois.length; i++) {
+        let score = 0;
+        for (let j = 0; j < M.length; j++) {
+          score += M[j][i] * weights[j];
+        }
+        poiScores[i].score = score;
+      }
+
+      return poiScores.map((poi) => ({...pois[poi.index], score:poi.score}));
+    }),
   createPOI: protectedProcedure
     .input(
       z.object({

@@ -23,6 +23,18 @@ function createPinURL(color: string) {
   );
 }
 
+function createBubbleURL(color: string) {
+  return (
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+    <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="256" cy="256" r="240" fill="${color}" fill-opacity="0.5" />
+      <circle cx="256" cy="256" r="48" fill="white" />
+    </svg>
+    `)
+  );
+}
+
 const pins = {
   red: createPinURL("#FB2C36"),
   blue: createPinURL("#3B82F6"),
@@ -56,6 +68,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     )
   );
 
+  /*
   const poisQuery = trpc.map.search.useQuery(
     {
       showVisited: mapStore.filters.showVisited,
@@ -66,6 +79,18 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       enabled,
     }
   );
+  */
+  const poisQuery = trpc.map.poiByPopularityScore.useQuery(
+    {
+      showVisited: mapStore.filters.showVisited,
+      showUnvisited: mapStore.filters.showUnvisited,
+      excludedTags: Array.from(mapStore.filters.excludedTags),
+    },
+    {
+      enabled,
+    }
+  );
+
   const itinerariesQuery = trpc.itinerary.getItinerary.useQuery(
     {
       id: mapStore.viewingItineraryId ?? 0,
@@ -74,10 +99,20 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       enabled: mapStore.viewingItineraryId !== null,
     }
   );
+
+  const MIN_PIN_SIZE = 0.5;
+  const MAX_PIN_SIZE = 2;
   const poiPins = useMemo(() => {
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
+    let minScore = 0
+    let maxScore = 1
+    if (!(!poisQuery.data || poisQuery.data.length === 0)) {
+      const scores = [... new Set(poisQuery.data.map((poi) => poi.score ))];
+      minScore = scores.reduce((min, val) => Math.min(min, val), Infinity);
+      maxScore = scores.reduce((max, val) => Math.max(max,val), -Infinity)
+    }
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue"; // default
@@ -89,11 +124,18 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
-
+      let poiScale = MIN_PIN_SIZE;
+      if (maxScore === minScore) {
+        poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
+      } else {
+        poiScale = MIN_PIN_SIZE + ((poi.score - minScore) / (maxScore - minScore)) * (MAX_PIN_SIZE - MIN_PIN_SIZE)
+      }
+      
       return {
         id: poi.id,
         color: color,
         coordinates: [poi.pos.longitude, poi.pos.latitude],
+        scale: poiScale,
       };
     });
   }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
@@ -117,6 +159,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
                 properties: {
                   id: poi.id,
                   color: poi.color,
+                  scale: poi.scale,
                 },
               };
             }) ?? [],
@@ -128,7 +171,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 0.5,
+            "icon-size": ["get", "scale"],
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
