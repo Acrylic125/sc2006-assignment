@@ -1,10 +1,48 @@
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { db } from "@/db";
-import { poiTable, poiImagesTable, tagTable, poiTagTable } from "@/db/schema";
+import {
+  poiTable,
+  poiImagesTable,
+  tagTable,
+  poiTagTable,
+  userSurpriseMePreferencesTable,
+} from "@/db/schema";
 import { sql, eq } from "drizzle-orm";
 import z from "zod";
 
 export const poisRouter = createTRPCRouter({
+  indicatePreference: protectedProcedure
+    .input(
+      z.object({
+        removeOld: z.boolean().default(false),
+        preferences: z.array(
+          z.object({
+            poiId: z.number(),
+            liked: z.boolean(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await db.transaction(async (tx) => {
+        if (input.removeOld) {
+          await tx
+            .delete(userSurpriseMePreferencesTable)
+            .where(eq(userSurpriseMePreferencesTable.userId, ctx.auth.userId));
+        }
+        if (input.preferences.length === 0) {
+          return;
+        }
+        await tx.insert(userSurpriseMePreferencesTable).values(
+          input.preferences.map((preference) => ({
+            poiId: preference.poiId,
+            liked: preference.liked,
+            userId: ctx.auth.userId,
+          }))
+        );
+      });
+    }),
+
   // Fetch random POIs
   getPois: publicProcedure.query(async () => {
     try {
@@ -40,7 +78,7 @@ export const poisRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       try {
         const tags = Object.keys(input.tagWeights);
-        const pois = await db 
+        const pois = await db
           .select({
             id: poiTable.id,
             name: poiTable.name,
