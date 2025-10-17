@@ -131,7 +131,19 @@ export const mapRouter = createTRPCRouter({
     const tags = await db
       .select({ id: tagTable.id, name: tagTable.name })
       .from(tagTable);
-    return tags;
+    const tagCounts = await db
+      .select({
+        tagId: poiTagTable.tagId,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(poiTagTable)
+      .groupBy(poiTagTable.tagId);
+    const tagCountMap = new Map<number, number>();
+    for (const tag of tagCounts) {
+      tagCountMap.set(tag.tagId, tag.count);
+    }
+    const tagsCounted = tags.map(tag => ({...tag, count: tagCountMap.get(tag.id) ?? 0,}));
+    return tagsCounted;
   }),
   search: publicProcedure
     .input(

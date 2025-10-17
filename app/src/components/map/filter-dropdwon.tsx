@@ -129,12 +129,17 @@ export function FilterTagsDropdown() {
               }
             }}
           >
-            <span className="w-4">
-              {!mapStore.excludedTags.has(tag.id) && (
-                <Check className="size-4" />
-              )}
-            </span>
-            <span>{tag.name}</span>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <span className="w-4">
+                  {!mapStore.excludedTags.has(tag.id) && (
+                    <Check className="size-4" />
+                  )}
+                </span>
+                <span>{tag.name}</span>
+              </div>
+              <span>[{tag.count}]</span>
+            </div>
           </Button>
         ))}
       </DropdownMenuContent>
