@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { trpc } from "@/server/client";
 import { Loader2, Trash2 } from "lucide-react";
-import { useState } from "react";
 
 interface DeleteReviewModalProps {
   reviewId: number;
@@ -25,17 +24,10 @@ export function DeleteReviewModal({
   close,
   onSuccess,
 }: DeleteReviewModalProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  const deleteReviewMutation = trpc.review.deleteReview.useMutation();
   const utils = trpc.useUtils();
-
-  const handleDelete = async () => {
-    try {
-      setIsDeleting(true);
-      
-      await deleteReviewMutation.mutateAsync({ reviewId });
-      
+  
+  const deleteReviewMutation = trpc.review.deleteReview.useMutation({
+    onSuccess: async () => {
       // Invalidate queries to refresh data
       await Promise.all([
         utils.review.getReviews.invalidate({ poiId }),
@@ -44,12 +36,14 @@ export function DeleteReviewModal({
       
       onSuccess?.();
       close();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Failed to delete review:", error);
-      // Error handling is managed by the mutation's onError if needed
-    } finally {
-      setIsDeleting(false);
     }
+  });
+
+  const handleDelete = () => {
+    deleteReviewMutation.mutate({ reviewId });
   };
 
   return (
@@ -68,7 +62,7 @@ export function DeleteReviewModal({
         <Button
           variant="outline"
           onClick={close}
-          disabled={isDeleting}
+          disabled={deleteReviewMutation.isPending}
           className="w-full sm:w-auto"
         >
           Cancel
@@ -76,10 +70,10 @@ export function DeleteReviewModal({
         <Button
           variant="destructive"
           onClick={handleDelete}
-          disabled={isDeleting}
+          disabled={deleteReviewMutation.isPending}
           className="w-full sm:w-auto"
         >
-          {isDeleting ? (
+          {deleteReviewMutation.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Deleting...
