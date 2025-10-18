@@ -104,14 +104,14 @@ export function Survey({
           </p>
         </div>
         {indicatePreferenceMutation.error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="w-full max-w-md">
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
               {indicatePreferenceMutation.error.message}
             </AlertDescription>
           </Alert>
         )}
-        {!indicatePreferenceMutation.isSuccess && (
+        {
           <Button
             disabled={indicatePreferenceMutation.isPending}
             onClick={() => {
@@ -120,7 +120,7 @@ export function Survey({
           >
             Try Again
           </Button>
-        )}
+        }
       </div>
     );
   }
