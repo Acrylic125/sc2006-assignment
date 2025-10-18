@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Check, Filter, Tag } from "lucide-react";
 import { trpc } from "@/server/client";
+import { Badge } from "@/components/ui/badge";
 
 export function FilterDropdown() {
   const mapStore = useMapStore(
@@ -88,10 +89,12 @@ export function FilterTagsDropdown() {
           <Tag /> <span className="hidden lg:block">Tags</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-64 overflow-y-auto">
+      <DropdownMenuContent className="max-h-64 w-48 overflow-y-auto">
         <DropdownMenuLabel>Tags</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <div>
+        <div
+          className="w-full"
+        >
           <Button
             variant="ghost"
             className="w-full flex flex-row items-center gap-2 justify-start px-2"
@@ -138,7 +141,11 @@ export function FilterTagsDropdown() {
                 </span>
                 <span>{tag.name}</span>
               </div>
-              <span>[{tag.count}]</span>
+              <Badge
+                variant="outline"
+              >
+                {tag.count}
+              </Badge>
             </div>
           </Button>
         ))}
