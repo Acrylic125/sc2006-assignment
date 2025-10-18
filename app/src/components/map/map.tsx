@@ -9,6 +9,7 @@ import { useMapStore } from "./map-store";
 import { useShallow } from "zustand/react/shallow";
 import { trpc } from "@/server/client";
 import Map, { Layer, Source, ViewStateChangeEvent } from "react-map-gl/mapbox";
+import { useMapProvider } from "./map-provider";
 
 function createPinURL(color: string) {
   return (
@@ -78,12 +79,15 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue"; // default
-      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
         color = "red"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
-      
+
       return {
         id: poi.id,
         color: color,
@@ -181,12 +185,15 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue"; // default
-      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
         color = "red"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
-      
+
       return {
         id: poi.id,
         color: color,
@@ -268,6 +275,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
 }
 
 export default function ExploreMap({ className }: { className: string }) {
+  const { mapRef } = useMapProvider();
   const mapStore = useMapStore(
     useShallow(
       ({
@@ -298,7 +306,7 @@ export default function ExploreMap({ className }: { className: string }) {
   );
   const onLoad = useCallback(async (e: MapEvent) => {
     const map = e.target;
-    
+
     const ensurePinImage = async (color: keyof typeof pins) => {
       if (map.hasImage(`pin-${color}`)) return;
       const img = new Image();
@@ -321,7 +329,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("green"),
       ensurePinImage("blue"),
     ]);
-  }, [mapStore]);
+  }, []);
 
   const onClick = useCallback(
     (e: MapMouseEvent) => {
@@ -356,6 +364,7 @@ export default function ExploreMap({ className }: { className: string }) {
 
   return (
     <Map
+      ref={mapRef}
       mapboxAccessToken={env.NEXT_PUBLIC_MAPBOX_PK}
       // initialViewState={{
       //   longitude: 103.8198,
