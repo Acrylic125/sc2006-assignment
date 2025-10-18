@@ -136,7 +136,7 @@ export const mapRouter = createTRPCRouter({
     const tagCounts = await db
       .select({
         tagId: poiTagTable.tagId,
-        count: sql<number>`COUNT(*)`.as('count'),
+        count: sql<number>`COUNT(*)`.as("count"),
       })
       .from(poiTagTable)
       .groupBy(poiTagTable.tagId);
@@ -144,7 +144,10 @@ export const mapRouter = createTRPCRouter({
     for (const tag of tagCounts) {
       tagCountMap.set(tag.tagId, tag.count);
     }
-    const tagsCounted = tags.map(tag => ({...tag, count: tagCountMap.get(tag.id) ?? 0,}));
+    const tagsCounted = tags.map((tag) => ({
+      ...tag,
+      count: tagCountMap.get(tag.id) ?? 0,
+    }));
     return tagsCounted;
   }),
   getUserTagPreferences: publicOrProtectedProcedure.query(async ({ ctx }) => {
@@ -380,7 +383,7 @@ export const mapRouter = createTRPCRouter({
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
       return top5.map((poi) => pois[poi.index]);
     }),
-poiByPopularityScore: publicOrProtectedProcedure
+  poiByPopularityScore: publicOrProtectedProcedure
     .input(
       z.object({
         showVisited: z.boolean(),
@@ -396,7 +399,7 @@ poiByPopularityScore: publicOrProtectedProcedure
             name: tagTable.name,
           })
           .from(tagTable),
-        searchPOIS(input, ctx),
+        searchPOIS({ ...input, recommendRadius: 5 }, ctx),
       ]);
 
       const [poiTags, poiReviews] = await Promise.all([
@@ -503,7 +506,7 @@ poiByPopularityScore: publicOrProtectedProcedure
         poiScores[i].score = score;
       }
 
-      return poiScores.map((poi) => ({...pois[poi.index], score:poi.score}));
+      return poiScores.map((poi) => ({ ...pois[poi.index], score: poi.score }));
     }),
   createPOI: protectedProcedure
     .input(
@@ -1162,4 +1165,3 @@ poiByPopularityScore: publicOrProtectedProcedure
   "attribution": "NOTICE: © 2025 Mapbox and its suppliers. All rights reserved. Use of this data is subject to the Mapbox Terms of Service (https://www.mapbox.com/about/maps/). This response and the information it contains may not be retained."
 }
 */
-});
