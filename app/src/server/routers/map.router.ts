@@ -5,6 +5,7 @@ import {
   publicOrProtectedProcedure,
   publicProcedure,
 } from "../trpc";
+import { cookies } from "next/headers";
 import { db } from "@/db";
 import {
   itineraryPOITable,
@@ -35,6 +36,7 @@ async function searchPOIS(
       latitude: number;
       longitude: number;
     };
+    recommendRadius: number;
   },
   ctx: { auth: { userId: string | null } }
 ) {
@@ -85,7 +87,7 @@ async function searchPOIS(
   }
 
   if (input.recommendFromLocation) {
-    const recommendationRadius = 5 / 111.32;
+    const recommendationRadius = input.recommendRadius / 111.32;
     conditions.push(
       lt(
         poiTable.latitude,
@@ -134,7 +136,7 @@ export const mapRouter = createTRPCRouter({
     const tagCounts = await db
       .select({
         tagId: poiTagTable.tagId,
-        count: sql<number>`COUNT(*)`.as('count'),
+        count: sql<number>`COUNT(*)`.as("count"),
       })
       .from(poiTagTable)
       .groupBy(poiTagTable.tagId);
@@ -142,8 +144,48 @@ export const mapRouter = createTRPCRouter({
     for (const tag of tagCounts) {
       tagCountMap.set(tag.tagId, tag.count);
     }
-    const tagsCounted = tags.map(tag => ({...tag, count: tagCountMap.get(tag.id) ?? 0,}));
+    const tagsCounted = tags.map((tag) => ({
+      ...tag,
+      count: tagCountMap.get(tag.id) ?? 0,
+    }));
     return tagsCounted;
+  }),
+  getUserTagPreferences: publicOrProtectedProcedure.query(async ({ ctx }) => {
+    const tags = await db
+      .select({ id: tagTable.id, name: tagTable.name })
+      .from(tagTable);
+    // Prefer authenticated Clerk user id, but fall back to the experimental cookie-based fakeUserId
+    const c = await cookies();
+    const fakeUserId = c.get("fakeUserId")?.value;
+    const effectiveUserId = ctx.auth.userId ?? fakeUserId;
+
+    if (!effectiveUserId) {
+      return tags.map((t) => ({ id: t.id, name: t.name, likedScore: 0 }));
+    }
+
+    const userPreferences = await db
+      .select({
+        tagId: poiTagTable.tagId,
+        likedScore: sql<number>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)`,
+      })
+      .from(userSurpriseMePreferencesTable)
+      .innerJoin(
+        poiTagTable,
+        eq(userSurpriseMePreferencesTable.poiId, poiTagTable.poiId)
+      )
+      .where(eq(userSurpriseMePreferencesTable.userId, effectiveUserId))
+      .groupBy(poiTagTable.tagId);
+
+    const prefMap = new Map<number, number>();
+    for (const p of userPreferences) {
+      prefMap.set(p.tagId, p.likedScore);
+    }
+
+    return tags.map((t) => ({
+      id: t.id,
+      name: t.name,
+      likedScore: prefMap.get(t.id) || 0,
+    }));
   }),
   search: publicProcedure
     .input(
@@ -160,7 +202,7 @@ export const mapRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      return searchPOIS(input, ctx);
+      return searchPOIS({ ...input, recommendRadius: 5 }, ctx);
     }),
   recommend: publicOrProtectedProcedure
     .input(
@@ -172,6 +214,7 @@ export const mapRouter = createTRPCRouter({
           latitude: z.number(),
           longitude: z.number(),
         }),
+        recommendRadius: z.number().default(5),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -339,52 +382,8 @@ export const mapRouter = createTRPCRouter({
 
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
       return top5.map((poi) => pois[poi.index]);
-
-      // TODO: Fetch from the database.
-      // const pois: {
-      //   id: number;
-      //   pos: {
-      //     latitude: number;
-      //     longitude: number;
-      //   };
-      //   popularity: number; // [0, 1], higher means more popular
-      // }[] = [];
-
-      // // SG is near the equator, so we will do a rough approximtion of straight
-      // // line dstance.
-      // const longDistancePerDegree = 111.32;
-      // const latDistancePerDegree = 111.32;
-
-      // const recommendationRadius = 5;
-      // let id = 1;
-      // for (let i = -recommendationRadius; i < recommendationRadius; i++) {
-      //   for (let j = -recommendationRadius; j < recommendationRadius; j++) {
-      //     const coords = {
-      //       latitude: input.fromLocation.latitude + j * 0.01,
-      //       longitude: input.fromLocation.longitude + i * 0.01,
-      //     };
-      //     // SG is small, dont need to complicate comoutation.
-      //     const distance = Math.sqrt(
-      //       ((coords.latitude - input.fromLocation.latitude) *
-      //         latDistancePerDegree) **
-      //         2 +
-      //         ((coords.longitude - input.fromLocation.longitude) *
-      //           longDistancePerDegree) **
-      //           2
-      //     );
-      //     if (distance > recommendationRadius) continue;
-
-      //     pois.push({
-      //       id: id++,
-      //       pos: coords,
-      //       // Mock the popularity
-      //       popularity: Math.abs(Math.sin(i * 0.1) * Math.cos(j * 0.1)),
-      //     });
-      //   }
-      // }
-      // return pois;
     }),
-poiByPopularityScore: publicOrProtectedProcedure
+  poiByPopularityScore: publicOrProtectedProcedure
     .input(
       z.object({
         showVisited: z.boolean(),
@@ -400,7 +399,7 @@ poiByPopularityScore: publicOrProtectedProcedure
             name: tagTable.name,
           })
           .from(tagTable),
-        searchPOIS(input, ctx),
+        searchPOIS({ ...input, recommendRadius: 5 }, ctx),
       ]);
 
       const [poiTags, poiReviews] = await Promise.all([
@@ -507,7 +506,7 @@ poiByPopularityScore: publicOrProtectedProcedure
         poiScores[i].score = score;
       }
 
-      return poiScores.map((poi) => ({...pois[poi.index], score:poi.score}));
+      return poiScores.map((poi) => ({ ...pois[poi.index], score: poi.score }));
     }),
   createPOI: protectedProcedure
     .input(
