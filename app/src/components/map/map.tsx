@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MapEvent, MapMouseEvent } from "mapbox-gl";
 import { env } from "@/lib/env";
 
@@ -23,14 +23,27 @@ function createPinURL(color: string) {
   );
 }
 
+function createBubbleURL(color: string) {
+  return (
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+    <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="0.5" />
+      <circle cx="32" cy="32" r="6" fill="white" />
+    </svg>
+    `)
+  );
+}
+
 const pins = {
   red: createPinURL("#FB2C36"),
   blue: createPinURL("#3B82F6"),
   green: createPinURL("#10B981"),
   // yellow: createPinURL("#EAB308"),
   // purple: createPinURL("#8B5CF6"),
-  // orange: createPinURL("#F59E0B"),
+  orange: createPinURL("#F59E0B"),
   // pink: createPinURL("#EC4899"),
+  blue_bubble: createBubbleURL("#3B82F6"),
 };
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
@@ -42,6 +55,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         viewingPOI,
         setCurrentSidePanelTab,
         setViewingPOI,
+        explore,
       }) => {
         return {
           filters,
@@ -49,10 +63,13 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           viewingPOI,
           setCurrentSidePanelTab,
           setViewingPOI,
+          explorePos: explore.explorePos,
         };
       }
     )
   );
+
+  /*
   const poisQuery = trpc.map.search.useQuery(
     {
       showVisited: mapStore.filters.showVisited,
@@ -63,6 +80,18 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       enabled,
     }
   );
+  */
+  const poisQuery = trpc.map.poiByPopularityScore.useQuery(
+    {
+      showVisited: mapStore.filters.showVisited,
+      showUnvisited: mapStore.filters.showUnvisited,
+      excludedTags: Array.from(mapStore.filters.excludedTags),
+    },
+    {
+      enabled,
+    }
+  );
+
   const itinerariesQuery = trpc.itinerary.getItinerary.useQuery(
     {
       id: mapStore.viewingItineraryId ?? 0,
@@ -71,23 +100,43 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       enabled: mapStore.viewingItineraryId !== null,
     }
   );
+
+  const MIN_PIN_SIZE = 0.5;
+  const MAX_PIN_SIZE = 1;
   const poiPins = useMemo(() => {
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
+    let minScore = 0
+    let maxScore = 1
+    if (!(!poisQuery.data || poisQuery.data.length === 0)) {
+      const scores = [... new Set(poisQuery.data.map((poi) => poi.score ))];
+      minScore = scores.reduce((min, val) => Math.min(min, val), Infinity);
+      maxScore = scores.reduce((max, val) => Math.max(max,val), -Infinity)
+    }
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
-      let color = "blue"; // default
-      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
-        color = "red"; // currently selected POI
+      let color = "blue_bubble"; // default
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
+        color = "blue_bubble"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
+      }
+      let poiScale = MIN_PIN_SIZE;
+      if (maxScore === minScore) {
+        poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
+      } else {
+        poiScale = MIN_PIN_SIZE + ((poi.score - minScore) / (maxScore - minScore)) * (MAX_PIN_SIZE - MIN_PIN_SIZE)
       }
       
       return {
         id: poi.id,
         color: color,
         coordinates: [poi.pos.longitude, poi.pos.latitude],
+        scale: poiScale,
       };
     });
   }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
@@ -97,6 +146,9 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       <Source
         id="pins"
         type="geojson"
+        cluster={true}
+        clusterRadius={40}
+        clusterMaxZoom={12}
         data={{
           type: "FeatureCollection",
           features:
@@ -111,21 +163,71 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
                 properties: {
                   id: poi.id,
                   color: poi.color,
+                  scale: poi.scale,
                 },
               };
             }) ?? [],
         }}
       >
         <Layer
+          id="clusters"
+          type="circle"
+          source="pins"
+          filter={["has", "point_count"]}
+          paint={{
+            "circle-color": "#51bbd6",
+            "circle-radius": [
+              "step",
+              ["get", "point_count"],
+              25,     // radius for clusters with less than 10 points
+              10, 35, // radius for clusters with 10-30 points
+              30, 45  // radius for clusters with 30+ points
+            ],
+            "circle-opacity": 0.6,
+          }}
+        />
+        <Layer
           id="poi-pins"
           type="symbol"
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 1,
-            "icon-anchor": "bottom",
+            "icon-size": ["get", "scale"],
+            "icon-anchor": "center",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+      </Source>
+      <Source
+        id="explore-pin-from"
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [
+                  mapStore.explorePos.longitude,
+                  mapStore.explorePos.latitude,
+                ],
+              },
+              properties: { color: "red" },
+            },
+          ],
+        }}
+      >
+        <Layer
+          id="explore-pin-from"
+          type="symbol"
+          source="explore-pin-from"
+          layout={{
+            "icon-image": "pin-red",
+            "icon-size": 1,
+            "icon-anchor": "bottom",
           }}
         />
       </Source>
@@ -151,6 +253,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           setCurrentSidePanelTab,
           setViewingPOI,
           recommendFromPos: recommend.recommendFromPos,
+          recommendViewPos: recommend.recommendViewPos,
         };
       }
     )
@@ -181,12 +284,15 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue"; // default
-      if (mapStore.viewingPOI?.type === "existing-poi" && mapStore.viewingPOI.poiId === poi.id) {
-        color = "red"; // currently selected POI
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
+        color = "blue"; // currently selected POI //larger orange pin displays over this anyway
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
-      
+
       return {
         id: poi.id,
         color: color,
@@ -225,15 +331,16 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 1,
+            "icon-size": 0.5,
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           }}
         />
       </Source>
       <Source
-        id="pin-from"
+        id="recommend-pin-from"
         type="geojson"
         data={{
           type: "FeatureCollection",
@@ -253,9 +360,9 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         }}
       >
         <Layer
-          id="pin-from"
+          id="recommend-pin-from"
           type="symbol"
-          source="pin-from"
+          source="recommend-pin-from"
           layout={{
             "icon-image": "pin-red",
             "icon-size": 1,
@@ -263,6 +370,39 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           }}
         />
       </Source>
+      {mapStore.recommendViewPos && (
+        <Source
+          id="pin-view"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.recommendViewPos.longitude,
+                    mapStore.recommendViewPos.latitude,
+                  ],
+                },
+                properties: { color: "orange" },
+              },
+            ],
+          }}
+        >
+          <Layer
+            id="pin-view"
+            type="symbol"
+            source="recommend-pin-from"
+            layout={{
+              "icon-image": "pin-orange",
+              "icon-size": 0.7,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
     </>
   );
 }
@@ -273,18 +413,24 @@ export default function ExploreMap({ className }: { className: string }) {
       ({
         currentMapTab,
         setRecommendFromPos,
+        setRecommendViewPos,
+        setExplorePos,
         setViewingPOI,
         setCurrentSidePanelTab,
         setViewState,
         viewState,
+        setTagBadgeOrder,
       }) => {
         return {
           currentMapTab,
           setRecommendFromPos,
+          setRecommendViewPos,
+          setExplorePos,
           setViewingPOI,
           setCurrentSidePanelTab,
           setViewState,
           viewState,
+          setTagBadgeOrder,
         };
       }
     )
@@ -298,7 +444,7 @@ export default function ExploreMap({ className }: { className: string }) {
   );
   const onLoad = useCallback(async (e: MapEvent) => {
     const map = e.target;
-    
+
     const ensurePinImage = async (color: keyof typeof pins) => {
       if (map.hasImage(`pin-${color}`)) return;
       const img = new Image();
@@ -320,8 +466,10 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("red"),
       ensurePinImage("green"),
       ensurePinImage("blue"),
+      ensurePinImage("orange"),
+      ensurePinImage("blue_bubble"),
     ]);
-  }, [mapStore]);
+  }, []);
 
   const onClick = useCallback(
     (e: MapMouseEvent) => {
@@ -333,10 +481,43 @@ export default function ExploreMap({ className }: { className: string }) {
         if (poiPins.length > 0) {
           const poiId = poiPins[0].properties?.id;
           if (poiId) {
+            mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
             mapStore.setViewingPOI({ type: "existing-poi", poiId });
             mapStore.setCurrentSidePanelTab("place");
+            if (poiPins[0].geometry?.type === "Point") {
+              const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
+              mapStore.setExplorePos({
+                latitude: coords[1],
+                longitude: coords[0],
+              });
+              mapStore.setRecommendViewPos({
+                latitude: coords[1],
+                longitude: coords[0],
+              });
+            }
           }
           return;
+        }
+      } 
+      if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
+        const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+        if (features.length) {
+          const clusterFeature = features[0];
+          const clusterId = clusterFeature.properties?.cluster_id;
+          const source = map.getSource("pins");
+          if (source && "getClusterExpansionZoom" in source) {
+            (source as mapboxgl.GeoJSONSource).getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err || zoom == null) return;
+
+              if (clusterFeature.geometry.type === "Point") {
+                const [lng, lat] = clusterFeature.geometry.coordinates;
+                map.easeTo({
+                  center: [lng, lat],
+                  zoom: zoom,
+                });
+              }
+            });
+          }
         }
       }
 
@@ -347,9 +528,14 @@ export default function ExploreMap({ className }: { className: string }) {
           longitude: e.lngLat.lng,
         });
       }
-
       // For explore map.
-      // TODO: Add stuff here for explore map.
+      else if (mapStore.currentMapTab == "explore") {
+        // TODO: Add stuff here for explore map.
+        const pos = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
+        mapStore.setExplorePos(pos);
+        mapStore.setViewingPOI({ type: "new-poi", pos });
+        mapStore.setCurrentSidePanelTab("place");
+      }
     },
     [mapStore]
   );

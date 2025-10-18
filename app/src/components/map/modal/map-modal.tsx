@@ -1,17 +1,19 @@
 "use client";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@/components/ui/visually-hidden";
 import { useCallback } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMapModalStore } from "./map-modal-store";
 import { POIReviewDialog } from "./itinerary-poi-review-modal";
 import { CreateItineraryDialog } from "./create-itinerary-modal";
+import { CreatePOIDialog } from "./create-poi-modal";
+import { POIImageCarouselDialog } from "./poi-image-carousel-modal";
+import { UploadImageDialog } from "./upload-poi-image-modal";
+import { VisuallyHidden } from "@/components/ui/visually-hidden";
 import { DeleteItineraryModal } from "./delete-itinerary-modal";
 import { RenameItineraryModal } from "./rename-itinerary-modal";
 import { RemovePOIFromItineraryModal } from "./remove-poi-from-itinerary-modal";
 import { DeleteReviewModal } from "./delete-review-modal";
-import { trpc } from "@/server/client";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -22,8 +24,6 @@ export function MapModal() {
       };
     })
   );
-
-  const utils = trpc.useUtils();
 
   const setOpen = useCallback(
     (open: boolean) => {
@@ -40,10 +40,7 @@ export function MapModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent>
-        <VisuallyHidden>
-          <DialogTitle>Modal</DialogTitle>
-        </VisuallyHidden>
+      <DialogContent className="w-fit sm:max-w-none">
         {modalStore.action?.type === "itinerary-poi-review" && (
           <POIReviewDialog options={modalStore.action.options} close={close} />
         )}
@@ -79,6 +76,21 @@ export function MapModal() {
           <DeleteReviewModal
             reviewId={modalStore.action.options.reviewId}
             poiId={modalStore.action.options.poiId}
+            close={close}
+          />
+        )}
+        {modalStore.action?.type === "create-poi" && (
+          <CreatePOIDialog options={modalStore.action.options} close={close} />
+        )}
+        {modalStore.action?.type === "poi-image-carousel" && (
+          <POIImageCarouselDialog
+            options={modalStore.action.options}
+            close={close}
+          />
+        )}
+        {modalStore.action?.type === "upload-poi-image" && (
+          <UploadImageDialog
+            options={modalStore.action.options}
             close={close}
           />
         )}
