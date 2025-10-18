@@ -3,12 +3,15 @@ import { itineraryRouter } from "./routers/itinerary-router";
 import { reviewRouter } from "./routers/review-router";
 import { mapRouter } from "./routers/map.router";
 import { experimentalRouter } from "./routers/experimental-router";
+import { poisRouter } from "./routers/pois-router";
+
 
 export const appRouter = createTRPCRouter({
   itinerary: itineraryRouter,
   review: reviewRouter,
   map: mapRouter,
   experimental: experimentalRouter,
+  pois: poisRouter,
 });
 
 export type AppRouter = typeof appRouter;
