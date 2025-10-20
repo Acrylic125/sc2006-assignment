@@ -37,17 +37,33 @@ function createBubbleURL(color: string) {
   );
 }
 
+function createAddPin() {
+  const svg = `<svg width="32" height="64" viewBox="0 0 32 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="16" cy="48" r="16" fill="#7BF1A8" fill-opacity="0.5"/>
+<circle cx="16" cy="48" r="6" fill="white"/>
+<mask id="path-3-inside-1_55_15" fill="white">
+<path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z"/>
+</mask>
+<path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z" fill="#008236"/>
+<rect x="14" y="9" width="4" height="16" rx="2" fill="#ffffff"/>
+<rect x="8" y="15" width="16" height="4" rx="2" fill="#ffffff"/>
+</svg>
+`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
 const pins = {
   red: createPinURL("#FB2C36"),
-  blue: createPinURL("#3B82F6"),
+  // blue: createPinURL("#3B82F6"),
   green: createPinURL("#10B981"),
   // yellow: createPinURL("#EAB308"),
   // purple: createPinURL("#8B5CF6"),
-  orange: createPinURL("#F59E0B"),
+  // orange: createPinURL("#F59E0B"),
   // pink: createPinURL("#EC4899"),
   blue_bubble: createBubbleURL("#3B82F6"),
   red_bubble: createBubbleURL("#ff6467"),
   green_bubble: createBubbleURL("#10B981"),
+  add_pin: createAddPin(),
 };
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
@@ -198,37 +214,39 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           }}
         />
       </Source>
-      <Source
-        id="explore-pin-from"
-        type="geojson"
-        data={{
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [
-                  mapStore.explorePos.longitude,
-                  mapStore.explorePos.latitude,
-                ],
-              },
-              properties: {},
-            },
-          ],
-        }}
-      >
-        <Layer
+      {mapStore.explorePos && (
+        <Source
           id="explore-pin-from"
-          type="symbol"
-          source="explore-pin-from"
-          layout={{
-            "icon-image": "pin-green_bubble",
-            "icon-size": 1,
-            "icon-anchor": "bottom",
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.explorePos.longitude,
+                    mapStore.explorePos.latitude,
+                  ],
+                },
+                properties: {},
+              },
+            ],
           }}
-        />
-      </Source>
+        >
+          <Layer
+            id="explore-pin-from"
+            type="symbol"
+            source="explore-pin-from"
+            layout={{
+              "icon-image": "pin-add_pin",
+              "icon-size": 2,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
     </>
   );
 }
@@ -515,6 +533,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("blue_bubble"),
       ensurePinImage("red_bubble"),
       ensurePinImage("green_bubble"),
+      ensurePinImage("add_pin"),
     ]);
   }, []);
 
@@ -533,10 +552,10 @@ export default function ExploreMap({ className }: { className: string }) {
             mapStore.setCurrentSidePanelTab("place");
             if (poiPins[0].geometry?.type === "Point") {
               const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
-              mapStore.setExplorePos({
-                latitude: coords[1],
-                longitude: coords[0],
-              });
+              // mapStore.setExplorePos({
+              //   latitude: coords[1],
+              //   longitude: coords[0],
+              // });
               mapStore.setRecommendViewPos({
                 latitude: coords[1],
                 longitude: coords[0],
