@@ -43,6 +43,32 @@ export type MapModalAction =
         reviewId: number;
         poiId: number;
       };
+    }
+  | {
+      type: "create-poi";
+      options: {
+        address: string;
+        longitude: number;
+        latitude: number;
+        name: string;
+        description: string;
+        images: string[];
+      };
+    } 
+  | {
+      type: "poi-image-carousel";
+      options: {
+        poiId: number;
+        name: string;
+      };
+    }
+  | {
+      type: "upload-poi-image";
+      options: {
+        poiId: number;
+        name: string;
+        images: string[];
+      };
     };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<

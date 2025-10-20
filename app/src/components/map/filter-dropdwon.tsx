@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Check, Filter, Tag } from "lucide-react";
 import { trpc } from "@/server/client";
+import { Badge } from "@/components/ui/badge";
 
 export function FilterDropdown() {
   const mapStore = useMapStore(
@@ -77,6 +78,8 @@ export function FilterTagsDropdown() {
     })
   );
 
+  const allTags = tagsQuery.data?.map((tag) => tag.id) || [];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -86,9 +89,33 @@ export function FilterTagsDropdown() {
           <Tag /> <span className="hidden lg:block">Tags</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-64 overflow-y-auto">
+      <DropdownMenuContent className="max-h-64 w-48 overflow-y-auto">
         <DropdownMenuLabel>Tags</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <div
+          className="w-full"
+        >
+          <Button
+            variant="ghost"
+            className="w-full flex flex-row items-center gap-2 justify-start px-2"
+            onClick={() => {
+              if(allTags.length === mapStore.excludedTags.size) {
+                mapStore.setFilterExcludedTags(new Set());
+                console.log(mapStore.excludedTags);
+              } else {
+                mapStore.setFilterExcludedTags(new Set(allTags));
+                console.log(mapStore.excludedTags);
+              }
+            }}
+          >
+            <span className="w-4">
+              {allTags.length !== mapStore.excludedTags.size && (
+                <Check className="size-4" />
+              )}
+            </span>
+            <span>[Select All]</span>
+          </Button>
+        </div>
         {tagsQuery.data?.map((tag) => (
           <Button
             key={tag.id}
@@ -105,12 +132,21 @@ export function FilterTagsDropdown() {
               }
             }}
           >
-            <span className="w-4">
-              {!mapStore.excludedTags.has(tag.id) && (
-                <Check className="size-4" />
-              )}
-            </span>
-            <span>{tag.name}</span>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <span className="w-4">
+                  {!mapStore.excludedTags.has(tag.id) && (
+                    <Check className="size-4" />
+                  )}
+                </span>
+                <span>{tag.name}</span>
+              </div>
+              <Badge
+                variant="outline"
+              >
+                {tag.count}
+              </Badge>
+            </div>
           </Button>
         ))}
       </DropdownMenuContent>

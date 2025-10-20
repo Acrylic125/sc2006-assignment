@@ -22,12 +22,14 @@ type ViewingPOI =
   | {
       type: "new-poi";
       pos: {
-        name: string;
-        description: string;
         latitude: number;
         longitude: number;
-        images: string[];
       };
+    }
+  | {
+      type: "poi-image-carousel";
+      poiId: number;
+      name: string;
     };
 
 type MapStore = {
@@ -35,6 +37,7 @@ type MapStore = {
   viewingPOI: ViewingPOI | null;
   currentMapTab: "explore" | "recommend";
   currentSidePanelTab: "itinerary" | "place";
+  tagBadgeOrder: number[];
   viewState: {
     latitude: number;
     longitude: number;
@@ -42,6 +45,10 @@ type MapStore = {
   };
   recommend: {
     recommendFromPos: Coordinates;
+    recommendViewPos: Coordinates | null;
+  };
+  explore: {
+    explorePos: Coordinates;
   };
   filters: {
     showVisited: boolean;
@@ -60,7 +67,10 @@ type MapStore = {
   setFilterShowVisited: (showVisited: boolean) => void;
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
+  setRecommendViewPos: (pos: Coordinates) => void;
+  setExplorePos: (pos: Coordinates) => void;
   setViewingPOI: (poi: ViewingPOI) => void;
+  setTagBadgeOrder: (tagIdOrder: number[]) => void;
 };
 
 export const useMapStore = create<MapStore>((set, get) => ({
@@ -68,6 +78,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
   viewingPOI: null,
   currentMapTab: "explore",
   currentSidePanelTab: "place",
+  tagBadgeOrder: [],
   viewState: {
     latitude: 1.3521,
     longitude: 103.8198,
@@ -75,6 +86,10 @@ export const useMapStore = create<MapStore>((set, get) => ({
   },
   recommend: {
     recommendFromPos: { latitude: 1.3521, longitude: 103.8198 },
+    recommendViewPos: null,
+  },
+  explore: {
+    explorePos: { latitude: 1.3521, longitude: 103.8198 },
   },
   filters: {
     showVisited: true,
@@ -99,8 +114,14 @@ export const useMapStore = create<MapStore>((set, get) => ({
   setFilterShowUnvisited: (showUnvisited: boolean) =>
     set((prev) => ({ filters: { ...prev.filters, showUnvisited } })),
   setRecommendFromPos: (pos: Coordinates) =>
-    set({ recommend: { recommendFromPos: pos } }),
+    set((prev) => ({ recommend: { ...prev.recommend, recommendFromPos: pos } })),
+  setRecommendViewPos: (pos: Coordinates) =>
+    set((prev) => ({ recommend: { ...prev.recommend, recommendViewPos: pos } })),
+  setExplorePos: (pos: Coordinates) =>
+    set({ explore: { explorePos: pos } }),
   setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
+  setTagBadgeOrder: (tagIdOrder: number[]) =>
+    set({ tagBadgeOrder: tagIdOrder })
 
   //   setExplorePois: (pois: { id: number; pos: Coordinates }[]) =>
   //     set({ explore: { pois } }),
