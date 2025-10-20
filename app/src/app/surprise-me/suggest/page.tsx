@@ -65,7 +65,7 @@ export default async function SuggestPage() {
       .where(
         inArray(
           poiTable.id,
-          reocmmendedPoisQuery.map((poi) => poi.id)
+          reocmmendedPoisQuery.recommended.map((poi) => poi.id)
         )
       ),
     db
@@ -77,7 +77,7 @@ export default async function SuggestPage() {
       .where(
         inArray(
           poiImagesTable.poiId,
-          reocmmendedPoisQuery.map((poi) => poi.id)
+          reocmmendedPoisQuery.recommended.map((poi) => poi.id)
         )
       ),
   ]);
