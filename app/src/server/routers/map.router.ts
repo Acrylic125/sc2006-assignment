@@ -27,6 +27,191 @@ const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
 
+class RecommendationEngine {
+  private numberOfTags: number;
+  private numberOfPois: number;
+
+  private tagMapping = new Map<number, number>();
+  private poiMapping = new Map<number, number>();
+
+  private poiTagMatrix: number[][];
+  private numberOfPoiReviewsMatrix: number[];
+  private poiLikesProportionMatrix: number[];
+
+  public weights: number[] = [0.5, 0.3, 0.2];
+
+  public constructor(tags: { id: number }[], pois: { id: number }[]) {
+    this.numberOfTags = tags.length;
+    this.numberOfPois = pois.length;
+
+    // Initialize mappings.
+    for (let i = 0; i < tags.length; i++) {
+      this.tagMapping.set(tags[i].id, i);
+    }
+    for (let i = 0; i < pois.length; i++) {
+      this.poiMapping.set(pois[i].id, i);
+    }
+
+    // Initialize matrices.
+    this.poiTagMatrix = new Array(this.numberOfPois)
+      .fill(0)
+      .map(() => new Array(this.numberOfTags).fill(0));
+    this.numberOfPoiReviewsMatrix = new Array(this.numberOfPois).fill(0);
+    this.poiLikesProportionMatrix = new Array(this.numberOfPois).fill(0);
+  }
+
+  public getPoiMappings() {
+    return this.poiMapping;
+  }
+
+  public getTagMappings() {
+    return this.tagMapping;
+  }
+
+  public setPoiTags(poiTags: { poiId: number; tagId: number }[]) {
+    for (const poiTag of poiTags) {
+      const tagIndex = this.tagMapping.get(poiTag.tagId);
+      if (tagIndex === undefined) {
+        continue;
+      }
+      const poiIndex = this.poiMapping.get(poiTag.poiId);
+      if (poiIndex === undefined) {
+        continue;
+      }
+      this.poiTagMatrix[poiIndex][tagIndex] = 1;
+    }
+  }
+
+  public setNumberOfPoiReviews(
+    poiReviews: { poiId: number; numberOfReviews: number }[]
+  ) {
+    for (const poiReview of poiReviews) {
+      const poiIndex = this.poiMapping.get(poiReview.poiId);
+      if (poiIndex === undefined) {
+        continue;
+      }
+      this.numberOfPoiReviewsMatrix[poiIndex] = poiReview.numberOfReviews;
+    }
+
+    // Log normalize the number of reviews.
+    const maxLogNormalizedNumberOfPoiReviews = Math.log2(
+      1 + Math.max(...this.numberOfPoiReviewsMatrix)
+    );
+    this.numberOfPoiReviewsMatrix =
+      maxLogNormalizedNumberOfPoiReviews > 0
+        ? this.numberOfPoiReviewsMatrix.map(
+            (score) => Math.log2(score + 1) / maxLogNormalizedNumberOfPoiReviews
+          )
+        : new Array<number>(this.numberOfPois).fill(0);
+  }
+
+  public setPoiLikesProportion(
+    poiLikesProportion: { poiId: number; likesProportion: number }[]
+  ) {
+    for (const poiLikeProportion of poiLikesProportion) {
+      const poiIndex = this.poiMapping.get(poiLikeProportion.poiId);
+      if (poiIndex === undefined) {
+        continue;
+      }
+      this.poiLikesProportionMatrix[poiIndex] =
+        poiLikeProportion.likesProportion;
+    }
+  }
+
+  public recommend(userPreferences: { tagId: number; likedScore: number }[]) {
+    // Create |T| x 1 matrix containing the user preference score for each poi.
+    const poiUserPreferenceMatrix = new Array<number>(this.numberOfTags).fill(
+      0
+    );
+    for (const userPreference of userPreferences) {
+      const tagIndex = this.tagMapping.get(userPreference.tagId);
+      if (tagIndex === undefined) {
+        continue;
+      }
+      poiUserPreferenceMatrix[tagIndex] = userPreference.likedScore;
+    }
+
+    const M = [
+      poiUserPreferenceMatrix,
+      this.numberOfPoiReviewsMatrix,
+      this.poiLikesProportionMatrix,
+    ];
+    if (M.length !== this.weights.length) {
+      throw new Error("The number of matrices and weights must be the same.");
+    }
+
+    // Now we compute the preference scores for each poi.
+    const poiScores = new Array<{ index: number; score: number }>(
+      this.numberOfPois
+    )
+      .fill({ index: 0, score: 0 })
+      .map((_, i) => ({ index: i, score: 0 }));
+    // poiScores = M @ weights
+    for (let i = 0; i < this.numberOfPois; i++) {
+      let score = 0;
+      for (let j = 0; j < M.length; j++) {
+        score += M[j][i] * this.weights[j];
+      }
+      poiScores[i].score = score;
+    }
+
+    return poiScores;
+  }
+}
+
+export function computePoiPopularity(
+  reviews: {
+    poiId: number;
+    numberOfReviews: number;
+    likesProportion: number;
+  }[]
+) {
+  if (reviews.length === 0) {
+    return new Map<
+      number,
+      {
+        numberOfReviews: number;
+        likesProportion: number;
+        popularityScore: number;
+      }
+    >();
+  }
+  const highestReviews = Math.max(
+    ...reviews.map((review) => review.numberOfReviews)
+  );
+  const maxLogNormalizedNumberOfReviews = Math.log2(1 + highestReviews);
+  // Log normalize the number of reviews.
+  const logNormalizedNumberOfReviews = reviews.map((review) => {
+    if (review.numberOfReviews === 0) {
+      return 0;
+    }
+    return (
+      Math.log2(review.numberOfReviews + 1) / maxLogNormalizedNumberOfReviews
+    );
+  });
+  const likesProportion = reviews.map((review) => {
+    if (review.numberOfReviews === 0) {
+      return 0;
+    }
+    return review.likesProportion / review.numberOfReviews;
+  });
+  return new Map(
+    reviews.map((review, index) => {
+      const popularityScore =
+        logNormalizedNumberOfReviews[index] * 0.7 +
+        likesProportion[index] * 0.3;
+      return [
+        review.poiId,
+        {
+          numberOfReviews: logNormalizedNumberOfReviews[index],
+          likesProportion: likesProportion[index],
+          popularityScore,
+        },
+      ];
+    })
+  );
+}
+
 async function searchPOIS(
   input: {
     showVisited: boolean;
@@ -202,7 +387,26 @@ export const mapRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      return searchPOIS({ ...input, recommendRadius: 5 }, ctx);
+      const pois = await searchPOIS({ ...input, recommendRadius: 5 }, ctx);
+      const reviews = await db
+        .select({
+          poiId: reviewTable.poiId,
+          numberOfReviews: sql<number>`COUNT(${reviewTable.id})`,
+          likesProportion: sql<number>`COUNT(CASE WHEN ${reviewTable.liked} = true THEN 1 END)`,
+        })
+        .from(reviewTable)
+        .where(
+          inArray(
+            reviewTable.poiId,
+            pois.map((poi) => poi.id)
+          )
+        )
+        .groupBy(reviewTable.poiId);
+      const poiPopularity = computePoiPopularity(reviews);
+      return pois.map((poi) => ({
+        ...poi,
+        popularityScore: poiPopularity.get(poi.id)?.popularityScore ?? 0,
+      }));
     }),
   recommend: publicOrProtectedProcedure
     .input(
@@ -274,239 +478,19 @@ export const mapRouter = createTRPCRouter({
           .groupBy(reviewTable.poiId),
       ]);
 
-      // Create tag mapping to index.
-      const tagMapping = new Map<number, number>();
-      for (let i = 0; i < tags.length; i++) {
-        tagMapping.set(tags[i].id, i);
-      }
+      const recommendationEngine = new RecommendationEngine(tags, pois);
+      recommendationEngine.setPoiTags(poiTags);
+      recommendationEngine.setNumberOfPoiReviews(poiReviews);
+      recommendationEngine.setPoiLikesProportion(poiReviews);
+      const poiScores = recommendationEngine.recommend(userPreferences);
 
-      // Create poi mapping to index.
-      const poiMapping = new Map<number, number>();
-      for (let i = 0; i < pois.length; i++) {
-        poiMapping.set(pois[i].id, i);
-      }
-
-      // Let |P| be the number of pois and |T| be the number of tags.
-      // Create |P| x |T| matrix containing 1 if poi has tag, 0 otherwise.
-      const poiTagMatrix = new Array(pois.length)
-        .fill(0)
-        .map(() => new Array(tags.length).fill(0));
-      for (const poiTag of poiTags) {
-        const tagIndex = tagMapping.get(poiTag.tagId);
-        if (tagIndex === undefined) {
-          continue;
-        }
-        const poiIndex = poiMapping.get(poiTag.poiId);
-        if (poiIndex === undefined) {
-          continue;
-        }
-        poiTagMatrix[poiIndex][tagIndex] = 1;
-      }
-
-      // Create |P| x 1 matrix containing the number of reviews for each poi.
-      // Create |P| x 1 matrix containing the likes proportion for each poi.
-      const numberOfPoiReviewsMatrix = new Array(pois.length).fill(0);
-      // Already normalized.
-      const poiLikesProportionMatrix = new Array(pois.length).fill(0);
-      for (const poiReview of poiReviews) {
-        const poiIndex = poiMapping.get(poiReview.poiId);
-        if (poiIndex === undefined) {
-          continue;
-        }
-        numberOfPoiReviewsMatrix[poiIndex] = poiReview.numberOfReviews;
-        poiLikesProportionMatrix[poiIndex] = poiReview.likesProportion;
-      }
-
-      // We use log to avoid domination by outliers.
-      const maxLogNormalizedNumberOfPoiReviews = Math.log2(
-        1 + Math.max(...numberOfPoiReviewsMatrix)
-      );
-      const logNormalizedNumberOfPoiReviewsMatrix =
-        maxLogNormalizedNumberOfPoiReviews > 0
-          ? numberOfPoiReviewsMatrix.map(
-              (score) =>
-                Math.log2(score + 1) / maxLogNormalizedNumberOfPoiReviews
-            )
-          : new Array<number>(pois.length).fill(0);
-
-      // Create |T| x 1 matrix containing the user preference score for each poi.
-      const poiUserPreferenceMatrix = new Array<number>(tags.length).fill(0);
-      for (const userPreference of userPreferences) {
-        const tagIndex = tagMapping.get(userPreference.tagId);
-        if (tagIndex === undefined) {
-          continue;
-        }
-        poiUserPreferenceMatrix[tagIndex] = userPreference.likedScore;
-      }
-
-      // Create |P| x 1 matrix containing the preference score for each poi.
-      // poiPreferenceMatrix = poiTagMatrix @ poiUserPreferenceMatrix
-      const poiPreferenceMatrix = new Array<number>(pois.length).fill(0);
-      for (let i = 0; i < pois.length; i++) {
-        let score = 0;
-        for (let j = 0; j < tags.length; j++) {
-          score += poiTagMatrix[i][j] * poiUserPreferenceMatrix[j];
-        }
-        poiPreferenceMatrix[i] = score;
-      }
-      // Normalize the poiPreferenceMatrix.
-      const maxPreference = Math.max(...poiPreferenceMatrix);
-      const minPreference = Math.min(...poiPreferenceMatrix);
-      const deltaPreference = maxPreference - minPreference;
-      const normalizedPreferenceMatrix =
-        deltaPreference > 0
-          ? poiPreferenceMatrix.map(
-              (score) => (score - minPreference) / deltaPreference
-            )
-          : poiPreferenceMatrix.map(() => 0);
-
-      const weights = [0.5, 0.3, 0.2];
-      const M = [
-        normalizedPreferenceMatrix,
-        logNormalizedNumberOfPoiReviewsMatrix,
-        poiLikesProportionMatrix,
-      ];
-
-      // Now we compute the preference scores for each poi.
-      const poiScores = new Array<{ index: number; score: number }>(pois.length)
-        .fill({ index: 0, score: 0 })
-        .map((_, i) => ({ index: i, score: 0 }));
-      // poiScores = M @ weights
-      for (let i = 0; i < pois.length; i++) {
-        let score = 0;
-        for (let j = 0; j < M.length; j++) {
-          score += M[j][i] * weights[j];
-        }
-        poiScores[i].score = score;
-      }
-
+      const poiPopularity = computePoiPopularity(poiReviews);
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
-      return top5.map((poi) => pois[poi.index]);
-    }),
-  poiByPopularityScore: publicOrProtectedProcedure
-    .input(
-      z.object({
-        showVisited: z.boolean(),
-        showUnvisited: z.boolean(),
-        excludedTags: z.array(z.number()),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const [tags, pois] = await Promise.all([
-        db
-          .select({
-            id: tagTable.id,
-            name: tagTable.name,
-          })
-          .from(tagTable),
-        searchPOIS({ ...input, recommendRadius: 5 }, ctx),
-      ]);
-
-      const [poiTags, poiReviews] = await Promise.all([
-        db
-          .select({
-            poiId: poiTagTable.poiId,
-            tagId: poiTagTable.tagId,
-          })
-          .from(poiTagTable)
-          .where(
-            inArray(
-              poiTagTable.poiId,
-              pois.map((poi) => poi.id)
-            )
-          ),
-        db
-          .select({
-            poiId: reviewTable.poiId,
-            numberOfReviews: sql<number>`COUNT(${reviewTable.id})`,
-            likesProportion: sql<number>`COUNT(CASE WHEN ${reviewTable.liked} = true THEN 1 END)`,
-          })
-          .from(reviewTable)
-          .where(
-            inArray(
-              reviewTable.poiId,
-              pois.map((poi) => poi.id)
-            )
-          )
-          .groupBy(reviewTable.poiId),
-      ]);
-
-      // Create tag mapping to index.
-      const tagMapping = new Map<number, number>();
-      for (let i = 0; i < tags.length; i++) {
-        tagMapping.set(tags[i].id, i);
-      }
-
-      // Create poi mapping to index.
-      const poiMapping = new Map<number, number>();
-      for (let i = 0; i < pois.length; i++) {
-        poiMapping.set(pois[i].id, i);
-      }
-
-      // Let |P| be the number of pois and |T| be the number of tags.
-      // Create |P| x |T| matrix containing 1 if poi has tag, 0 otherwise.
-      const poiTagMatrix = new Array(pois.length)
-        .fill(0)
-        .map(() => new Array(tags.length).fill(0));
-      for (const poiTag of poiTags) {
-        const tagIndex = tagMapping.get(poiTag.tagId);
-        if (tagIndex === undefined) {
-          continue;
-        }
-        const poiIndex = poiMapping.get(poiTag.poiId);
-        if (poiIndex === undefined) {
-          continue;
-        }
-        poiTagMatrix[poiIndex][tagIndex] = 1;
-      }
-
-      // Create |P| x 1 matrix containing the number of reviews for each poi.
-      // Create |P| x 1 matrix containing the likes proportion for each poi.
-      const numberOfPoiReviewsMatrix = new Array(pois.length).fill(0);
-      // Already normalized.
-      const poiLikesProportionMatrix = new Array(pois.length).fill(0);
-      for (const poiReview of poiReviews) {
-        const poiIndex = poiMapping.get(poiReview.poiId);
-        if (poiIndex === undefined) {
-          continue;
-        }
-        numberOfPoiReviewsMatrix[poiIndex] = poiReview.numberOfReviews;
-        poiLikesProportionMatrix[poiIndex] = poiReview.likesProportion;
-      }
-
-      // We use log to avoid domination by outliers.
-      const maxLogNormalizedNumberOfPoiReviews = Math.log2(
-        1 + Math.max(...numberOfPoiReviewsMatrix)
-      );
-      const logNormalizedNumberOfPoiReviewsMatrix =
-        maxLogNormalizedNumberOfPoiReviews > 0
-          ? numberOfPoiReviewsMatrix.map(
-              (score) =>
-                Math.log2(score + 1) / maxLogNormalizedNumberOfPoiReviews
-            )
-          : new Array<number>(pois.length).fill(0);
-
-      //const weights = [0.5, 0.3];
-      const weights = [0.5, 0.3];
-      const M = [
-        logNormalizedNumberOfPoiReviewsMatrix,
-        poiLikesProportionMatrix,
-      ];
-
-      // Now we compute the preference scores for each poi.
-      const poiScores = new Array<{ index: number; score: number }>(pois.length)
-        .fill({ index: 0, score: 0 })
-        .map((_, i) => ({ index: i, score: 0 }));
-      // poiScores = M @ weights
-      for (let i = 0; i < pois.length; i++) {
-        let score = 0;
-        for (let j = 0; j < M.length; j++) {
-          score += M[j][i] * weights[j];
-        }
-        poiScores[i].score = score;
-      }
-
-      return poiScores.map((poi) => ({ ...pois[poi.index], score: poi.score }));
+      return top5.map((poi) => ({
+        ...pois[poi.index],
+        popularityScore:
+          poiPopularity.get(pois[poi.index].id)?.popularityScore ?? 0,
+      }));
     }),
   createPOI: protectedProcedure
     .input(

@@ -101,14 +101,12 @@ export function CreatePOIDialog({
     }
   };
 
-  const [filePending,setFilePending] = useState(false); //bool of whether a file is pending
+  const [filePending, setFilePending] = useState(false); //bool of whether a file is pending
   const [selectedTags, setSelectedTags] = useState<number[]>([]); //array of selected tag ids
   return (
     <ScrollArea className="max-h-[85vh] w-[30vw]">
       <DialogHeader>
-        <DialogTitle className="mb-0">
-          Add a new POI
-        </DialogTitle>
+        <DialogTitle className="mb-0">Add a new POI</DialogTitle>
         <DialogDescription className="mb-5 -mt-1">
           Know a nice place? Add it to our map!
         </DialogDescription>
@@ -125,7 +123,9 @@ export function CreatePOIDialog({
                   <div>
                     <Input placeholder="Address of your POI" {...field} />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Pin at: {options.address}, Lat: {form.getValues("lat").toFixed(2) || "—"}, Lng: {form.getValues("lng").toFixed(2) || "—"}
+                      Pin at: {options.address}, Lat:{" "}
+                      {form.getValues("lat").toFixed(2) || "—"}, Lng:{" "}
+                      {form.getValues("lng").toFixed(2) || "—"}
                     </p>
                   </div>
                 </FormControl>
@@ -161,24 +161,27 @@ export function CreatePOIDialog({
               </FormItem>
             )}
           />
-          
+
           <div className="form-label-group mb-1">
             <div className="label-main">Tags </div>
-            <small className="label-sub">
-              (Select at least 1)
-            </small>
+            <small className="label-sub">(Select at least 1)</small>
           </div>
           <div className="flex flex-wrap gap-1">
             {tagsQuery.data?.map((tag) => (
-              <Badge 
-                key={tag.id} 
-                className={cn({
-                  "dark:bg-green-300": selectedTags.includes(tag.id),
-                  "dark:text-neutral-100": !selectedTags.includes(tag.id),
-                  "bg-green-400": selectedTags.includes(tag.id),
-                  "text-black": true,
-                }, "cursor-pointer")}
-                variant={!selectedTags.includes(tag.id) ? "secondary" : "default"}
+              <Badge
+                key={tag.id}
+                className={cn(
+                  {
+                    "dark:bg-green-300": selectedTags.includes(tag.id),
+                    "dark:text-neutral-100": !selectedTags.includes(tag.id),
+                    "bg-green-400": selectedTags.includes(tag.id),
+                    "text-black": true,
+                  },
+                  "cursor-pointer"
+                )}
+                variant={
+                  !selectedTags.includes(tag.id) ? "secondary" : "default"
+                }
                 //variant="secondary"
                 //className={`${selectedTags.includes(tag.id) ? "bg-green-300" : ""} cursor-pointer`}
                 onClick={(e) => {
@@ -189,14 +192,14 @@ export function CreatePOIDialog({
                       shouldValidate: true,
                       shouldDirty: true,
                     });
-                    setSelectedTags(newTags)
+                    setSelectedTags(newTags);
                   } else {
-                    const newTags = [...selectedTags, tag.id]
+                    const newTags = [...selectedTags, tag.id];
                     form.setValue("tags", newTags, {
                       shouldValidate: true,
                       shouldDirty: true,
                     });
-                    setSelectedTags(newTags)
+                    setSelectedTags(newTags);
                   }
                 }}
               >
@@ -218,8 +221,8 @@ export function CreatePOIDialog({
             name="images"
             acceptedFileTypes={["image/*"]}
             labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
-            onaddfilestart={()=> setFilePending(true)} //track when a file is being uploaded
-            onprocessfiles={()=> setFilePending(false)} //track when all files are done
+            onaddfilestart={() => setFilePending(true)} //track when a file is being uploaded
+            onprocessfiles={() => setFilePending(false)} //track when all files are done
             //upload the file via uploadthing client upload
             //we could alternatively set allowFileEncode={true} to encode it into a base 64 string
             server={{
@@ -294,7 +297,14 @@ export function CreatePOIDialog({
             </Button>
             <Button
               type="submit"
-              disabled={createPOIMutation.isPending || filePending || selectedTags.length === 0 || form.getValues("address").length === 0  || form.getValues("name").length === 0 || form.getValues("description").length === 0 }
+              disabled={
+                createPOIMutation.isPending ||
+                filePending ||
+                selectedTags.length === 0 ||
+                form.getValues("address").length === 0 ||
+                form.getValues("name").length === 0 ||
+                form.getValues("description").length === 0
+              }
             >
               {createPOIMutation.isPending ? "Creating..." : "New POI"}
             </Button>

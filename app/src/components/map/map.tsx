@@ -46,6 +46,8 @@ const pins = {
   orange: createPinURL("#F59E0B"),
   // pink: createPinURL("#EC4899"),
   blue_bubble: createBubbleURL("#3B82F6"),
+  red_bubble: createBubbleURL("#ff6467"),
+  green_bubble: createBubbleURL("#10B981"),
 };
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
@@ -71,7 +73,6 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     )
   );
 
-  /*
   const poisQuery = trpc.map.search.useQuery(
     {
       showVisited: mapStore.filters.showVisited,
@@ -82,18 +83,6 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       enabled,
     }
   );
-  */
-  const poisQuery = trpc.map.poiByPopularityScore.useQuery(
-    {
-      showVisited: mapStore.filters.showVisited,
-      showUnvisited: mapStore.filters.showUnvisited,
-      excludedTags: Array.from(mapStore.filters.excludedTags),
-    },
-    {
-      enabled,
-    }
-  );
-
   const itinerariesQuery = trpc.itinerary.getItinerary.useQuery(
     {
       id: mapStore.viewingItineraryId ?? 0,
@@ -103,19 +92,21 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     }
   );
 
-  const MIN_PIN_SIZE = 0.5;
-  const MAX_PIN_SIZE = 1;
+  const MIN_PIN_SIZE = 1;
+  const MAX_PIN_SIZE = 2;
   const poiPins = useMemo(() => {
+    if (!poisQuery.data || poisQuery.data.length === 0) {
+      return [];
+    }
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
-    let minScore = 0
-    let maxScore = 1
-    if (!(!poisQuery.data || poisQuery.data.length === 0)) {
-      const scores = [... new Set(poisQuery.data.map((poi) => poi.score ))];
-      minScore = scores.reduce((min, val) => Math.min(min, val), Infinity);
-      maxScore = scores.reduce((max, val) => Math.max(max,val), -Infinity)
-    }
+    const minScore = Math.min(
+      ...poisQuery.data.map((poi) => poi.popularityScore)
+    );
+    const maxScore = Math.max(
+      ...poisQuery.data.map((poi) => poi.popularityScore)
+    );
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue_bubble"; // default
@@ -123,7 +114,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
-        color = "blue_bubble"; // currently selected POI
+        color = "red_bubble"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
       }
@@ -131,9 +122,12 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
       if (maxScore === minScore) {
         poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
       } else {
-        poiScale = MIN_PIN_SIZE + ((poi.score - minScore) / (maxScore - minScore)) * (MAX_PIN_SIZE - MIN_PIN_SIZE)
+        poiScale =
+          MIN_PIN_SIZE +
+          ((poi.popularityScore - minScore) / (maxScore - minScore)) *
+            (MAX_PIN_SIZE - MIN_PIN_SIZE);
       }
-      
+
       return {
         id: poi.id,
         color: color,
@@ -177,13 +171,15 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           filter={["has", "point_count"]}
           paint={{
-            "circle-color": "#51bbd6",
+            "circle-color": "#8ec5ff",
             "circle-radius": [
               "step",
               ["get", "point_count"],
-              25,     // radius for clusters with less than 10 points
-              10, 35, // radius for clusters with 10-30 points
-              30, 45  // radius for clusters with 30+ points
+              24, // radius for clusters with less than 10 points
+              10,
+              36, // radius for clusters with 10-30 points
+              30,
+              48, // radius for clusters with 30+ points
             ],
             "circle-opacity": 0.6,
           }}
@@ -217,7 +213,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
                   mapStore.explorePos.latitude,
                 ],
               },
-              properties: { color: "red" },
+              properties: {},
             },
           ],
         }}
@@ -227,7 +223,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           type="symbol"
           source="explore-pin-from"
           layout={{
-            "icon-image": "pin-red",
+            "icon-image": "pin-green_bubble",
             "icon-size": 1,
             "icon-anchor": "bottom",
           }}
@@ -279,26 +275,48 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
       enabled: mapStore.viewingItineraryId !== null,
     }
   );
+
+  const MIN_PIN_SIZE = 1;
+  const MAX_PIN_SIZE = 2;
   const poiPins = useMemo(() => {
+    if (!poisQuery.data || poisQuery.data.length === 0) {
+      return [];
+    }
     const itineraryPOISSet = new Set(
       itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
     );
+    const minScore = Math.min(
+      ...poisQuery.data.map((poi) => poi.popularityScore)
+    );
+    const maxScore = Math.max(
+      ...poisQuery.data.map((poi) => poi.popularityScore)
+    );
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
-      let color = "blue"; // default
+      let color = "blue_bubble"; // default
       if (
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
-        color = "blue"; // currently selected POI //larger orange pin displays over this anyway
+        color = "red_bubble"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
         color = "green"; // POI in current itinerary
+      }
+      let poiScale = MIN_PIN_SIZE;
+      if (maxScore === minScore) {
+        poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
+      } else {
+        poiScale =
+          MIN_PIN_SIZE +
+          ((poi.popularityScore - minScore) / (maxScore - minScore)) *
+            (MAX_PIN_SIZE - MIN_PIN_SIZE);
       }
 
       return {
         id: poi.id,
         color: color,
         coordinates: [poi.pos.longitude, poi.pos.latitude],
+        scale: poiScale,
       };
     });
   }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
@@ -308,6 +326,9 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
       <Source
         id="pins"
         type="geojson"
+        cluster={true}
+        clusterRadius={40}
+        clusterMaxZoom={12}
         data={{
           type: "FeatureCollection",
           features:
@@ -322,19 +343,39 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
                 properties: {
                   id: poi.id,
                   color: poi.color,
+                  scale: poi.scale,
                 },
               };
             }) ?? [],
         }}
       >
         <Layer
+          id="clusters"
+          type="circle"
+          source="pins"
+          filter={["has", "point_count"]}
+          paint={{
+            "circle-color": "#8ec5ff",
+            "circle-radius": [
+              "step",
+              ["get", "point_count"],
+              24, // radius for clusters with less than 10 points
+              10,
+              36, // radius for clusters with 10-30 points
+              30,
+              48, // radius for clusters with 30+ points
+            ],
+            "circle-opacity": 0.6,
+          }}
+        />
+        <Layer
           id="poi-pins"
           type="symbol"
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 0.5,
-            "icon-anchor": "bottom",
+            "icon-size": ["get", "scale"],
+            "icon-anchor": "center",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
@@ -372,7 +413,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           }}
         />
       </Source>
-      {mapStore.recommendViewPos && (
+      {/* {mapStore.recommendViewPos && (
         <Source
           id="pin-view"
           type="geojson"
@@ -404,7 +445,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
             }}
           />
         </Source>
-      )}
+      )} */}
     </>
   );
 }
@@ -468,10 +509,12 @@ export default function ExploreMap({ className }: { className: string }) {
 
     await Promise.all([
       ensurePinImage("red"),
-      ensurePinImage("green"),
-      ensurePinImage("blue"),
-      ensurePinImage("orange"),
+      // ensurePinImage("green"),
+      // ensurePinImage("blue"),
+      // ensurePinImage("orange"),
       ensurePinImage("blue_bubble"),
+      ensurePinImage("red_bubble"),
+      ensurePinImage("green_bubble"),
     ]);
   }, []);
 
@@ -502,25 +545,30 @@ export default function ExploreMap({ className }: { className: string }) {
           }
           return;
         }
-      } 
+      }
       if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
-        const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: ["clusters"],
+        });
         if (features.length) {
           const clusterFeature = features[0];
           const clusterId = clusterFeature.properties?.cluster_id;
           const source = map.getSource("pins");
           if (source && "getClusterExpansionZoom" in source) {
-            (source as mapboxgl.GeoJSONSource).getClusterExpansionZoom(clusterId, (err, zoom) => {
-              if (err || zoom == null) return;
+            (source as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+              clusterId,
+              (err, zoom) => {
+                if (err || zoom == null) return;
 
-              if (clusterFeature.geometry.type === "Point") {
-                const [lng, lat] = clusterFeature.geometry.coordinates;
-                map.easeTo({
-                  center: [lng, lat],
-                  zoom: zoom,
-                });
+                if (clusterFeature.geometry.type === "Point") {
+                  const [lng, lat] = clusterFeature.geometry.coordinates;
+                  map.easeTo({
+                    center: [lng, lat],
+                    zoom: zoom,
+                  });
+                }
               }
-            });
+            );
           }
         }
       }
@@ -562,7 +610,7 @@ export default function ExploreMap({ className }: { className: string }) {
       mapStyle={
         theme === "dark"
           ? "mapbox://styles/mapbox/navigation-night-v1"
-          : "mapbox://styles/mapbox/navigation-day-vimage.png1"
+          : "mapbox://styles/mapbox/streets-v12"
       }
       key={theme}
       // mapStyle="mapbox://styles/mapbox/streets-v12"

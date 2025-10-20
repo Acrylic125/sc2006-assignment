@@ -5,10 +5,12 @@ import { genUploader } from "uploadthing/client";
 export const useUploadImage = () => {
   const uploadImage = async (file: File) => {
     const uploadFiles = genUploader({
-      url: '/api/uploadthing',
-      package: "@uploadthing/solid",
+      url: "/api/uploadthing",
+      package: "@uploadthing/react",
     });
 
+    console.log("TEST");
+    console.log(file);
     const uploadSession = await uploadFiles.createUpload("imageUploader", {
       files: [file],
     });
