@@ -142,7 +142,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         scale: poiScale,
       };
     });
-  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
+  }, [poisQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
@@ -626,17 +626,10 @@ export default function ExploreMap({ className }: { className: string }) {
         if (poiId && typeof poiId === "number") {
           mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
           mapStore.setCurrentSidePanelTab("place");
-          if (poiPins[0].geometry?.type === "Point") {
-            const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
-            mapStore.setViewingPOI({
-              type: "existing-poi",
-              poiId,
-              pos: {
-                latitude: coords[1],
-                longitude: coords[0],
-              },
-            });
-          }
+          mapStore.setViewingPOI({
+            type: "existing-poi",
+            poiId,
+          });
         }
         return;
       }

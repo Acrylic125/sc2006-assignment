@@ -18,7 +18,6 @@ type ViewingPOI =
   | {
       type: "existing-poi";
       poiId: number;
-      pos: Coordinates;
     }
   | {
       type: "new-poi";

@@ -267,6 +267,8 @@ export const itineraryRouter = createTRPCRouter({
           name: sql<string>`${poiTable.name}`,
           checked: itineraryPOITable.checked,
           orderPriority: itineraryPOITable.orderPriority,
+          longitude: sql<number>`CAST(${poiTable.longitude} AS numeric)`,
+          latitude: sql<number>`CAST(${poiTable.latitude} AS numeric)`,
         })
         .from(itineraryPOITable)
         .innerJoin(poiTable, eq(poiTable.id, itineraryPOITable.poiId))
