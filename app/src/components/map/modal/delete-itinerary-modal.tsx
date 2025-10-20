@@ -1,5 +1,6 @@
 import {
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -49,7 +50,6 @@ export function DeleteItineraryModal({
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
           Delete Itinerary
         </DialogTitle>
         <DialogDescription>
@@ -62,7 +62,8 @@ export function DeleteItineraryModal({
         <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm">
             Are you sure you want to delete{" "}
-            <span className="font-semibold">{`"${itineraryName}"`}</span>?
+            <span className="font-semibold">{`"${itineraryName}"`}</span>? This
+            cannot be undone.
           </p>
         </div>
 
@@ -75,13 +76,12 @@ export function DeleteItineraryModal({
           </Alert>
         )}
 
-        <div className="flex flex-row gap-2">
+        <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
           <Button
             type="button"
             variant="outline"
             onClick={close}
             disabled={deleteItineraryMutation.isPending}
-            className="flex-1"
           >
             Cancel
           </Button>
@@ -89,7 +89,6 @@ export function DeleteItineraryModal({
             variant="destructive"
             onClick={handleDelete}
             disabled={deleteItineraryMutation.isPending}
-            className="flex-1"
           >
             {deleteItineraryMutation.isPending ? (
               <>
@@ -97,10 +96,10 @@ export function DeleteItineraryModal({
                 Deleting...
               </>
             ) : (
-              "Delete Itinerary"
+              "Delete"
             )}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
     </>
   );

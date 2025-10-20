@@ -25,7 +25,7 @@ export function DeleteReviewModal({
   onSuccess,
 }: DeleteReviewModalProps) {
   const utils = trpc.useUtils();
-  
+
   const deleteReviewMutation = trpc.review.deleteReview.useMutation({
     onSuccess: async () => {
       // Invalidate queries to refresh data
@@ -33,13 +33,13 @@ export function DeleteReviewModal({
         utils.review.getReviews.invalidate({ poiId }),
         utils.review.getUserReview.invalidate({ poiId }),
       ]);
-      
+
       onSuccess?.();
       close();
     },
     onError: (error) => {
       console.error("Failed to delete review:", error);
-    }
+    },
   });
 
   const handleDelete = () => {
@@ -50,20 +50,19 @@ export function DeleteReviewModal({
     <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <Trash2 className="h-5 w-5 text-destructive" />
           Delete Review
         </DialogTitle>
         <DialogDescription>
-          Are you sure you want to delete your review? This action cannot be undone.
+          Are you sure you want to delete your review? This action cannot be
+          undone.
         </DialogDescription>
       </DialogHeader>
 
-      <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+      <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
         <Button
           variant="outline"
           onClick={close}
           disabled={deleteReviewMutation.isPending}
-          className="w-full sm:w-auto"
         >
           Cancel
         </Button>
@@ -71,7 +70,6 @@ export function DeleteReviewModal({
           variant="destructive"
           onClick={handleDelete}
           disabled={deleteReviewMutation.isPending}
-          className="w-full sm:w-auto"
         >
           {deleteReviewMutation.isPending ? (
             <>
@@ -79,10 +77,7 @@ export function DeleteReviewModal({
               Deleting...
             </>
           ) : (
-            <>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Review
-            </>
+            "Delete"
           )}
         </Button>
       </DialogFooter>

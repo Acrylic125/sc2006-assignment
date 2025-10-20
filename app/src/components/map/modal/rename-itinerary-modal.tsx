@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -83,9 +84,8 @@ export function RenameItineraryModal({
 
   return (
     <>
-      <DialogHeader>
+      <DialogHeader className="w-md">
         <DialogTitle className="flex items-center gap-2">
-          <Pen className="h-5 w-5" />
           Rename Itinerary
         </DialogTitle>
         <DialogDescription>
@@ -126,21 +126,16 @@ export function RenameItineraryModal({
             </Alert>
           )}
 
-          <div className="flex flex-row gap-2">
+          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
             <Button
               type="button"
               variant="outline"
               onClick={close}
               disabled={renameItineraryMutation.isPending}
-              className="flex-1"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={renameItineraryMutation.isPending}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={renameItineraryMutation.isPending}>
               {renameItineraryMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -150,7 +145,7 @@ export function RenameItineraryModal({
                 "Rename"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </Form>
     </>

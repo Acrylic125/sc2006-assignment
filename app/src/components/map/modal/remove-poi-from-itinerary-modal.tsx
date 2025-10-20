@@ -1,5 +1,6 @@
 import {
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -27,6 +28,10 @@ export function RemovePOIFromItineraryModal({
         // Invalidate specific itinerary and map search queries
         utils.itinerary.getItinerary.invalidate({ id: itineraryId });
         utils.map.search.invalidate();
+        utils.itinerary.existsPOIInItinerary.invalidate({
+          itineraryId,
+          poiId,
+        });
         close();
       },
       onError: (error) => {
@@ -45,7 +50,6 @@ export function RemovePOIFromItineraryModal({
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-500" />
           Remove POI from Itinerary
         </DialogTitle>
         <DialogDescription>
@@ -72,13 +76,12 @@ export function RemovePOIFromItineraryModal({
           </Alert>
         )}
 
-        <div className="flex flex-row gap-2">
+        <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
           <Button
             type="button"
             variant="outline"
             onClick={close}
             disabled={removePOIFromItinerary.isPending}
-            className="flex-1"
           >
             Cancel
           </Button>
@@ -86,7 +89,6 @@ export function RemovePOIFromItineraryModal({
             variant="destructive"
             onClick={handleRemove}
             disabled={removePOIFromItinerary.isPending}
-            className="flex-1"
           >
             {removePOIFromItinerary.isPending ? (
               <>
@@ -94,10 +96,10 @@ export function RemovePOIFromItineraryModal({
                 Removing...
               </>
             ) : (
-              "Remove from Itinerary"
+              "Remove"
             )}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
     </>
   );

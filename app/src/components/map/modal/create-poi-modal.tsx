@@ -87,10 +87,6 @@ export function CreatePOIDialog({
         setViewingPOI({
           type: "existing-poi",
           poiId: data.id,
-          pos: {
-            latitude: vars.lat,
-            longitude: vars.lng,
-          },
         });
         setCurrentSidePanelTab("place");
         close(); //close the form
@@ -111,7 +107,7 @@ export function CreatePOIDialog({
   const [filePending, setFilePending] = useState(false); //bool of whether a file is pending
   const [selectedTags, setSelectedTags] = useState<number[]>([]); //array of selected tag ids
   return (
-    <ScrollArea className="max-h-[85vh] w-[30vw]">
+    <ScrollArea className="max-h-[85vh] max-w-xl w-full">
       <DialogHeader>
         <DialogTitle className="mb-0">Add a new POI</DialogTitle>
         <DialogDescription className="mb-5 -mt-1">
@@ -313,7 +309,7 @@ export function CreatePOIDialog({
                 form.getValues("description").length === 0
               }
             >
-              {createPOIMutation.isPending ? "Creating..." : "New POI"}
+              {createPOIMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
         </form>

@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -85,12 +86,13 @@ export function UploadImageDialog({
     }
   };
 
-  const [filePending,setFilePending] = useState(false); //bool of whether a file is pending
+  const [filePending, setFilePending] = useState(false); //bool of whether a file is pending
   return (
     <ScrollArea className="max-h-[85vh] w-[30vw]">
       <DialogHeader>
         <DialogTitle className="mb-0">
-          <span className="text-base font-normal">Upload Images for:</span> {options.name}
+          <span className="text-base font-normal">Upload Images for:</span>{" "}
+          {options.name}
         </DialogTitle>
         <DialogDescription className="mb-5 -mt-1">
           Took some nice pictures? Add it to our map to share with others!
@@ -104,8 +106,8 @@ export function UploadImageDialog({
             name="images"
             acceptedFileTypes={["image/*"]}
             labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
-            onaddfilestart={()=> setFilePending(true)} //track when a file is being uploaded
-            onprocessfiles={()=> setFilePending(false)} //track when all files are done
+            onaddfilestart={() => setFilePending(true)} //track when a file is being uploaded
+            onprocessfiles={() => setFilePending(false)} //track when all files are done
             server={{
               process: async (
                 fieldName,
@@ -168,7 +170,7 @@ export function UploadImageDialog({
             </Alert>
           )}
 
-          <div className="flex flex-row gap-2">
+          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
             <Button
               variant="outline"
               onClick={close}
@@ -178,11 +180,11 @@ export function UploadImageDialog({
             </Button>
             <Button
               type="submit"
-              disabled={createPOIMutation.isPending || filePending }
+              disabled={createPOIMutation.isPending || filePending}
             >
               {createPOIMutation.isPending ? "Uploading..." : "Submit"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </Form>
     </ScrollArea>
