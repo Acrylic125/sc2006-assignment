@@ -335,43 +335,6 @@ export const mapRouter = createTRPCRouter({
     }));
     return tagsCounted;
   }),
-  getUserTagPreferences: publicOrProtectedProcedure.query(async ({ ctx }) => {
-    const tags = await db
-      .select({ id: tagTable.id, name: tagTable.name })
-      .from(tagTable);
-    // Prefer authenticated Clerk user id, but fall back to the experimental cookie-based fakeUserId
-    const c = await cookies();
-    const fakeUserId = c.get("fakeUserId")?.value;
-    const effectiveUserId = ctx.auth.userId ?? fakeUserId;
-
-    if (!effectiveUserId) {
-      return tags.map((t) => ({ id: t.id, name: t.name, likedScore: 0 }));
-    }
-
-    const userPreferences = await db
-      .select({
-        tagId: poiTagTable.tagId,
-        likedScore: sql<number>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)`,
-      })
-      .from(userSurpriseMePreferencesTable)
-      .innerJoin(
-        poiTagTable,
-        eq(userSurpriseMePreferencesTable.poiId, poiTagTable.poiId)
-      )
-      .where(eq(userSurpriseMePreferencesTable.userId, effectiveUserId))
-      .groupBy(poiTagTable.tagId);
-
-    const prefMap = new Map<number, number>();
-    for (const p of userPreferences) {
-      prefMap.set(p.tagId, p.likedScore);
-    }
-
-    return tags.map((t) => ({
-      id: t.id,
-      name: t.name,
-      likedScore: prefMap.get(t.id) || 0,
-    }));
-  }),
   search: publicProcedure
     .input(
       z.object({
@@ -422,14 +385,20 @@ export const mapRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      const [tags, pois, userPreferences] = await Promise.all([
+      const [tags, allPois, userPreferences] = await Promise.all([
         db
           .select({
             id: tagTable.id,
             name: tagTable.name,
           })
           .from(tagTable),
-        searchPOIS(input, ctx),
+        searchPOIS(
+          {
+            ...input,
+            recommendFromLocation: undefined,
+          },
+          ctx
+        ),
         (async () => {
           if (!ctx.auth.userId) {
             return [];
@@ -448,6 +417,24 @@ export const mapRouter = createTRPCRouter({
             .groupBy(poiTagTable.tagId);
         })(),
       ]);
+
+      const recommendationRadius = input.recommendRadius / 111.32;
+      const pois: typeof allPois = [];
+      for (const poi of allPois) {
+        // Check if poi is within radius.
+        if (
+          poi.pos.latitude >=
+            input.recommendFromLocation.latitude - recommendationRadius &&
+          poi.pos.latitude <=
+            input.recommendFromLocation.latitude + recommendationRadius &&
+          poi.pos.longitude >=
+            input.recommendFromLocation.longitude - recommendationRadius &&
+          poi.pos.longitude <=
+            input.recommendFromLocation.longitude + recommendationRadius
+        ) {
+          pois.push(poi);
+        }
+      }
 
       const [poiTags, poiReviews] = await Promise.all([
         db
@@ -486,11 +473,23 @@ export const mapRouter = createTRPCRouter({
 
       const poiPopularity = computePoiPopularity(poiReviews);
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
-      return top5.map((poi) => ({
+      const recommended = top5.map((poi) => ({
         ...pois[poi.index],
         popularityScore:
           poiPopularity.get(pois[poi.index].id)?.popularityScore ?? 0,
       }));
+      const recommendedPoiIds = new Set(recommended.map((poi) => poi.id));
+      return {
+        recommended,
+        others: allPois
+          .filter((poi) => !recommendedPoiIds.has(poi.id))
+          .map((poi) => {
+            return {
+              ...poi,
+              popularityScore: 0,
+            };
+          }),
+      };
     }),
   createPOI: protectedProcedure
     .input(

@@ -34,6 +34,10 @@ export function SeeMoreButton({
         mapStore.setViewingPOI({
           type: "existing-poi",
           poiId: poiId,
+          pos: {
+            latitude: latitude,
+            longitude: longitude,
+          },
         });
         router.push("/");
       }}

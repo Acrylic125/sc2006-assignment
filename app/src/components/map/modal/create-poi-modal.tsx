@@ -83,8 +83,15 @@ export function CreatePOIDialog({
       onError: (err) => {
         console.error("Error creating POI", err);
       },
-      onSuccess: (data) => {
-        setViewingPOI({ type: "existing-poi", poiId: data.id });
+      onSuccess: (data, vars) => {
+        setViewingPOI({
+          type: "existing-poi",
+          poiId: data.id,
+          pos: {
+            latitude: vars.lat,
+            longitude: vars.lng,
+          },
+        });
         setCurrentSidePanelTab("place");
         close(); //close the form
       },
