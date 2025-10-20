@@ -25,6 +25,24 @@ function createPinURL(color: string) {
   );
 }
 
+function createRounderPin(
+  color: string,
+  innerColor: string,
+  ringColor: string = "oklch(44.6% 0.043 257.281)" //"oklch(44.6% 0.043 257.281)"
+) {
+  return (
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+    <svg width="32" height="38" viewBox="0 0 32 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16.0002" cy="16" r="16" fill="${ringColor}"/>
+      <path d="M0 16H32C32 27.5 29 27 15 38C2.5 27 0.136821 28.1267 0 16Z" fill="${ringColor}"/>
+      <circle cx="16" cy="16" r="13" fill="${color}"/>
+      <circle cx="16" cy="16" r="8" fill="oklch(70.7% 0.165 254.624)"/>
+    </svg>
+  `)
+  );
+}
+
 const pins = {
   red: createPinURL("#FB2C36"),
   blue: createPinURL("#3B82F6"),
@@ -33,9 +51,33 @@ const pins = {
   // purple: createPinURL("#8B5CF6"),
   // orange: createPinURL("#F59E0B"),
   // pink: createPinURL("#EC4899"),
+
+  // roundedRed: {
+  //   light: createRounderPin("#FF6467", "#ffffff", "oklch(37.2% 0.044 257.287)"),
+  //   dark: createRounderPin("#FF6467", "#ffffff"),
+  // },
+  roundedRedLight: createRounderPin(
+    "#FF6467",
+    "#ffffff",
+    "oklch(37.2% 0.044 257.287)"
+  ),
+  roundedRedDark: createRounderPin("#FF6467", "#ffffff"),
+  roundedBlueLight: createRounderPin(
+    "oklch(80.9% 0.105 251.813)",
+    "#1D293D",
+    "oklch(37.2% 0.044 257.287)"
+  ),
+  roundedBlueDark: createRounderPin("oklch(80.9% 0.105 251.813)", "#1D293D"),
+  roundedGreenLight: createRounderPin(
+    "#10B981",
+    "#1D293D",
+    "oklch(37.2% 0.044 257.287)"
+  ),
+  roundedGreenDark: createRounderPin("#10B981", "#1D293D"),
 };
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
+  const { theme } = useThemeStore(useShallow(({ theme }) => ({ theme })));
   const mapStore = useMapStore(
     useShallow(
       ({
@@ -79,23 +121,24 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     );
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
-      let color = "blue"; // default
+      let color = theme === "dark" ? "roundedBlueDark" : "roundedBlueLight"; // default
       if (
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
-        color = "red"; // currently selected POI
+        color = theme === "dark" ? "roundedRedDark" : "roundedRedLight"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
-        color = "green"; // POI in current itinerary
+        color = theme === "dark" ? "roundedGreenDark" : "roundedGreenLight"; // POI in current itinerary
       }
 
       return {
         id: poi.id,
         color: color,
         coordinates: [poi.pos.longitude, poi.pos.latitude],
+        size: Math.random() * 1.5 + 0.5,
       };
     });
-  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI, theme]);
 
   return (
     <>
@@ -116,6 +159,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
                 properties: {
                   id: poi.id,
                   color: poi.color,
+                  size: poi.size,
                 },
               };
             }) ?? [],
@@ -127,10 +171,11 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 1,
+            "icon-size": ["get", "size"],
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
+            // "icon-allow-overlap": true,
           }}
         />
       </Source>
@@ -139,6 +184,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
 }
 
 function RecommendMapLayers({ enabled }: { enabled: boolean }) {
+  const { theme } = useThemeStore(useShallow(({ theme }) => ({ theme })));
   const mapStore = useMapStore(
     useShallow(
       ({
@@ -185,23 +231,24 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
     );
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
-      let color = "blue"; // default
+      let color = theme === "dark" ? "roundedBlueDark" : "roundedBlueLight"; // default
       if (
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
-        color = "red"; // currently selected POI
+        color = theme === "dark" ? "roundedRedDark" : "roundedRedLight"; // currently selected POI
       } else if (itineraryPOISSet.has(poi.id)) {
-        color = "green"; // POI in current itinerary
+        color = theme === "dark" ? "roundedGreenDark" : "roundedGreenLight"; // POI in current itinerary
       }
 
       return {
         id: poi.id,
         color: color,
         coordinates: [poi.pos.longitude, poi.pos.latitude],
+        size: Math.random() * 0.5 + 0.5,
       };
     });
-  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI, theme]);
 
   return (
     <>
@@ -222,6 +269,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
                 properties: {
                   id: poi.id,
                   color: poi.color,
+                  size: poi.size,
                 },
               };
             }) ?? [],
@@ -233,7 +281,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 1,
+            "icon-size": ["get", "size"],
             "icon-anchor": "bottom",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
@@ -268,6 +316,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
             "icon-image": "pin-red",
             "icon-size": 1,
             "icon-anchor": "bottom",
+            "icon-allow-overlap": true,
           }}
         />
       </Source>
@@ -330,6 +379,12 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("red"),
       ensurePinImage("green"),
       ensurePinImage("blue"),
+      ensurePinImage("roundedRedLight"),
+      ensurePinImage("roundedRedDark"),
+      ensurePinImage("roundedBlueLight"),
+      ensurePinImage("roundedBlueDark"),
+      ensurePinImage("roundedGreenLight"),
+      ensurePinImage("roundedGreenDark"),
     ]);
   }, []);
 
@@ -382,7 +437,7 @@ export default function ExploreMap({ className }: { className: string }) {
       mapStyle={
         theme === "dark"
           ? "mapbox://styles/mapbox/navigation-night-v1"
-          : "mapbox://styles/mapbox/navigation-day-vimage.png1"
+          : "mapbox://styles/mapbox/navigation-day-v1"
       }
       key={theme}
       // mapStyle="mapbox://styles/mapbox/streets-v12"
