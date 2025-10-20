@@ -333,7 +333,6 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
 
   const poi = poiQuery.data;
   const poiTags = sortedTags.tagsData;
-  // TODO: Whats the purpose of this?
   const poiTagsOrder = sortedTags.tagOrder;
 
   console.log(poiTags);
@@ -572,16 +571,19 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       <div className="flex flex-col p-1">
         <h1 className="text-base font-bold">{poi.name}</h1>
         <p className="text-sm text-muted-foreground">{poi.description}</p>
-        <div className="flex flex-wrap gap-1 p-2">
+        <div className="flex flex-wrap gap-1 py-2">
           {poiTags.map((tagdata) => (
             <Badge
               key={tagdata.tagId}
-               className={cn({
-                 "dark:bg-green-300": !tagdata.excluded,
-                 "dark:text-neutral-100": tagdata.excluded,
-                 "bg-green-400": !tagdata.excluded,
-                 "text-black": true,
-               }, "cursor-pointer")}
+              className={cn(
+                {
+                  "dark:bg-green-300": !tagdata.excluded,
+                  "dark:text-neutral-100": tagdata.excluded,
+                  "bg-green-400": !tagdata.excluded,
+                  "text-black": true,
+                },
+                "cursor-pointer"
+              )}
               variant={tagdata.excluded ? "secondary" : "default"}
               onClick={(e) => {
                 e.stopPropagation();
@@ -615,9 +617,7 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
               </a>
             </Button>
             <Button variant="ghost" asChild className="w-fit p-0">
-              <a
-                href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}
-              >
+              <a href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}>
                 <MessageSquareWarning />
                 Report
               </a>
