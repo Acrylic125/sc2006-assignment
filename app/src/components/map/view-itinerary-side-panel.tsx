@@ -30,6 +30,8 @@ import { useMapModalStore } from "./modal/map-modal-store";
 import { TouchSensor, MouseSensor } from "@/lib/dnd-kit";
 import confetti from "canvas-confetti";
 import { useRef } from "react";
+import { useMap } from "react-map-gl/mapbox";
+import { useMapProvider } from "./map-provider";
 
 export function ItineraryPOISortableItem({
   id,
@@ -49,6 +51,7 @@ export function ItineraryPOISortableItem({
   isSelfChecked: boolean;
   className?: string;
 }) {
+  const { mapRef } = useMapProvider();
   const {
     attributes,
     listeners,
@@ -65,14 +68,21 @@ export function ItineraryPOISortableItem({
     })
   );
   const mapStore = useMapStore(
-    useShallow(({ viewingItineraryId, setViewingPOI, setCurrentSidePanelTab, setViewState }) => {
-      return {
+    useShallow(
+      ({
         viewingItineraryId,
         setViewingPOI,
         setCurrentSidePanelTab,
         setViewState,
-      };
-    })
+      }) => {
+        return {
+          viewingItineraryId,
+          setViewingPOI,
+          setCurrentSidePanelTab,
+          setViewState,
+        };
+      }
+    )
   );
 
   const style = {
@@ -88,9 +98,9 @@ export function ItineraryPOISortableItem({
   const handleDeletePOI = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     if (!mapStore.viewingItineraryId) return;
-    
+
     // Open the remove POI modal instead of using confirm
     modalStore.setAction({
       type: "remove-poi-from-itinerary",
@@ -109,10 +119,10 @@ export function ItineraryPOISortableItem({
       const poiData = await utils.map.getPOI.fetch({ id: poiId });
       if (poiData) {
         // Center the map on the POI
-        mapStore.setViewState({
-          latitude: Number(poiData.latitude),
-          longitude: Number(poiData.longitude),
+        mapRef.current?.flyTo({
+          center: [poiData.longitude, poiData.latitude],
           zoom: 15,
+          duration: 1000,
         });
       }
       // Set the viewing POI to this POI
@@ -235,7 +245,7 @@ export function ItineraryPOISortableItem({
       </div>
 
       {/* Clickable POI content */}
-      <div 
+      <div
         className="flex flex-row items-center h-full flex-1 cursor-pointer hover:bg-accent/50 rounded-sm px-2 py-1 transition-colors"
         onClick={(e) => {
           e.stopPropagation();
@@ -340,7 +350,10 @@ export function ViewItineraryPanel() {
       // Send the update to the server
       updateItineraryPOIOrderMutation.mutate({
         itineraryId,
-        pois: updatedPOIs.map((poi) => ({ id: poi.id, orderPriority: poi.orderPriority })),
+        pois: updatedPOIs.map((poi) => ({
+          id: poi.id,
+          orderPriority: poi.orderPriority,
+        })),
       });
     }
   };

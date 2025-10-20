@@ -9,6 +9,8 @@ import { useMapStore } from "./map-store";
 import { useShallow } from "zustand/react/shallow";
 import { trpc } from "@/server/client";
 import Map, { Layer, Source, ViewStateChangeEvent } from "react-map-gl/mapbox";
+import { useMapProvider } from "./map-provider";
+import { useThemeStore } from "../theme-store";
 
 function createPinURL(color: string) {
   return (
@@ -408,6 +410,8 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
 }
 
 export default function ExploreMap({ className }: { className: string }) {
+  const { mapRef } = useMapProvider();
+  const { theme } = useThemeStore(useShallow(({ theme }) => ({ theme })));
   const mapStore = useMapStore(
     useShallow(
       ({
@@ -542,6 +546,7 @@ export default function ExploreMap({ className }: { className: string }) {
 
   return (
     <Map
+      ref={mapRef}
       mapboxAccessToken={env.NEXT_PUBLIC_MAPBOX_PK}
       // initialViewState={{
       //   longitude: 103.8198,
@@ -553,7 +558,14 @@ export default function ExploreMap({ className }: { className: string }) {
       longitude={mapStore.viewState.longitude}
       zoom={mapStore.viewState.zoom}
       onLoad={onLoad}
-      mapStyle="mapbox://styles/mapbox/streets-v12"
+      // Dark mode map
+      mapStyle={
+        theme === "dark"
+          ? "mapbox://styles/mapbox/navigation-night-v1"
+          : "mapbox://styles/mapbox/navigation-day-vimage.png1"
+      }
+      key={theme}
+      // mapStyle="mapbox://styles/mapbox/streets-v12"
       onClick={onClick}
     >
       {mapStore.currentMapTab === "explore" && <ExploreMapLayers enabled />}
