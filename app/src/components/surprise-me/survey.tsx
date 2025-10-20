@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useMotionValue } from "framer-motion";
+import { animate, motion, useMotionValue } from "framer-motion";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { HeartIcon, PartyPopper, PartyPopperIcon, XIcon } from "lucide-react";
@@ -154,7 +154,7 @@ export function Survey({
             } else if (_tilt < -TILT_THRESHOLD) {
               indicatePreference(currentPOI.id, "disliked");
             }
-            tilt.set(0);
+            animate(tilt, 0, { duration: 0.3 });
           }}
           className="flex flex-col w-full flex-1 relative rounded-lg overflow-hidden"
           style={{
