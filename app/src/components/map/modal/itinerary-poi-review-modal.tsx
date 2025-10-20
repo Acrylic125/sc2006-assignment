@@ -26,9 +26,7 @@ export function POIReviewDialog({
       <>
         <DialogHeader>
           <DialogTitle>Loading...</DialogTitle>
-          <DialogDescription>
-            Checking for existing review...
-          </DialogDescription>
+          <DialogDescription>Checking for existing review...</DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -39,7 +37,13 @@ export function POIReviewDialog({
 
   // If user has an existing review, show update dialog
   if (existingReviewQuery.data) {
-    return <UpdateReviewDialog options={options} close={close} />;
+    return (
+      <UpdateReviewDialog
+        options={options}
+        close={close}
+        existingReview={existingReviewQuery.data}
+      />
+    );
   }
 
   // Otherwise, show create dialog

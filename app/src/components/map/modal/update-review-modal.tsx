@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -34,36 +35,30 @@ const UpdateReviewFormSchema = z.object({
 export function UpdateReviewDialog({
   options,
   close,
+  existingReview,
 }: {
   options: ExtractOptions<"itinerary-poi-review">;
   close: () => void;
+  existingReview: {
+    liked: boolean;
+    comment: string | null;
+    images: string[];
+  };
 }) {
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  
+  const [uploadedImages, setUploadedImages] = useState<string[]>(
+    existingReview.images
+  );
+
   const updateReviewMutation = trpc.review.updateReview.useMutation();
   const utils = trpc.useUtils();
-  
-  // Get the existing review
-  const existingReviewQuery = trpc.review.getUserReview.useQuery({
-    poiId: options.poiId,
-  });
 
   const form = useForm<z.infer<typeof UpdateReviewFormSchema>>({
     resolver: zodResolver(UpdateReviewFormSchema),
     defaultValues: {
-      liked: true,
-      comment: "",
+      liked: existingReview.liked,
+      comment: existingReview.comment ?? "",
     },
   });
-
-  // Set form values when existing review data loads
-  useEffect(() => {
-    if (existingReviewQuery.data) {
-      form.setValue("liked", existingReviewQuery.data.liked);
-      form.setValue("comment", existingReviewQuery.data.comment || "");
-      setUploadedImages(existingReviewQuery.data.images || []);
-    }
-  }, [existingReviewQuery.data, form]);
 
   const onSubmit = (data: z.infer<typeof UpdateReviewFormSchema>) => {
     const reviewData = {
@@ -72,7 +67,7 @@ export function UpdateReviewDialog({
       comment: data.comment,
       images: uploadedImages,
     };
-    
+
     updateReviewMutation.mutate(reviewData, {
       onSuccess: () => {
         // Invalidate queries to refresh data
@@ -88,38 +83,6 @@ export function UpdateReviewDialog({
     console.log("Image upload functionality to be implemented");
     alert("Image upload feature will be available soon!");
   };
-
-  if (existingReviewQuery.isLoading) {
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle>Update Your Review</DialogTitle>
-          <DialogDescription>
-            Modify your existing review for this place.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
-      </>
-    );
-  }
-
-  if (!existingReviewQuery.data) {
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle>Review Not Found</DialogTitle>
-          <DialogDescription>
-            Unable to find your existing review for this place.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex justify-center">
-          <Button onClick={close}>Close</Button>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>
@@ -141,7 +104,7 @@ export function UpdateReviewDialog({
                   <div className="flex flex-row gap-2">
                     <Button
                       type="button"
-                      variant={field.value ? "default" : "outline"}
+                      variant={field.value ? "secondary" : "outline"}
                       onClick={() => field.onChange(true)}
                       className="flex-1"
                     >
@@ -149,7 +112,7 @@ export function UpdateReviewDialog({
                     </Button>
                     <Button
                       type="button"
-                      variant={!field.value ? "default" : "outline"}
+                      variant={!field.value ? "secondary" : "outline"}
                       onClick={() => field.onChange(false)}
                       className="flex-1"
                     >
@@ -169,11 +132,11 @@ export function UpdateReviewDialog({
               <FormItem>
                 <FormLabel>Comment (Optional)</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Share your thoughts about this place..." 
+                  <Textarea
+                    placeholder="Share your thoughts about this place..."
                     className="min-h-[80px]"
                     maxLength={255}
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -210,31 +173,26 @@ export function UpdateReviewDialog({
             </Alert>
           )}
 
-          <div className="flex flex-row gap-2">
+          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
             <Button
               type="button"
               variant="outline"
               onClick={close}
               disabled={updateReviewMutation.isPending}
-              className="flex-1"
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={updateReviewMutation.isPending}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={updateReviewMutation.isPending}>
               {updateReviewMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Updating...
                 </>
               ) : (
-                "Update Review"
+                "Update"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </Form>
     </>

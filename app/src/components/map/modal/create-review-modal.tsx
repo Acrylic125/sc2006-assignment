@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -39,7 +40,7 @@ export function CreateReviewDialog({
   close: () => void;
 }) {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  
+
   const createReviewMutation = trpc.review.createReview.useMutation();
   const utils = trpc.useUtils();
 
@@ -58,7 +59,7 @@ export function CreateReviewDialog({
       comment: data.comment,
       images: uploadedImages,
     };
-    
+
     createReviewMutation.mutate(reviewData, {
       onSuccess: () => {
         // Invalidate queries to refresh data
@@ -95,7 +96,7 @@ export function CreateReviewDialog({
                   <div className="flex flex-row gap-2">
                     <Button
                       type="button"
-                      variant={field.value ? "default" : "outline"}
+                      variant={field.value ? "secondary" : "outline"}
                       onClick={() => field.onChange(true)}
                       className="flex-1"
                     >
@@ -103,7 +104,7 @@ export function CreateReviewDialog({
                     </Button>
                     <Button
                       type="button"
-                      variant={!field.value ? "default" : "outline"}
+                      variant={!field.value ? "secondary" : "outline"}
                       onClick={() => field.onChange(false)}
                       className="flex-1"
                     >
@@ -123,11 +124,11 @@ export function CreateReviewDialog({
               <FormItem>
                 <FormLabel>Comment (Optional)</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Share your thoughts about this place..." 
+                  <Textarea
+                    placeholder="Share your thoughts about this place..."
                     className="min-h-[80px]"
                     maxLength={255}
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -164,31 +165,26 @@ export function CreateReviewDialog({
             </Alert>
           )}
 
-          <div className="flex flex-row gap-2">
+          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
             <Button
               type="button"
               variant="outline"
               onClick={close}
               disabled={createReviewMutation.isPending}
-              className="flex-1"
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={createReviewMutation.isPending}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={createReviewMutation.isPending}>
               {createReviewMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
                 </>
               ) : (
-                "Submit Review"
+                "Review"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </Form>
     </>
