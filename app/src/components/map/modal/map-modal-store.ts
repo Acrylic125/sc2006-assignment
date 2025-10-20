@@ -69,6 +69,14 @@ export type MapModalAction =
         name: string;
         images: string[];
       };
+    }
+  | {
+      type: "review-image-carousel";
+      options: {
+        reviewId: number;
+        images: string[];
+        reviewComment: string;
+      };
     };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<

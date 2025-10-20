@@ -172,30 +172,33 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                   </p>
                 )}
                 {/* Always show example image for now */}
-                <div className="flex flex-row items-center gap-2">
-                  <div className="w-1/3 aspect-square relative">
-                    <Image
-                      src="/example.png"
-                      alt={review.comment || "Review image"}
-                      className="object-cover rounded"
-                      fill
-                    />
+                {review.images && review.images.length > 0 && (
+                  <div className="flex flex-row items-center gap-2">
+                    {review.images.slice(0, 3).map((image, i) => (
+                      <div 
+                        className="w-1/3 aspect-square relative cursor-pointer hover:opacity-80 transition-opacity" 
+                        key={i}
+                        onClick={() => {
+                          modalStore.setAction({
+                            type: "review-image-carousel",
+                            options: {
+                              reviewId: review.id,
+                              images: review.images,
+                              reviewComment: review.comment || "",
+                            },
+                          });
+                        }}
+                      >
+                        <Image
+                          src={image}
+                          alt={review.comment || "Review image"}
+                          className="object-cover rounded"
+                          fill
+                        />
+                      </div>
+                    ))}
                   </div>
-                  {review.images && review.images.length > 1 && (
-                    <>
-                      {review.images.slice(1, 3).map((image, i) => (
-                        <div className="w-1/3 aspect-square relative" key={i}>
-                          <Image
-                            src={image}
-                            alt={review.comment || "Review image"}
-                            className="object-cover rounded"
-                            fill
-                          />
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
+                )}
               </div>
             );
           })

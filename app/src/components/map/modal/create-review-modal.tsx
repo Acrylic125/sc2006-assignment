@@ -18,17 +18,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, X } from "lucide-react";
 import {
   DislikeButton,
   LikeButton,
 } from "@/components/icons/like-dislike-icons";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { useUploadImage } from "@/app/api/uploadthing/client";
+import { FilePond, registerPlugin } from "react-filepond";
+import "filepond/dist/filepond.min.css";
+import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orientation";
+import FilePondPluginImagePreview from "filepond-plugin-image-preview";
+import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
+import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
+import Image from "next/image";
+
+registerPlugin(
+  FilePondPluginImageExifOrientation,
+  FilePondPluginImagePreview,
+  FilePondPluginFileValidateType
+);
 
 const CreateReviewFormSchema = z.object({
   liked: z.boolean(),
   comment: z.string().max(255).optional(),
+  images: z.array(z.string()).optional(),
 });
 
 export function CreateReviewDialog({
@@ -38,16 +53,18 @@ export function CreateReviewDialog({
   options: ExtractOptions<"itinerary-poi-review">;
   close: () => void;
 }) {
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [filePending, setFilePending] = useState(false);
   
   const createReviewMutation = trpc.review.createReview.useMutation();
   const utils = trpc.useUtils();
+  const { uploadImage } = useUploadImage();
 
   const form = useForm<z.infer<typeof CreateReviewFormSchema>>({
     resolver: zodResolver(CreateReviewFormSchema),
     defaultValues: {
       liked: true, // Default to "like" button
       comment: "",
+      images: [],
     },
   });
 
@@ -56,7 +73,7 @@ export function CreateReviewDialog({
       poiId: options.poiId,
       liked: data.liked,
       comment: data.comment,
-      images: uploadedImages,
+      images: data.images ?? [],
     };
     
     createReviewMutation.mutate(reviewData, {
@@ -69,10 +86,14 @@ export function CreateReviewDialog({
     });
   };
 
-  const handleImageUpload = () => {
-    // TODO: Implement image upload functionality
-    console.log("Image upload functionality to be implemented");
-    alert("Image upload feature will be available soon!");
+  const handleUpload = async (file: File) => {
+    try {
+      const result = await uploadImage(file);
+      return result.ufsUrl;
+    } catch (err) {
+      console.error("Upload failed", err);
+      throw err;
+    }
   };
 
   return (
@@ -84,7 +105,7 @@ export function CreateReviewDialog({
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-4">
           <FormField
             control={form.control}
             name="liked"
@@ -138,22 +159,83 @@ export function CreateReviewDialog({
             )}
           />
 
-          <div className="space-y-2">
-            <FormLabel>Photos (Optional)</FormLabel>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleImageUpload}
-              className="w-full"
-              disabled
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Photos (Coming Soon)
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Photo upload functionality will be available in a future update.
-            </p>
-          </div>
+          <FormField
+            control={form.control}
+            name="images"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Photos (Optional)</FormLabel>
+                <FormControl>
+                  <FilePond
+                    allowMultiple={true}
+                    maxFiles={3}
+                    name="images"
+                    acceptedFileTypes={["image/*"]}
+                    labelIdle='Drag & Drop your photos or <span class="filepond--label-action">Browse</span>'
+                    onaddfilestart={() => setFilePending(true)}
+                    onprocessfiles={() => setFilePending(false)}
+                    server={{
+                      process: async (
+                        fieldName,
+                        file,
+                        metadata,
+                        load,
+                        error,
+                        progress,
+                        abort
+                      ) => {
+                        try {
+                          // Convert filepond actualFile to File
+                          const realFile = new File([file], file.name, {
+                            type: file.type,
+                            lastModified: file.lastModified ?? Date.now(),
+                          });
+                          
+                          const result = await handleUpload(realFile);
+                          if (!result) {
+                            error("Upload failed");
+                            return;
+                          }
+                          
+                          // Add image to form
+                          const images = [...(form.getValues("images") ?? []), result];
+                          form.setValue("images", images, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                          load(result); // Tell FilePond it's done
+                        } catch (err) {
+                          console.error("Filepond upload failed", err);
+                          error("Upload failed");
+                        }
+
+                        return {
+                          abort: () => {
+                            abort();
+                          },
+                        };
+                      },
+                      revert: (fileUfsUrl, load) => {
+                        console.log(`File Removed: ${fileUfsUrl}`);
+                        // Remove the image from the form
+                        const images = (form.getValues("images") ?? [])
+                          .filter((file) => file !== fileUfsUrl);
+                        form.setValue("images", images, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        });
+                        load();
+                      },
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+                <p className="text-sm text-muted-foreground">
+                  Upload up to 3 photos to share your experience
+                </p>
+              </FormItem>
+            )}
+          />
 
           {createReviewMutation.isError && (
             <Alert variant="destructive">
@@ -176,13 +258,18 @@ export function CreateReviewDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={createReviewMutation.isPending}
+              disabled={createReviewMutation.isPending || filePending}
               className="flex-1"
             >
               {createReviewMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
+                </>
+              ) : filePending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
                 </>
               ) : (
                 "Submit Review"

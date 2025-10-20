@@ -14,6 +14,7 @@ import { DeleteItineraryModal } from "./delete-itinerary-modal";
 import { RenameItineraryModal } from "./rename-itinerary-modal";
 import { RemovePOIFromItineraryModal } from "./remove-poi-from-itinerary-modal";
 import { DeleteReviewModal } from "./delete-review-modal";
+import { ReviewImageCarouselDialog } from "./review-image-carousel-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -40,7 +41,7 @@ export function MapModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent className="w-fit sm:max-w-none">
+      <DialogContent className="w-fit sm:max-w-none max-h-[90vh] overflow-y-auto">
         {modalStore.action?.type === "itinerary-poi-review" && (
           <POIReviewDialog options={modalStore.action.options} close={close} />
         )}
@@ -90,6 +91,12 @@ export function MapModal() {
         )}
         {modalStore.action?.type === "upload-poi-image" && (
           <UploadImageDialog
+            options={modalStore.action.options}
+            close={close}
+          />
+        )}
+        {modalStore.action?.type === "review-image-carousel" && (
+          <ReviewImageCarouselDialog
             options={modalStore.action.options}
             close={close}
           />
