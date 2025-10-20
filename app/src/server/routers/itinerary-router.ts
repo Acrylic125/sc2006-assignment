@@ -158,8 +158,12 @@ export const itineraryRouter = createTRPCRouter({
 
         return newItineraryPOI;
       } catch (error) {
+        console.error("Error adding POI to itinerary:", error);
         // Handle duplicate entry (POI already in itinerary)
-        throw new Error("POI is already in this itinerary");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "POI is already in this itinerary",
+        });
       }
     }),
 
@@ -403,6 +407,38 @@ export const itineraryRouter = createTRPCRouter({
       }
 
       return updatedItinerary;
+    }),
+  existsPOIInItinerary: protectedProcedure
+    .input(
+      z.object({
+        itineraryId: z.number(),
+        poiId: z.number(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.auth.userId;
+
+      const exists = await db
+        .select({
+          id: itineraryPOITable.id,
+        })
+        .from(itineraryPOITable)
+        .innerJoin(
+          itineraryTable,
+          eq(itineraryPOITable.itineraryId, itineraryTable.id)
+        )
+        .where(
+          and(
+            eq(itineraryPOITable.itineraryId, input.itineraryId),
+            eq(itineraryPOITable.poiId, input.poiId),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
+      if (exists.length === 0) {
+        return false;
+      }
+      return true;
     }),
 
   removePOIFromItinerary: protectedProcedure
