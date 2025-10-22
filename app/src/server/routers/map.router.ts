@@ -599,30 +599,49 @@ export const mapRouter = createTRPCRouter({
         })
         .from(poiImagesTable)
         .where(eq(poiImagesTable.poiId, input.poiId));
-      console.log(images);
+
       const uploaderIds = [
         ...new Set(images.map((imgData) => imgData.uploaderId)),
       ]; //deduplicated user ids list
-      const uploaderMap = new Map<string, string>();
-      for (const userId of uploaderIds) {
-        if (userId !== null && userId !== "" && !uploaderMap.has(userId)) {
-          try {
-            const userName = (await clerkClient.users.getUser(userId))
-              .firstName;
-            uploaderMap.set(userId, userName ?? "Unknown");
-          } catch (err) {
-            console.error(`Failed to fetch userId ${userId}`, err);
-            uploaderMap.set(userId, "Unknown");
-          }
-        } else if (userId !== null) {
-          uploaderMap.set(userId, "database");
+
+      const nonNullUploaderIds = uploaderIds.filter(
+        (id) => id !== null && id !== "" && id !== undefined
+      ) as string[];
+
+      const users = await clerkClient.users.getUserList({
+        userId: nonNullUploaderIds,
+        limit: nonNullUploaderIds.length,
+      });
+
+      const uploaderMap = new Map<
+        string,
+        {
+          username: string;
+          imageUrl: string;
         }
+      >();
+      for (const user of users.data) {
+        uploaderMap.set(user.id, {
+          username:
+            user.username ?? user.firstName ?? user.lastName ?? "Unknown",
+          imageUrl: user.imageUrl,
+        });
       }
-      const uploaderNames = images.map((imgData) =>
-        uploaderMap.get(imgData.uploaderId ?? "")
-      );
-      console.log(images);
-      return { images: images, uploaders: uploaderNames };
+
+      return {
+        images: images.map((imgData) => {
+          if (imgData.uploaderId === null) {
+            return {
+              ...imgData,
+              uploader: null,
+            };
+          }
+          return {
+            ...imgData,
+            uploader: uploaderMap.get(imgData.uploaderId) ?? null,
+          };
+        }),
+      };
     }),
   getPOITags: publicProcedure
     .input(

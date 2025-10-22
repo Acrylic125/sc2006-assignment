@@ -40,61 +40,56 @@ export function MapModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent className="w-fit sm:max-w-none">
-        {modalStore.action?.type === "itinerary-poi-review" && (
-          <POIReviewDialog options={modalStore.action.options} close={close} />
-        )}
-        {modalStore.action?.type === "create-itinerary" && (
-          <CreateItineraryDialog
-            close={close}
-            poiId={modalStore.action.options.poiId}
-          />
-        )}
-        {modalStore.action?.type === "delete-itinerary" && (
-          <DeleteItineraryModal
-            itineraryId={modalStore.action.options.itineraryId}
-            itineraryName={modalStore.action.options.itineraryName}
-            close={close}
-          />
-        )}
-        {modalStore.action?.type === "rename-itinerary" && (
-          <RenameItineraryModal
-            itineraryId={modalStore.action.options.itineraryId}
-            currentName={modalStore.action.options.currentName}
-            close={close}
-          />
-        )}
-        {modalStore.action?.type === "remove-poi-from-itinerary" && (
-          <RemovePOIFromItineraryModal
-            itineraryId={modalStore.action.options.itineraryId}
-            poiId={modalStore.action.options.poiId}
-            poiName={modalStore.action.options.poiName}
-            close={close}
-          />
-        )}
-        {modalStore.action?.type === "delete-review" && (
-          <DeleteReviewModal
-            reviewId={modalStore.action.options.reviewId}
-            poiId={modalStore.action.options.poiId}
-            close={close}
-          />
-        )}
-        {modalStore.action?.type === "create-poi" && (
-          <CreatePOIDialog options={modalStore.action.options} close={close} />
-        )}
-        {modalStore.action?.type === "poi-image-carousel" && (
-          <POIImageCarouselDialog
-            options={modalStore.action.options}
-            close={close}
-          />
-        )}
-        {modalStore.action?.type === "upload-poi-image" && (
-          <UploadImageDialog
-            options={modalStore.action.options}
-            close={close}
-          />
-        )}
-      </DialogContent>
+      {modalStore.action?.type === "itinerary-poi-review" && (
+        <POIReviewDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "create-itinerary" && (
+        <CreateItineraryDialog
+          close={close}
+          poiId={modalStore.action.options.poiId}
+        />
+      )}
+      {modalStore.action?.type === "delete-itinerary" && (
+        <DeleteItineraryModal
+          itineraryId={modalStore.action.options.itineraryId}
+          itineraryName={modalStore.action.options.itineraryName}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "rename-itinerary" && (
+        <RenameItineraryModal
+          itineraryId={modalStore.action.options.itineraryId}
+          currentName={modalStore.action.options.currentName}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "remove-poi-from-itinerary" && (
+        <RemovePOIFromItineraryModal
+          itineraryId={modalStore.action.options.itineraryId}
+          poiId={modalStore.action.options.poiId}
+          poiName={modalStore.action.options.poiName}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "delete-review" && (
+        <DeleteReviewModal
+          reviewId={modalStore.action.options.reviewId}
+          poiId={modalStore.action.options.poiId}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "create-poi" && (
+        <CreatePOIDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "poi-image-carousel" && (
+        <POIImageCarouselDialog
+          options={modalStore.action.options}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "upload-poi-image" && (
+        <UploadImageDialog options={modalStore.action.options} close={close} />
+      )}
     </Dialog>
   );
 }
