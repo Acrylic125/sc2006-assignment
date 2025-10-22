@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -97,7 +98,7 @@ export function CreateItineraryDialog({
   };
 
   return (
-    <>
+    <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>Create New Itinerary</DialogTitle>
         <DialogDescription>
@@ -124,30 +125,34 @@ export function CreateItineraryDialog({
             )}
           />
 
-          {createItineraryMutation.isError && (
-            <Alert variant="destructive">
-              <AlertTitle>Unable to create itinerary.</AlertTitle>
-              <AlertDescription>
-                <p>{createItineraryMutation.error.message}</p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
-            <Button
-              variant="outline"
-              onClick={close}
-              disabled={createItineraryMutation.isPending}
-              type="button"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={createItineraryMutation.isPending}>
-              {createItineraryMutation.isPending ? "Creating..." : "Create"}
-            </Button>
+          <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
+            {createItineraryMutation.isError && (
+              <Alert variant="destructive">
+                <AlertTitle>Unable to create itinerary.</AlertTitle>
+                <AlertDescription>
+                  <p>{createItineraryMutation.error.message}</p>
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="w-full flex flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={close}
+                disabled={createItineraryMutation.isPending}
+                type="button"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createItineraryMutation.isPending}
+              >
+                {createItineraryMutation.isPending ? "Creating..." : "Create"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </Form>
-    </>
+    </DialogContent>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -47,9 +48,9 @@ export function RemovePOIFromItineraryModal({
   };
 
   return (
-    <>
+    <DialogContent className="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
+        <DialogTitle className="flex items-center gap-1">
           Remove POI from Itinerary
         </DialogTitle>
         <DialogDescription>
@@ -101,6 +102,6 @@ export function RemovePOIFromItineraryModal({
           </Button>
         </DialogFooter>
       </div>
-    </>
+    </DialogContent>
   );
 }

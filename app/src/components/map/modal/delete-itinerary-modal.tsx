@@ -1,4 +1,5 @@
 import {
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -47,7 +48,7 @@ export function DeleteItineraryModal({
   };
 
   return (
-    <>
+    <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           Delete Itinerary
@@ -67,40 +68,41 @@ export function DeleteItineraryModal({
           </p>
         </div>
 
-        {deleteItineraryMutation.isError && (
-          <Alert variant="destructive">
-            <AlertTitle>Unable to delete itinerary.</AlertTitle>
-            <AlertDescription>
-              <p>{deleteItineraryMutation.error.message}</p>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={close}
-            disabled={deleteItineraryMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={deleteItineraryMutation.isPending}
-          >
-            {deleteItineraryMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              "Delete"
-            )}
-          </Button>
+        <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
+          {deleteItineraryMutation.isError && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to delete itinerary.</AlertTitle>
+              <AlertDescription>
+                <p>{deleteItineraryMutation.error.message}</p>
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="w-full flex flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={close}
+              disabled={deleteItineraryMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteItineraryMutation.isPending}
+            >
+              {deleteItineraryMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </div>
-    </>
+    </DialogContent>
   );
 }

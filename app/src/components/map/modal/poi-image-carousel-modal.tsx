@@ -27,6 +27,7 @@ import { Skeleton } from "../../ui/skeleton";
 
 import {
   Carousel,
+  CarouselApi,
   // CarouselApi,
   CarouselContent,
   CarouselItem,
@@ -36,6 +37,7 @@ import {
 // import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect, useState } from "react";
 
 export function POIImageCarouselDialog({
   options,
@@ -44,20 +46,26 @@ export function POIImageCarouselDialog({
   options: ExtractOptions<"poi-image-carousel">;
   close: () => void;
 }) {
-  // const [api, setApi] = useState<CarouselApi | null>(null);
+  const [api, setApi] = useState<CarouselApi | null>(null);
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
   // const [loading, setLoading] = useState(true);
   const imagesQuery = trpc.map.getPOIImages.useQuery({
     poiId: options.poiId,
   });
 
-  // useEffect(() => {
-  //   if (api) {
-  //     api.on("select", () => {
-  //       setSelectedImage(api.selectedScrollSnap());
-  //     });
-  //   }
-  // }, [api]);
-  // const [aspectRatio, setAspectRatio] = useState<number>(4 / 3);
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap() + 1);
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap() + 1);
+    });
+  }, [api]);
 
   if (imagesQuery.isLoading || imagesQuery.isFetching) {
     return (
@@ -92,16 +100,13 @@ export function POIImageCarouselDialog({
 
   return (
     <DialogContent
-      className="p-0 bg-none gap-0 sm:max-w-7xl w-full rounded-3xl overflow-hidden max-w-7xl"
+      className="p-0 bg-none gap-0 rounded-3xl sm:max-w-7xl w-full max-w-7xl"
       onClick={close}
     >
       <DialogHeader className="p-0 py-0">
         <DialogTitle className="sr-only">{options.name}</DialogTitle>
       </DialogHeader>
-      <Carousel
-        className="p-0"
-        // setApi={setApi}
-      >
+      <Carousel className="p-0 rounded-3xl overflow-hidden" setApi={setApi}>
         <CarouselContent>
           {images.map((image, index) => (
             <CarouselItem
@@ -156,6 +161,11 @@ export function POIImageCarouselDialog({
       </Carousel>
       <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-row flex-2 h-24 items-center justify-center">
         <h2 className="text-base font-bold text-white">{options.name}</h2>
+      </div>
+      <div className="absolute left-1/2 -translate-x-1/2 -bottom-20 flex flex-row flex-2 h-24 items-center justify-center">
+        <h2 className="text-base font-bold text-white">
+          {current} of {count}
+        </h2>
       </div>
 
       {/* {selectedImage?.uploader && (

@@ -3,27 +3,17 @@ import { ExtractOptions } from "./map-modal-store";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/server/client";
-
-import { useMapStore } from "@/components/map/map-store";
 
 import { useUploadImage } from "@/app/api/uploadthing/client";
 
@@ -34,6 +24,7 @@ import FilePondPluginImagePreview from "filepond-plugin-image-preview";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 registerPlugin(
   FilePondPluginImageExifOrientation,
@@ -88,26 +79,29 @@ export function UploadImageDialog({
 
   const [filePending, setFilePending] = useState(false); //bool of whether a file is pending
   return (
-    <ScrollArea className="max-h-[85vh] w-[30vw]">
-      <DialogHeader>
-        <DialogTitle className="mb-0">
+    <DialogContent className="sm:max-w-xl w-full">
+      <DialogHeader className="flex flex-col gap-1">
+        <DialogTitle>
           <span className="text-base font-normal">Upload Images for:</span>{" "}
           {options.name}
         </DialogTitle>
-        <DialogDescription className="mb-5 -mt-1">
+        <DialogDescription>
           Took some nice pictures? Add it to our map to share with others!
         </DialogDescription>
       </DialogHeader>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)}>
           <FilePond
-            allowMultiple={true}
+            allowMultiple
             maxFiles={3}
             name="images"
             acceptedFileTypes={["image/*"]}
             labelIdle='Drag & Drop your files or <span class="filepond--label-action">Browse</span>'
             onaddfilestart={() => setFilePending(true)} //track when a file is being uploaded
             onprocessfiles={() => setFilePending(false)} //track when all files are done
+            // className="h-72"
+            className="max-h-72"
             server={{
               process: async (
                 fieldName,
@@ -161,32 +155,35 @@ export function UploadImageDialog({
             }}
           />
 
-          {createPOIMutation.isError && (
-            <Alert variant="error">
-              <AlertTitle>Unable to upload POI iamge.</AlertTitle>
-              <AlertDescription>
-                <p>{createPOIMutation.error.message}</p>
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* <ScrollArea className="h-72"></ScrollArea> */}
 
-          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
-            <Button
-              variant="outline"
-              onClick={close}
-              disabled={createPOIMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createPOIMutation.isPending || filePending}
-            >
-              {createPOIMutation.isPending ? "Uploading..." : "Submit"}
-            </Button>
+          <DialogFooter className="flex flex-col items-start gap-4">
+            {createPOIMutation.isError && (
+              <Alert variant="error">
+                <AlertTitle>Unable to upload POI iamge.</AlertTitle>
+                <AlertDescription>
+                  <p>{createPOIMutation.error.message}</p>
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="flex flex-row gap-2 w-full sm:justify-start">
+              <Button
+                variant="outline"
+                onClick={close}
+                disabled={createPOIMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createPOIMutation.isPending || filePending}
+              >
+                {createPOIMutation.isPending ? "Uploading..." : "Submit"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </Form>
-    </ScrollArea>
+    </DialogContent>
   );
 }
