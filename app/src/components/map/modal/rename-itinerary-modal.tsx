@@ -2,7 +2,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -82,10 +84,9 @@ export function RenameItineraryModal({
   };
 
   return (
-    <>
+    <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <Pen className="h-5 w-5" />
           Rename Itinerary
         </DialogTitle>
         <DialogDescription>
@@ -117,42 +118,41 @@ export function RenameItineraryModal({
             )}
           />
 
-          {renameItineraryMutation.isError && (
-            <Alert variant="destructive">
-              <AlertTitle>Unable to rename itinerary.</AlertTitle>
-              <AlertDescription>
-                <p>{renameItineraryMutation.error.message}</p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex flex-row gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={close}
-              disabled={renameItineraryMutation.isPending}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={renameItineraryMutation.isPending}
-              className="flex-1"
-            >
-              {renameItineraryMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Renaming...
-                </>
-              ) : (
-                "Rename"
-              )}
-            </Button>
-          </div>
+          <DialogFooter className="flex flex-col items-start gap-4">
+            {renameItineraryMutation.isError && (
+              <Alert variant="destructive">
+                <AlertTitle>Unable to rename itinerary.</AlertTitle>
+                <AlertDescription>
+                  <p>{renameItineraryMutation.error.message}</p>
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="w-full flex flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={close}
+                disabled={renameItineraryMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={renameItineraryMutation.isPending}
+              >
+                {renameItineraryMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Renaming...
+                  </>
+                ) : (
+                  "Rename"
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
         </form>
       </Form>
-    </>
+    </DialogContent>
   );
 }

@@ -8,6 +8,7 @@ import {
   reviewTable,
 } from "@/db/schema";
 import { and, eq, exists, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
 const itinerary = {
@@ -157,8 +158,12 @@ export const itineraryRouter = createTRPCRouter({
 
         return newItineraryPOI;
       } catch (error) {
+        console.error("Error adding POI to itinerary:", error);
         // Handle duplicate entry (POI already in itinerary)
-        throw new Error("POI is already in this itinerary");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "POI is already in this itinerary",
+        });
       }
     }),
 
@@ -186,7 +191,10 @@ export const itineraryRouter = createTRPCRouter({
         .limit(1);
 
       if (itinerary.length === 0) {
-        throw new Error("Itinerary not found or access denied");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Itinerary not found",
+        });
       }
 
       // Get POIs in the itinerary with their details, sorted by order priority
@@ -196,6 +204,8 @@ export const itineraryRouter = createTRPCRouter({
           name: sql<string>`${poiTable.name}`,
           checked: itineraryPOITable.checked,
           orderPriority: itineraryPOITable.orderPriority,
+          longitude: sql<number>`CAST(${poiTable.longitude} AS numeric)`,
+          latitude: sql<number>`CAST(${poiTable.latitude} AS numeric)`,
         })
         .from(itineraryPOITable)
         .innerJoin(poiTable, eq(poiTable.id, itineraryPOITable.poiId))
@@ -261,6 +271,8 @@ export const itineraryRouter = createTRPCRouter({
           name: sql<string>`${poiTable.name}`,
           checked: itineraryPOITable.checked,
           orderPriority: itineraryPOITable.orderPriority,
+          longitude: sql<number>`CAST(${poiTable.longitude} AS numeric)`,
+          latitude: sql<number>`CAST(${poiTable.latitude} AS numeric)`,
         })
         .from(itineraryPOITable)
         .innerJoin(poiTable, eq(poiTable.id, itineraryPOITable.poiId))
@@ -355,9 +367,7 @@ export const itineraryRouter = createTRPCRouter({
         .where(eq(itineraryPOITable.itineraryId, input.id));
 
       // Delete the itinerary
-      await db
-        .delete(itineraryTable)
-        .where(eq(itineraryTable.id, input.id));
+      await db.delete(itineraryTable).where(eq(itineraryTable.id, input.id));
 
       return { success: true };
     }),
@@ -398,6 +408,38 @@ export const itineraryRouter = createTRPCRouter({
 
       return updatedItinerary;
     }),
+  existsPOIInItinerary: protectedProcedure
+    .input(
+      z.object({
+        itineraryId: z.number(),
+        poiId: z.number(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.auth.userId;
+
+      const exists = await db
+        .select({
+          id: itineraryPOITable.id,
+        })
+        .from(itineraryPOITable)
+        .innerJoin(
+          itineraryTable,
+          eq(itineraryPOITable.itineraryId, itineraryTable.id)
+        )
+        .where(
+          and(
+            eq(itineraryPOITable.itineraryId, input.itineraryId),
+            eq(itineraryPOITable.poiId, input.poiId),
+            eq(itineraryTable.userId, userId)
+          )
+        )
+        .limit(1);
+      if (exists.length === 0) {
+        return false;
+      }
+      return true;
+    }),
 
   removePOIFromItinerary: protectedProcedure
     .input(
@@ -420,7 +462,10 @@ export const itineraryRouter = createTRPCRouter({
           orderPriority: itineraryPOITable.orderPriority,
         })
         .from(itineraryPOITable)
-        .innerJoin(itineraryTable, eq(itineraryPOITable.itineraryId, itineraryTable.id))
+        .innerJoin(
+          itineraryTable,
+          eq(itineraryPOITable.itineraryId, itineraryTable.id)
+        )
         .where(
           and(
             eq(itineraryPOITable.itineraryId, input.itineraryId),

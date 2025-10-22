@@ -27,6 +27,8 @@ import { Skeleton } from "../ui/skeleton";
 import { useUser } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { toast } from "sonner";
 
 export function ViewPOIReviews({ poiId }: { poiId: number }) {
   const auth = useAuth();
@@ -249,6 +251,15 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
   const poiTagQuery = trpc.map.getPOITags.useQuery({
     poiId,
   });
+  const existsPoiInItinerary = trpc.itinerary.existsPOIInItinerary.useQuery(
+    {
+      poiId,
+      itineraryId: mapStore.viewingItineraryId ?? 0,
+    },
+    {
+      enabled: mapStore.viewingItineraryId !== null,
+    }
+  );
 
   const sortedTags = useMemo(() => {
     const tagNames = poiTagQuery.data;
@@ -297,26 +308,78 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
 
   // Mutation for adding POI to itinerary
   const addPOIToItineraryMutation =
-    trpc.itinerary.addPOIToItinerary.useMutation();
+    trpc.itinerary.addPOIToItinerary.useMutation({
+      onSuccess: (data, vars) => {
+        if (!poi) {
+          return;
+        }
+        toast.success(`${poi.name} added to itinerary`);
+        // mapStore.setCurrentSidePanelTab("itinerary");
+        utils.itinerary.getItinerary.invalidate({
+          id: vars.itineraryId,
+        });
+        utils.map.search.invalidate();
+        utils.itinerary.getAllItineraries.invalidate();
+        utils.itinerary.existsPOIInItinerary.setData(
+          {
+            itineraryId: vars.itineraryId,
+            poiId: poiId,
+          },
+          true
+        );
+      },
+      onError: (error) => {
+        toast.error(error.message);
+        // console.error("Failed to add POI to itinerary:", error);
+        // if (
+        //   error.message &&
+        //   error.message.includes("already in this itinerary")
+        // ) {
+        //   console.log(
+        //     "POI is already in this itinerary, switching to itinerary panel to show current state"
+        //   );
+        // }
+        // Even if there's an error (like POI already in itinerary),
+        // still switch to the itinerary panel to show the current state
+        // mapStore.setCurrentSidePanelTab("itinerary");
+        // // Invalidate queries to refresh the data
+        // utils.itinerary.getItinerary.invalidate({
+        //   id: mapStore.viewingItineraryId!,
+        // });
+        // utils.map.search.invalidate();
+        // utils.itinerary.getAllItineraries.invalidate();
+      },
+    });
+  const removePOIFromItineraryMutation =
+    trpc.itinerary.removePOIFromItinerary.useMutation({
+      onSuccess: (data, vars) => {
+        if (!poi) {
+          return;
+        }
+        toast.success(`${poi.name} removed from itinerary`);
+        // mapStore.setCurrentSidePanelTab("itinerary");
+        utils.itinerary.getItinerary.invalidate({
+          id: vars.itineraryId,
+        });
+        utils.map.search.invalidate();
+        utils.itinerary.getAllItineraries.invalidate();
+        utils.itinerary.existsPOIInItinerary.setData(
+          {
+            itineraryId: vars.itineraryId,
+            poiId: poiId,
+          },
+          false
+        );
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
 
   // TRPC utilities for cache invalidation
   const utils = trpc.useUtils();
 
   const isUserSignedIn = useUser().isSignedIn;
-
-  // Map store for managing state
-  // const mapStore = useMapStore(
-  //   useShallow(({ viewingItineraryId, setViewingItineraryId, setCurrentSidePanelTab }) => {
-  //     return {
-  //       viewingItineraryId,
-  //       setViewingItineraryId,
-  //       setCurrentSidePanelTab,
-  //     };
-  //   })
-  // );
-
-  // Modal store for showing modals
-  // const modalStore = useMapModalStore();
 
   if (poiQuery.isLoading) {
     return (
@@ -336,10 +399,8 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
 
   const poi = poiQuery.data;
   const poiTags = sortedTags.tagsData;
-  // TODO: Whats the purpose of this?
   const poiTagsOrder = sortedTags.tagOrder;
 
-  console.log(poiTags);
   if (
     poi === null ||
     poi === undefined ||
@@ -363,134 +424,8 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     );
   }
 
-  // Function to handle adding POI to an itinerary
-  const handleAddToItinerary = () => {
-    console.log("Add to itinerary clicked");
-    console.log("Itineraries data:", itinerariesQuery.data);
-    console.log(
-      "Currently selected itinerary ID:",
-      mapStore.viewingItineraryId
-    );
-
-    // Check if there's a currently selected itinerary
-    if (mapStore.viewingItineraryId !== null) {
-      console.log(
-        "Adding to currently selected itinerary ID:",
-        mapStore.viewingItineraryId
-      );
-      addPOIToItineraryMutation.mutate(
-        {
-          itineraryId: mapStore.viewingItineraryId,
-          poiId: poiId,
-        },
-        {
-          onSuccess: (data) => {
-            console.log("Successfully added POI to itinerary:", data);
-            // Switch to the itinerary panel
-            mapStore.setCurrentSidePanelTab("itinerary");
-            // Invalidate the itinerary query to refresh the data
-            utils.itinerary.getItinerary.invalidate({
-              id: mapStore.viewingItineraryId!,
-            });
-            // Also invalidate the map search to refresh POI colors
-            utils.map.search.invalidate();
-            // Invalidate all itineraries to update the list
-            utils.itinerary.getAllItineraries.invalidate();
-          },
-          onError: (error) => {
-            console.error("Failed to add POI to itinerary:", error);
-            // Check if the error is because the POI is already in the itinerary
-            if (
-              error.message &&
-              error.message.includes("already in this itinerary")
-            ) {
-              console.log(
-                "POI is already in this itinerary, switching to itinerary panel to show current state"
-              );
-            }
-            // Even if there's an error (like POI already in itinerary),
-            // still switch to the itinerary panel to show the current state
-            mapStore.setCurrentSidePanelTab("itinerary");
-            // Invalidate queries to refresh the data
-            utils.itinerary.getItinerary.invalidate({
-              id: mapStore.viewingItineraryId!,
-            });
-            utils.map.search.invalidate();
-            utils.itinerary.getAllItineraries.invalidate();
-          },
-        }
-      );
-    }
-    // If no itinerary is currently selected, but there are itineraries, add to the first one
-    else if (itinerariesQuery.data && itinerariesQuery.data.length > 0) {
-      console.log(
-        "No itinerary selected, adding to first itinerary ID:",
-        itinerariesQuery.data[0].id
-      );
-      addPOIToItineraryMutation.mutate(
-        {
-          itineraryId: itinerariesQuery.data[0].id,
-          poiId: poiId,
-        },
-        {
-          onSuccess: (data) => {
-            console.log("Successfully added POI to itinerary:", data);
-            // Set the current itinerary as the viewing itinerary
-            mapStore.setViewingItineraryId(itinerariesQuery.data[0].id);
-            // Switch to the itinerary panel
-            mapStore.setCurrentSidePanelTab("itinerary");
-            // Invalidate the itinerary query to refresh the data
-            utils.itinerary.getItinerary.invalidate({
-              id: itinerariesQuery.data[0].id,
-            });
-            // Also invalidate the map search to refresh POI colors
-            utils.map.search.invalidate();
-            // Invalidate all itineraries to update the list
-            utils.itinerary.getAllItineraries.invalidate();
-          },
-          onError: (error) => {
-            console.error("Failed to add POI to itinerary:", error);
-            // Check if the error is because the POI is already in the itinerary
-            if (
-              error.message &&
-              error.message.includes("already in this itinerary")
-            ) {
-              console.log(
-                "POI is already in this itinerary, switching to itinerary panel to show current state"
-              );
-            }
-            // Even if there's an error (like POI already in itinerary),
-            // still switch to the itinerary panel to show the current state
-            mapStore.setViewingItineraryId(itinerariesQuery.data[0].id);
-            mapStore.setCurrentSidePanelTab("itinerary");
-            // Invalidate queries to refresh the data
-            utils.itinerary.getItinerary.invalidate({
-              id: itinerariesQuery.data[0].id,
-            });
-            utils.map.search.invalidate();
-            utils.itinerary.getAllItineraries.invalidate();
-          },
-        }
-      );
-    }
-    // If no itineraries exist at all, show create itinerary modal
-    else {
-      console.log("No itineraries found, showing create itinerary modal");
-      // If no itineraries exist, show create itinerary modal
-      modalStore.setAction({
-        type: "create-itinerary",
-        options: {
-          longitude: poi.longitude,
-          latitude: poi.latitude,
-        },
-      });
-    }
-  };
-
   // Function to handle starting an itinerary with this POI
   const handleStartItinerary = () => {
-    console.log("Start itinerary clicked");
-    console.log("POI data:", poi);
     // Show create itinerary modal with this POI as the starting point
     modalStore.setAction({
       type: "create-itinerary",
@@ -501,6 +436,79 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       },
     });
   };
+
+  let addToItineraryButton;
+  if (mapStore.viewingItineraryId === null) {
+    addToItineraryButton = (
+      <Button className="w-full truncate" size="sm" disabled>
+        Add to Itinerary
+      </Button>
+    );
+  } else if (existsPoiInItinerary.isPending) {
+    addToItineraryButton = <Skeleton className="w-full h-8" />;
+  } else if (existsPoiInItinerary.isError) {
+    addToItineraryButton = (
+      <Alert variant="destructive">
+        <AlertTitle>Something went wrong!</AlertTitle>
+        <AlertDescription>
+          <p>{existsPoiInItinerary.error.message}</p>
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (existsPoiInItinerary.data) {
+    addToItineraryButton = (
+      <Button
+        className="w-full truncate"
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          if (!mapStore.viewingItineraryId) {
+            return;
+          }
+          removePOIFromItineraryMutation.mutate({
+            itineraryId: mapStore.viewingItineraryId,
+            poiId: poiId,
+          });
+        }}
+        disabled={removePOIFromItineraryMutation.isPending || !isUserSignedIn}
+      >
+        {removePOIFromItineraryMutation.isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Removing...
+          </>
+        ) : (
+          "Remove from Itinerary"
+        )}
+      </Button>
+    );
+  } else {
+    addToItineraryButton = (
+      <Button
+        className="w-full truncate"
+        size="sm"
+        onClick={() => {
+          if (!mapStore.viewingItineraryId) {
+            return;
+          }
+          addPOIToItineraryMutation.mutate({
+            itineraryId: mapStore.viewingItineraryId,
+            poiId: poiId,
+          });
+        }}
+        disabled={addPOIToItineraryMutation.isPending || !isUserSignedIn}
+      >
+        {addPOIToItineraryMutation.isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Adding...
+          </>
+        ) : (
+          "Add to Itinerary"
+        )}
+      </Button>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col">
@@ -532,9 +540,11 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
                 {poi.images.length} Image{poi.images.length > 1 ? "s" : ""}
               </p>
             </div>
-            <Upload
-              size={32}
-              className={`absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg ${!isUserSignedIn ? "pointer-events-none opacity-30" : ""}`}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg"
+              disabled={!isUserSignedIn}
               onClick={(e) => {
                 e.stopPropagation();
                 modalStore.setAction({
@@ -546,7 +556,9 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
                   },
                 });
               }}
-            />
+            >
+              <Upload className="size-5" />
+            </Button>
           </div>
         ) : (
           <div className="relative inline-block h-full w-full">
@@ -554,9 +566,11 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
               <ImageIcon className="size-8" />
               No Image
             </div>
-            <Upload
-              size={32}
-              className={`absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg ${!isUserSignedIn ? "pointer-events-none opacity-30" : ""}`}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg"
+              disabled={!isUserSignedIn}
               onClick={(e) => {
                 e.stopPropagation();
                 modalStore.setAction({
@@ -568,23 +582,28 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
                   },
                 });
               }}
-            />
+            >
+              <Upload className="size-5" />
+            </Button>
           </div>
         )}
       </div>
       <div className="flex flex-col p-1">
         <h1 className="text-base font-bold">{poi.name}</h1>
         <p className="text-sm text-muted-foreground">{poi.description}</p>
-        <div className="flex flex-wrap gap-1 p-2">
+        <div className="flex flex-wrap gap-1 py-2">
           {poiTags.map((tagdata) => (
             <Badge
               key={tagdata.tagId}
-               className={cn({
-                 "dark:bg-green-300": !tagdata.excluded,
-                 "dark:text-neutral-100": tagdata.excluded,
-                 "bg-green-400": !tagdata.excluded,
-                 "text-black": true,
-               }, "cursor-pointer")}
+              className={cn(
+                {
+                  "dark:bg-green-300": !tagdata.excluded,
+                  "dark:text-neutral-100": tagdata.excluded,
+                  "bg-green-400": !tagdata.excluded,
+                  "text-black": true,
+                },
+                "cursor-pointer"
+              )}
               variant={tagdata.excluded ? "secondary" : "default"}
               onClick={(e) => {
                 e.stopPropagation();
@@ -618,34 +637,19 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
               </a>
             </Button>
             <Button variant="ghost" asChild className="w-fit p-0">
-              <a
-                href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}
-              >
+              <a href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}>
                 <MessageSquareWarning />
                 Report
               </a>
             </Button>
           </div>
-          <Button
-            className="w-full truncate"
-            size="sm"
-            onClick={handleAddToItinerary}
-            disabled={addPOIToItineraryMutation.isPending}
-          >
-            {addPOIToItineraryMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              "Add to Itinerary"
-            )}
-          </Button>
+          {addToItineraryButton}
           <Button
             className="w-full truncate"
             variant="secondary"
             size="sm"
             onClick={handleStartItinerary}
+            disabled={!isUserSignedIn}
           >
             Start Itinerary
           </Button>

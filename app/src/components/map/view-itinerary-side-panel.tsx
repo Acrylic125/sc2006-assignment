@@ -30,7 +30,6 @@ import { useMapModalStore } from "./modal/map-modal-store";
 import { TouchSensor, MouseSensor } from "@/lib/dnd-kit";
 import confetti from "canvas-confetti";
 import { useRef } from "react";
-import { useMap } from "react-map-gl/mapbox";
 import { useMapProvider } from "./map-provider";
 
 export function ItineraryPOISortableItem({
@@ -281,13 +280,13 @@ export function ViewItineraryPanel() {
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 500, // 500ms long press for touch devices
+        delay: 100, // 500ms long press for touch devices
         tolerance: 5,
       },
     }),
     useSensor(MouseSensor, {
       activationConstraint: {
-        delay: 300, // 300ms long press for mouse
+        delay: 100, // 300ms long press for mouse
         tolerance: 5,
       },
     }),

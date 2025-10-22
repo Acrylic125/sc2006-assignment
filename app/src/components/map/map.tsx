@@ -54,15 +54,11 @@ function createAddPin() {
 
 const pins = {
   red: createPinURL("#FB2C36"),
-  // blue: createPinURL("#3B82F6"),
-  green: createPinURL("#10B981"),
-  // yellow: createPinURL("#EAB308"),
-  // purple: createPinURL("#8B5CF6"),
-  // orange: createPinURL("#F59E0B"),
-  // pink: createPinURL("#EC4899"),
+  yellow: createPinURL("#efb100"),
   blue_bubble: createBubbleURL("#3B82F6"),
   red_bubble: createBubbleURL("#ff6467"),
   green_bubble: createBubbleURL("#10B981"),
+  gray_bubble: createBubbleURL("#90a1b9"),
   add_pin: createAddPin(),
 };
 
@@ -114,9 +110,6 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     if (!poisQuery.data || poisQuery.data.length === 0) {
       return [];
     }
-    const itineraryPOISSet = new Set(
-      itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
-    );
     const minScore = Math.min(
       ...poisQuery.data.map((poi) => poi.popularityScore)
     );
@@ -131,8 +124,6 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         mapStore.viewingPOI.poiId === poi.id
       ) {
         color = "red_bubble"; // currently selected POI
-      } else if (itineraryPOISSet.has(poi.id)) {
-        color = "green"; // POI in current itinerary
       }
       let poiScale = MIN_PIN_SIZE;
       if (maxScore === minScore) {
@@ -151,7 +142,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         scale: poiScale,
       };
     });
-  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
+  }, [poisQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
@@ -211,6 +202,36 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+      </Source>
+      <Source
+        id="poi-pins-itinerary"
+        type="geojson"
+        cluster={false}
+        data={{
+          type: "FeatureCollection",
+          features:
+            itinerariesQuery.data?.pois.map((poi) => {
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [poi.longitude, poi.latitude],
+                },
+                properties: {},
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="poi-pins-itinerary"
+          type="symbol"
+          source="poi-pins-itinerary"
+          layout={{
+            "icon-image": "pin-yellow",
+            "icon-size": 1,
+            "icon-anchor": "bottom",
           }}
         />
       </Source>
@@ -269,7 +290,6 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           setCurrentSidePanelTab,
           setViewingPOI,
           recommendFromPos: recommend.recommendFromPos,
-          recommendViewPos: recommend.recommendViewPos,
         };
       }
     )
@@ -297,60 +317,94 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
   const MIN_PIN_SIZE = 1;
   const MAX_PIN_SIZE = 2;
   const poiPins = useMemo(() => {
-    if (!poisQuery.data || poisQuery.data.length === 0) {
-      return [];
-    }
-    const itineraryPOISSet = new Set(
-      itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
-    );
-    const minScore = Math.min(
-      ...poisQuery.data.map((poi) => poi.popularityScore)
-    );
-    const maxScore = Math.max(
-      ...poisQuery.data.map((poi) => poi.popularityScore)
-    );
-    return poisQuery.data?.map((poi) => {
-      // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
-      let color = "blue_bubble"; // default
-      if (
-        mapStore.viewingPOI?.type === "existing-poi" &&
-        mapStore.viewingPOI.poiId === poi.id
-      ) {
-        color = "red_bubble"; // currently selected POI
-      } else if (itineraryPOISSet.has(poi.id)) {
-        color = "green"; // POI in current itinerary
-      }
-      let poiScale = MIN_PIN_SIZE;
-      if (maxScore === minScore) {
-        poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
-      } else {
-        poiScale =
-          MIN_PIN_SIZE +
-          ((poi.popularityScore - minScore) / (maxScore - minScore)) *
-            (MAX_PIN_SIZE - MIN_PIN_SIZE);
-      }
-
+    if (!poisQuery.data) {
       return {
-        id: poi.id,
-        color: color,
-        coordinates: [poi.pos.longitude, poi.pos.latitude],
-        scale: poiScale,
+        recommended: [],
+        others: [],
       };
-    });
-  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
+    }
+
+    let recommended: {
+      id: number;
+      color: string;
+      coordinates: [number, number];
+      scale: number;
+    }[] = [];
+    let others: {
+      id: number;
+      color: string;
+      coordinates: [number, number];
+      scale: number;
+    }[] = [];
+    if (poisQuery.data.recommended.length > 0) {
+      const minScore = Math.min(
+        ...poisQuery.data.recommended.map((poi) => poi.popularityScore)
+      );
+      const maxScore = Math.max(
+        ...poisQuery.data.recommended.map((poi) => poi.popularityScore)
+      );
+      recommended = poisQuery.data.recommended.map((poi) => {
+        let color = "blue_bubble"; // default
+        if (
+          mapStore.viewingPOI?.type === "existing-poi" &&
+          mapStore.viewingPOI.poiId === poi.id
+        ) {
+          color = "red_bubble"; // currently selected POI
+        }
+        let poiScale = MIN_PIN_SIZE;
+        if (maxScore === minScore) {
+          poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
+        } else {
+          poiScale =
+            MIN_PIN_SIZE +
+            ((poi.popularityScore - minScore) / (maxScore - minScore)) *
+              (MAX_PIN_SIZE - MIN_PIN_SIZE);
+        }
+
+        return {
+          id: poi.id,
+          color: color,
+          coordinates: [poi.pos.longitude, poi.pos.latitude],
+          scale: poiScale,
+        };
+      });
+    }
+    if (poisQuery.data.others.length > 0) {
+      others = poisQuery.data.others.map((poi) => {
+        let color = "gray_bubble"; // default
+        if (
+          mapStore.viewingPOI?.type === "existing-poi" &&
+          mapStore.viewingPOI.poiId === poi.id
+        ) {
+          color = "red_bubble"; // currently selected POI
+        }
+        return {
+          id: poi.id,
+          color: color,
+          coordinates: [poi.pos.longitude, poi.pos.latitude],
+          scale: 0.5,
+        };
+      });
+    }
+
+    return {
+      recommended,
+      others,
+    };
+  }, [poisQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
       <Source
-        id="pins"
+        id="pins-others"
         type="geojson"
         cluster={true}
         clusterRadius={40}
-        clusterMaxZoom={12}
+        clusterMaxZoom={15}
         data={{
           type: "FeatureCollection",
           features:
-            poiPins?.map((poi) => {
+            poiPins.others.map((poi) => {
               const poiPos = poi.coordinates;
               return {
                 type: "Feature",
@@ -368,24 +422,42 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         }}
       >
         <Layer
-          id="clusters"
-          type="circle"
-          source="pins"
-          filter={["has", "point_count"]}
-          paint={{
-            "circle-color": "#8ec5ff",
-            "circle-radius": [
-              "step",
-              ["get", "point_count"],
-              24, // radius for clusters with less than 10 points
-              10,
-              36, // radius for clusters with 10-30 points
-              30,
-              48, // radius for clusters with 30+ points
-            ],
-            "circle-opacity": 0.6,
+          id="poi-pins-others"
+          type="symbol"
+          source="pins-others"
+          layout={{
+            "icon-image": ["concat", "pin-", ["get", "color"]],
+            "icon-size": ["get", "scale"],
+            "icon-anchor": "center",
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           }}
         />
+      </Source>
+      <Source
+        id="pins"
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features:
+            poiPins.recommended.map((poi) => {
+              const poiPos = poi.coordinates;
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: poiPos,
+                },
+                properties: {
+                  id: poi.id,
+                  color: poi.color,
+                  scale: poi.scale,
+                },
+              };
+            }) ?? [],
+        }}
+      >
         <Layer
           id="poi-pins"
           type="symbol"
@@ -397,6 +469,36 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+      </Source>
+      <Source
+        id="poi-pins-itinerary"
+        type="geojson"
+        cluster={false}
+        data={{
+          type: "FeatureCollection",
+          features:
+            itinerariesQuery.data?.pois.map((poi) => {
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [poi.longitude, poi.latitude],
+                },
+                properties: {},
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="poi-pins-itinerary"
+          type="symbol"
+          source="poi-pins-itinerary"
+          layout={{
+            "icon-image": "pin-yellow",
+            "icon-size": 1,
+            "icon-anchor": "bottom",
           }}
         />
       </Source>
@@ -431,39 +533,6 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           }}
         />
       </Source>
-      {/* {mapStore.recommendViewPos && (
-        <Source
-          id="pin-view"
-          type="geojson"
-          data={{
-            type: "FeatureCollection",
-            features: [
-              {
-                type: "Feature",
-                geometry: {
-                  type: "Point",
-                  coordinates: [
-                    mapStore.recommendViewPos.longitude,
-                    mapStore.recommendViewPos.latitude,
-                  ],
-                },
-                properties: { color: "orange" },
-              },
-            ],
-          }}
-        >
-          <Layer
-            id="pin-view"
-            type="symbol"
-            source="recommend-pin-from"
-            layout={{
-              "icon-image": "pin-orange",
-              "icon-size": 0.7,
-              "icon-anchor": "bottom",
-            }}
-          />
-        </Source>
-      )} */}
     </>
   );
 }
@@ -476,7 +545,6 @@ export default function ExploreMap({ className }: { className: string }) {
       ({
         currentMapTab,
         setRecommendFromPos,
-        setRecommendViewPos,
         setExplorePos,
         setViewingPOI,
         setCurrentSidePanelTab,
@@ -487,7 +555,6 @@ export default function ExploreMap({ className }: { className: string }) {
         return {
           currentMapTab,
           setRecommendFromPos,
-          setRecommendViewPos,
           setExplorePos,
           setViewingPOI,
           setCurrentSidePanelTab,
@@ -527,12 +594,11 @@ export default function ExploreMap({ className }: { className: string }) {
 
     await Promise.all([
       ensurePinImage("red"),
-      // ensurePinImage("green"),
-      // ensurePinImage("blue"),
-      // ensurePinImage("orange"),
+      ensurePinImage("yellow"),
       ensurePinImage("blue_bubble"),
       ensurePinImage("red_bubble"),
       ensurePinImage("green_bubble"),
+      ensurePinImage("gray_bubble"),
       ensurePinImage("add_pin"),
     ]);
   }, []);
@@ -540,30 +606,32 @@ export default function ExploreMap({ className }: { className: string }) {
   const onClick = useCallback(
     (e: MapMouseEvent) => {
       const map = e.target;
-      if (map.getLayer("poi-pins")) {
-        const poiPins = map.queryRenderedFeatures(e.point, {
-          layers: ["poi-pins"],
-        });
-        if (poiPins.length > 0) {
-          const poiId = poiPins[0].properties?.id;
-          if (poiId) {
-            mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
-            mapStore.setViewingPOI({ type: "existing-poi", poiId });
-            mapStore.setCurrentSidePanelTab("place");
-            if (poiPins[0].geometry?.type === "Point") {
-              const coords = poiPins[0].geometry?.coordinates; //coords are lng lat
-              // mapStore.setExplorePos({
-              //   latitude: coords[1],
-              //   longitude: coords[0],
-              // });
-              mapStore.setRecommendViewPos({
-                latitude: coords[1],
-                longitude: coords[0],
-              });
-            }
-          }
-          return;
+      const layers: string[] = [];
+      const possibleLayers = [
+        "poi-pins",
+        "poi-pins-others",
+        "poi-pins-itinerary",
+      ];
+      for (const layer of possibleLayers) {
+        if (map.getLayer(layer)) {
+          layers.push(layer);
         }
+      }
+
+      const poiPins = map.queryRenderedFeatures(e.point, {
+        layers,
+      });
+      if (poiPins.length > 0) {
+        const poiId = poiPins[0].properties?.id;
+        if (poiId && typeof poiId === "number") {
+          mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
+          mapStore.setCurrentSidePanelTab("place");
+          mapStore.setViewingPOI({
+            type: "existing-poi",
+            poiId,
+          });
+        }
+        return;
       }
       if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
         const features = map.queryRenderedFeatures(e.point, {

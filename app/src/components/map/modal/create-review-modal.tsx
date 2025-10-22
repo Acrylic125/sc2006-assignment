@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -54,7 +55,7 @@ export function CreateReviewDialog({
   close: () => void;
 }) {
   const [filePending, setFilePending] = useState(false);
-  
+
   const createReviewMutation = trpc.review.createReview.useMutation();
   const utils = trpc.useUtils();
   const { uploadImage } = useUploadImage();
@@ -75,7 +76,7 @@ export function CreateReviewDialog({
       comment: data.comment,
       images: data.images ?? [],
     };
-    
+
     createReviewMutation.mutate(reviewData, {
       onSuccess: () => {
         // Invalidate queries to refresh data
@@ -116,7 +117,7 @@ export function CreateReviewDialog({
                   <div className="flex flex-row gap-2">
                     <Button
                       type="button"
-                      variant={field.value ? "default" : "outline"}
+                      variant={field.value ? "secondary" : "outline"}
                       onClick={() => field.onChange(true)}
                       className="flex-1"
                     >
@@ -124,7 +125,7 @@ export function CreateReviewDialog({
                     </Button>
                     <Button
                       type="button"
-                      variant={!field.value ? "default" : "outline"}
+                      variant={!field.value ? "secondary" : "outline"}
                       onClick={() => field.onChange(false)}
                       className="flex-1"
                     >
@@ -144,11 +145,11 @@ export function CreateReviewDialog({
               <FormItem>
                 <FormLabel>Comment (Optional)</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Share your thoughts about this place..." 
+                  <Textarea
+                    placeholder="Share your thoughts about this place..."
                     className="min-h-[80px]"
                     maxLength={255}
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -190,15 +191,18 @@ export function CreateReviewDialog({
                             type: file.type,
                             lastModified: file.lastModified ?? Date.now(),
                           });
-                          
+
                           const result = await handleUpload(realFile);
                           if (!result) {
                             error("Upload failed");
                             return;
                           }
-                          
+
                           // Add image to form
-                          const images = [...(form.getValues("images") ?? []), result];
+                          const images = [
+                            ...(form.getValues("images") ?? []),
+                            result,
+                          ];
                           form.setValue("images", images, {
                             shouldValidate: true,
                             shouldDirty: true,
@@ -218,8 +222,9 @@ export function CreateReviewDialog({
                       revert: (fileUfsUrl, load) => {
                         console.log(`File Removed: ${fileUfsUrl}`);
                         // Remove the image from the form
-                        const images = (form.getValues("images") ?? [])
-                          .filter((file) => file !== fileUfsUrl);
+                        const images = (form.getValues("images") ?? []).filter(
+                          (file) => file !== fileUfsUrl
+                        );
                         form.setValue("images", images, {
                           shouldValidate: true,
                           shouldDirty: true,
@@ -246,20 +251,18 @@ export function CreateReviewDialog({
             </Alert>
           )}
 
-          <div className="flex flex-row gap-2">
+          <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
             <Button
               type="button"
               variant="outline"
               onClick={close}
               disabled={createReviewMutation.isPending}
-              className="flex-1"
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={createReviewMutation.isPending || filePending}
-              className="flex-1"
             >
               {createReviewMutation.isPending ? (
                 <>
@@ -272,10 +275,10 @@ export function CreateReviewDialog({
                   Uploading...
                 </>
               ) : (
-                "Submit Review"
+                "Review"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </Form>
     </>

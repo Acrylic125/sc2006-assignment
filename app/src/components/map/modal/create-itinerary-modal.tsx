@@ -5,7 +5,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -25,7 +27,10 @@ import { useMapStore } from "../map-store";
 import { useShallow } from "zustand/react/shallow";
 
 const CreateItineraryFormSchema = z.object({
-  name: z.string().min(1, "Itinerary name is required").max(128, "Name must be 128 characters or less"),
+  name: z
+    .string()
+    .min(1, "Itinerary name is required")
+    .max(128, "Name must be 128 characters or less"),
 });
 
 export function CreateItineraryDialog({
@@ -41,12 +46,13 @@ export function CreateItineraryDialog({
       setCurrentSidePanelTab,
     }))
   );
-  
+
   const utils = trpc.useUtils();
   const createItineraryMutation = trpc.itinerary.createItinerary.useMutation();
   // Add mutation for adding POI to itinerary
-  const addPOIToItineraryMutation = trpc.itinerary.addPOIToItinerary.useMutation();
-  
+  const addPOIToItineraryMutation =
+    trpc.itinerary.addPOIToItinerary.useMutation();
+
   const form = useForm<z.infer<typeof CreateItineraryFormSchema>>({
     resolver: zodResolver(CreateItineraryFormSchema),
     defaultValues: {
@@ -59,10 +65,10 @@ export function CreateItineraryDialog({
       const newItinerary = await createItineraryMutation.mutateAsync({
         name: data.name,
       });
-      
+
       // Invalidate and refetch itineraries list
       await utils.itinerary.getAllItineraries.invalidate();
-      
+
       // If we have a POI ID, add it to the new itinerary
       if (poiId !== undefined) {
         try {
@@ -71,16 +77,18 @@ export function CreateItineraryDialog({
             poiId: poiId,
           });
           // Invalidate the new itinerary to show the added POI
-          await utils.itinerary.getItinerary.invalidate({ id: newItinerary.id });
+          await utils.itinerary.getItinerary.invalidate({
+            id: newItinerary.id,
+          });
         } catch (error) {
           console.error("Failed to add POI to new itinerary:", error);
         }
       }
-      
+
       // Set the new itinerary as the viewing itinerary
       mapStore.setViewingItineraryId(newItinerary.id);
       mapStore.setCurrentSidePanelTab("itinerary");
-      
+
       // Close the modal
       close();
     } catch (error) {
@@ -90,7 +98,7 @@ export function CreateItineraryDialog({
   };
 
   return (
-    <>
+    <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>Create New Itinerary</DialogTitle>
         <DialogDescription>
@@ -106,9 +114,9 @@ export function CreateItineraryDialog({
               <FormItem>
                 <FormLabel>Itinerary Name</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="e.g., Singapore Weekend Adventure" 
-                    {...field} 
+                  <Input
+                    placeholder="e.g., Singapore Weekend Adventure"
+                    {...field}
                     autoFocus
                   />
                 </FormControl>
@@ -117,35 +125,34 @@ export function CreateItineraryDialog({
             )}
           />
 
-          {createItineraryMutation.isError && (
-            <Alert variant="destructive">
-              <AlertTitle>Unable to create itinerary.</AlertTitle>
-              <AlertDescription>
-                <p>{createItineraryMutation.error.message}</p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={close}
-              disabled={createItineraryMutation.isPending}
-              type="button"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createItineraryMutation.isPending}
-              className="flex-1"
-            >
-              {createItineraryMutation.isPending ? "Creating..." : "Create Itinerary"}
-            </Button>
-          </div>
+          <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
+            {createItineraryMutation.isError && (
+              <Alert variant="destructive">
+                <AlertTitle>Unable to create itinerary.</AlertTitle>
+                <AlertDescription>
+                  <p>{createItineraryMutation.error.message}</p>
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="w-full flex flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={close}
+                disabled={createItineraryMutation.isPending}
+                type="button"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createItineraryMutation.isPending}
+              >
+                {createItineraryMutation.isPending ? "Creating..." : "Create"}
+              </Button>
+            </div>
+          </DialogFooter>
         </form>
       </Form>
-    </>
+    </DialogContent>
   );
 }
-
