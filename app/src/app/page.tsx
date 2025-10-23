@@ -38,7 +38,7 @@ export default function Home() {
       <MainNavbar />
 
       <MapProvider>
-        <div className="w-full h-screen-max flex flex-col md:flex-row max-w-[1920px]">
+        <div className="w-full h-screen-max flex flex-col md:flex-row">
           <div className="flex flex-col h-full flex-1">
             <div className="flex flex-row items-center justify-between p-1 border-b border-border gap-1">
               <div className="flex-1 flex flex-row items-center gap-2">
