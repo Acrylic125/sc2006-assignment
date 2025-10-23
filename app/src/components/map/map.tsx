@@ -11,6 +11,8 @@ import { trpc } from "@/server/client";
 import Map, { Layer, Source, ViewStateChangeEvent } from "react-map-gl/mapbox";
 import { useMapProvider } from "./map-provider";
 import { useThemeStore } from "../theme-store";
+import { Button } from "../ui/button";
+import { AlignCenter, Locate, Minus, Plus } from "lucide-react";
 
 function createPinURL(color: string) {
   return (
@@ -630,6 +632,10 @@ export default function ExploreMap({ className }: { className: string }) {
             type: "existing-poi",
             poiId,
           });
+          // Reset explore pos when a new POI is clicked(set though the cluster layer)
+          if (mapStore.currentMapTab === "explore") {
+            mapStore.setExplorePos(null);
+          }
         }
         return;
       }
@@ -683,11 +689,6 @@ export default function ExploreMap({ className }: { className: string }) {
     <Map
       ref={mapRef}
       mapboxAccessToken={env.NEXT_PUBLIC_MAPBOX_PK}
-      // initialViewState={{
-      //   longitude: 103.8198,
-      //   latitude: 1.3521,
-      //   zoom: 10,
-      // }}
       onMove={onMove}
       latitude={mapStore.viewState.latitude}
       longitude={mapStore.viewState.longitude}
@@ -706,5 +707,73 @@ export default function ExploreMap({ className }: { className: string }) {
       {mapStore.currentMapTab === "explore" && <ExploreMapLayers enabled />}
       {mapStore.currentMapTab === "recommend" && <RecommendMapLayers enabled />}
     </Map>
+  );
+}
+
+export function MapControls() {
+  const map = useMapProvider();
+  return (
+    <div className="flex flex-row gap-2 absolute top-4 right-4">
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => {
+          // Center at Singapore.
+          map.mapRef.current?.flyTo({
+            center: [103.8198, 1.3521],
+            zoom: 10,
+          });
+        }}
+      >
+        <Locate />
+      </Button>
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => {
+          map.mapRef.current?.zoomIn();
+        }}
+      >
+        <Plus />
+      </Button>
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => {
+          map.mapRef.current?.zoomOut();
+        }}
+      >
+        <Minus />
+      </Button>
+    </div>
+  );
+}
+
+export function MapHintTopBar() {
+  const mapStore = useMapStore(
+    useShallow(({ currentMapTab }) => ({ currentMapTab }))
+  );
+  if (mapStore.currentMapTab === "explore") {
+    return (
+      <div className="absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
+        <p className="text-center w-full text-muted-foreground">
+          Click on <span className="text-primary font-bold">Pin to view</span>{" "}
+          OR{" "}
+          <span className="text-primary font-bold">Map to add a new place</span>
+          .
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
+      <p className="text-center w-full text-muted-foreground">
+        Click on <span className="text-primary font-bold">Pin to view</span> OR{" "}
+        <span className="text-primary font-bold">
+          Map to view recommendations
+        </span>
+        .
+      </p>
+    </div>
   );
 }

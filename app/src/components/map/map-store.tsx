@@ -66,7 +66,7 @@ type MapStore = {
   setFilterShowVisited: (showVisited: boolean) => void;
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
-  setExplorePos: (pos: Coordinates) => void;
+  setExplorePos: (pos: Coordinates | null) => void;
   setViewingPOI: (poi: ViewingPOI) => void;
   setTagBadgeOrder: (tagIdOrder: number[]) => void;
 };

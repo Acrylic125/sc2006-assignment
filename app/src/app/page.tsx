@@ -25,6 +25,7 @@ import { MapViewTabGroup } from "@/components/map/map-view-tab-group";
 import dynamic from "next/dynamic";
 import { useAuth } from "@clerk/nextjs";
 import { MapProvider } from "@/components/map/map-provider";
+import { MapControls, MapHintTopBar } from "../components/map/map";
 
 const _ExploreMap = dynamic(() => import("../components/map/map"), {
   ssr: false,
@@ -51,7 +52,7 @@ export default function Home() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" disabled={!auth.isSignedIn}>
-                      <Sparkles />{" "}
+                      <Sparkles />
                       <span className="hidden sm:block">Surprise Me</span>
                     </Button>
                   </DropdownMenuTrigger>
@@ -104,8 +105,10 @@ export default function Home() {
                 <MapViewTabGroup />
               </div>
             </div>
-            <div className="h-full w-full p-1">
+            <div className="relative h-full w-full p-1">
               <_ExploreMap className="h-full w-full" />
+              <MapHintTopBar />
+              <MapControls />
             </div>
           </div>
           <ScrollArea className="relative h-1/2 w-full lg:w-1/5 min-w-64 md:max-w-80 md:h-screen-max lg:border-l border-border">
