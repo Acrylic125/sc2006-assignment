@@ -316,7 +316,7 @@ export function CreatePOIDialog({
               />
             </div>
           </ScrollArea>
-          <DialogFooter className="flex flex-col items-start gap-4">
+          <DialogFooter className="flex sm:flex-col gap-4 w-full sm:justify-start">
             {createPOIMutation.isError && (
               <Alert variant="error">
                 <AlertTitle>Unable to create POI.</AlertTitle>

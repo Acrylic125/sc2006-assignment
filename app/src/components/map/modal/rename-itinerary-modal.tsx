@@ -118,7 +118,7 @@ export function RenameItineraryModal({
             )}
           />
 
-          <DialogFooter className="flex flex-col items-start gap-4">
+          <DialogFooter className="flex flex-col sm:flex-col gap-4 w-full sm:justify-start">
             {renameItineraryMutation.isError && (
               <Alert variant="destructive">
                 <AlertTitle>Unable to rename itinerary.</AlertTitle>

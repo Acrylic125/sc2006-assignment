@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,
@@ -58,28 +59,38 @@ export function DeleteReviewModal({
         </DialogDescription>
       </DialogHeader>
 
-      <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
-        <Button
-          variant="outline"
-          onClick={close}
-          disabled={deleteReviewMutation.isPending}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="destructive"
-          onClick={handleDelete}
-          disabled={deleteReviewMutation.isPending}
-        >
-          {deleteReviewMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Deleting...
-            </>
-          ) : (
-            "Delete"
-          )}
-        </Button>
+      <DialogFooter className="flex sm:flex-col gap-4 w-full sm:justify-start">
+        {deleteReviewMutation.isError && (
+          <Alert variant="destructive">
+            <AlertTitle>Unable to delete review.</AlertTitle>
+            <AlertDescription>
+              <p>{deleteReviewMutation.error.message}</p>
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="w-full flex flex-row gap-2">
+          <Button
+            variant="outline"
+            onClick={close}
+            disabled={deleteReviewMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={deleteReviewMutation.isPending}
+          >
+            {deleteReviewMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete"
+            )}
+          </Button>
+        </div>
       </DialogFooter>
     </DialogContent>
   );

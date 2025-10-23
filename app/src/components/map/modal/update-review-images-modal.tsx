@@ -243,7 +243,7 @@ export function UpdateReviewImagesDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="flex flex-col sm:flex-col gap-4 w-full sm:justify-start">
+          <DialogFooter className="flex sm:flex-col gap-4 w-full sm:justify-start">
             {updateReviewImagesMutation.isError && (
               <Alert variant="destructive" className="w-full">
                 <AlertTitle>Unable to update review images.</AlertTitle>

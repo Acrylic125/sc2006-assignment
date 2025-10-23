@@ -246,7 +246,7 @@ export function CreateReviewDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
+          <DialogFooter className="flex sm:flex-col gap-4 w-full sm:justify-start">
             {createReviewMutation.isError && (
               <Alert variant="destructive">
                 <AlertTitle>Unable to create review.</AlertTitle>

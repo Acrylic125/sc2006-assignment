@@ -68,38 +68,40 @@ export function RemovePOIFromItineraryModal({
           </p>
         </div>
 
-        {removePOIFromItinerary.isError && (
-          <Alert variant="destructive">
-            <AlertTitle>Unable to remove POI from itinerary.</AlertTitle>
-            <AlertDescription>
-              <p>{removePOIFromItinerary.error.message}</p>
-            </AlertDescription>
-          </Alert>
-        )}
+        <DialogFooter className="flex flex-col sm:flex-col gap-4 w-full sm:justify-start">
+          {removePOIFromItinerary.isError && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to remove POI from itinerary.</AlertTitle>
+              <AlertDescription>
+                <p>{removePOIFromItinerary.error.message}</p>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        <DialogFooter className="flex flex-row gap-2 w-full sm:justify-start">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={close}
-            disabled={removePOIFromItinerary.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleRemove}
-            disabled={removePOIFromItinerary.isPending}
-          >
-            {removePOIFromItinerary.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Removing...
-              </>
-            ) : (
-              "Remove"
-            )}
-          </Button>
+          <div className="w-full flex flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={close}
+              disabled={removePOIFromItinerary.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRemove}
+              disabled={removePOIFromItinerary.isPending}
+            >
+              {removePOIFromItinerary.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </div>
     </DialogContent>

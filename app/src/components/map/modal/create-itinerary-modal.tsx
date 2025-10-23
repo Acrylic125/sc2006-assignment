@@ -125,7 +125,7 @@ export function CreateItineraryDialog({
             )}
           />
 
-          <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
+          <DialogFooter className="flex flex-col sm:flex-col gap-4 w-full sm:justify-start">
             {createItineraryMutation.isError && (
               <Alert variant="destructive">
                 <AlertTitle>Unable to create itinerary.</AlertTitle>
