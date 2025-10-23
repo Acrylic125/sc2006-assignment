@@ -1,116 +1,88 @@
-import { useForm } from "react-hook-form";
+"use client";
+
 import { ExtractOptions } from "./map-modal-store";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
+import { trpc } from "@/server/client";
 import { Skeleton } from "../../ui/skeleton";
-
 import {
-  Virtual,
-  Pagination,
-  Mousewheel,
-  Keyboard,
-  Navigation,
-} from "swiper/modules";
-import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/css";
-import "swiper/css/virtual";
-import "swiper/css/pagination";
-import "swiper/css/keyboard";
-import "swiper/css/mousewheel";
-import "swiper/css/navigation";
-
-import { useState } from "react";
+  Carousel,
+  CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
-const ReviewImageCarouselSchema = z.object({
-  reviewId: z.number(),
-  images: z.array(z.string()),
-  reviewComment: z.string(),
-});
-
-export function ReviewImageCarouselDialog({
+export function ReviewImageDialog({
   options,
   close,
 }: {
   options: ExtractOptions<"review-image-carousel">;
   close: () => void;
 }) {
-  const form = useForm<z.infer<typeof ReviewImageCarouselSchema>>({
-    resolver: zodResolver(ReviewImageCarouselSchema),
-    defaultValues: {
-      reviewId: options.reviewId,
-      images: options.images,
-      reviewComment: options.reviewComment,
-    },
-  });
-  const [loading, setLoading] = useState(true);
+  const [api, setApi] = useState<CarouselApi | null>(null);
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    api.scrollTo(options.defaultIndex ?? 0);
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap() + 1);
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap() + 1);
+    });
+  }, [api, options.defaultIndex]);
 
   const images = options.images;
-  const reviewComment = options.reviewComment;
-
-  //overflow-hidden is needed or swiper slides will flicker
   return (
-    <div className="w-full overflow-hidden">
-      <DialogHeader>
-        <DialogTitle className="mb-4">Review Images</DialogTitle>
-        {reviewComment && (
-          <DialogDescription className="mb-4">
-            "{reviewComment}"
-          </DialogDescription>
-        )}
+    <DialogContent
+      className="p-0 bg-none gap-0 rounded-3xl sm:max-w-7xl w-full max-w-7xl"
+      onClick={close}
+    >
+      <DialogHeader className="p-0 py-0">
+        <DialogTitle className="sr-only">{options.name}</DialogTitle>
       </DialogHeader>
-
-      <Swiper
-        modules={[Virtual, Pagination, Keyboard, Mousewheel, Navigation]}
-        spaceBetween={10}
-        slidesPerView={1}
-        pagination={{
-          type: "bullets",
-          clickable: true,
-          dynamicBullets: true,
-          dynamicMainBullets: 10,
-        }}
-        virtual
-        keyboard={{ enabled: true }}
-        mousewheel={{ enabled: true }}
-        navigation={{ enabled: false }}
-        centeredSlides={true}
-        className="w-full"
-      >
-        {images.map((image, index) => (
-          <SwiperSlide key={index} virtualIndex={index}>
-            <div className="relative inline-block w-full items-center justify-center">
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Skeleton className="absolute inset-0 w-full h-full rounded-md" />
-                </div>
-              )}
-              <div className="w-full aspect-[4/3] relative">
-                <Image
-                  src={
-                    image.startsWith("https://")
-                      ? image
-                      : `https://${image}`
-                  }
-                  alt={`Review Image ${index + 1}`}
-                  fill
-                  onLoad={() => setLoading(false)}
-                  onError={() => setLoading(false)}
-                  className={`w-full object-fit ${loading ? "opacity-0" : "opacity-100"} transition-opacity `}
-                />
-              </div>
-            </div>
-          </SwiperSlide>
-        ))}
-      </Swiper>
-    </div>
+      <Carousel className="p-0 rounded-3xl overflow-hidden" setApi={setApi}>
+        <CarouselContent>
+          {images.map((image, index) => (
+            <CarouselItem
+              key={index}
+              className="w-full p-0 relative aspect-[4/3]"
+            >
+              <Image
+                src={image.startsWith("https://") ? image : `https://${image}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className="object-contain bg-transparent"
+                fill
+                alt="Image"
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="top-1/2 left-8 -translate-y-1/2" />
+        <CarouselNext className="top-1/2 right-8 -translate-y-1/2" />
+      </Carousel>
+      <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-row flex-2 h-24 items-center justify-center">
+        <h2 className="text-base font-bold text-white">{options.name}</h2>
+      </div>
+      <div className="absolute left-1/2 -translate-x-1/2 -bottom-20 flex flex-row flex-2 h-24 items-center justify-center">
+        <h2 className="text-base font-bold text-white">
+          {current} of {count}
+        </h2>
+      </div>
+    </DialogContent>
   );
 }

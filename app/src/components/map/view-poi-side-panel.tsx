@@ -30,7 +30,13 @@ import { useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { toast } from "sonner";
 
-export function ViewPOIReviews({ poiId }: { poiId: number }) {
+export function ViewPOIReviews({
+  poiId,
+  poiName,
+}: {
+  poiId: number;
+  poiName: string;
+}) {
   const auth = useAuth();
 
   // Get reviews from the backend
@@ -39,8 +45,6 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
     { poiId },
     { enabled: !!auth.isSignedIn }
   );
-
-  const utils = trpc.useUtils();
 
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
@@ -128,12 +132,7 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                 <div className="flex flex-row items-center justify-between gap-2">
                   <div className="flex flex-row items-center gap-2">
                     <Avatar>
-                      <AvatarImage
-                        src={
-                          review.user?.imageUrl ||
-                          "https://github.com/shadcn.png"
-                        }
-                      />
+                      <AvatarImage src={review.user?.imageUrl} />
                       <AvatarFallback>
                         {isCurrentUser
                           ? "You"
@@ -177,16 +176,17 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                 {review.images && review.images.length > 0 && (
                   <div className="flex flex-row items-center gap-2">
                     {review.images.slice(0, 3).map((image, i) => (
-                      <div 
-                        className="w-1/3 aspect-square relative cursor-pointer hover:opacity-80 transition-opacity" 
+                      <Button
+                        className="flex-1 h-fit px-0 py-0 has-[>svg]:px-0 aspect-square relative cursor-pointer hover:opacity-80 transition-opacity"
                         key={i}
+                        variant="ghost"
                         onClick={() => {
                           modalStore.setAction({
                             type: "review-image-carousel",
                             options: {
-                              reviewId: review.id,
+                              name: poiName,
                               images: review.images,
-                              reviewComment: review.comment || "",
+                              defaultIndex: i,
                             },
                           });
                         }}
@@ -197,7 +197,7 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                           className="object-cover rounded"
                           fill
                         />
-                      </div>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -302,9 +302,6 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     const tagOrderData = sortedTagNames.map((item) => item.tagId);
     return { tagsData: sortedTagNames, tagOrder: tagOrderData };
   }, [poiTagQuery.data, mapStore.excludedTags, mapStore.tagBadgeOrder]);
-
-  // Get user's itineraries
-  const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
 
   // Mutation for adding POI to itinerary
   const addPOIToItineraryMutation =
@@ -654,7 +651,7 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
             Start Itinerary
           </Button>
         </div>
-        <ViewPOIReviews poiId={poiId} />
+        <ViewPOIReviews poiId={poiId} poiName={poi.name} />
       </div>
     </div>
   );
