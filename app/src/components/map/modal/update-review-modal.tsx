@@ -45,7 +45,6 @@ registerPlugin(
 const UpdateReviewFormSchema = z.object({
   liked: z.boolean(),
   comment: z.string().max(255).optional(),
-  images: z.array(z.string()).optional(),
 });
 
 export function UpdateReviewDialog({
@@ -58,26 +57,16 @@ export function UpdateReviewDialog({
   existingReview: {
     liked: boolean;
     comment: string | null;
-    images: string[];
   };
 }) {
-  const [filePending, setFilePending] = useState(false);
-
   const updateReviewMutation = trpc.review.updateReview.useMutation();
   const utils = trpc.useUtils();
-  const { uploadImage } = useUploadImage();
-
-  // // Get the existing review
-  // const existingReviewQuery = trpc.review.getUserReview.useQuery({
-  //   poiId: options.poiId,
-  // });
 
   const form = useForm<z.infer<typeof UpdateReviewFormSchema>>({
     resolver: zodResolver(UpdateReviewFormSchema),
     defaultValues: {
       liked: existingReview.liked,
       comment: existingReview.comment ?? "",
-      images: existingReview.images,
     },
   });
 
@@ -86,7 +75,6 @@ export function UpdateReviewDialog({
       poiId: options.poiId,
       liked: data.liked,
       comment: data.comment,
-      images: data.images ?? [],
     };
 
     updateReviewMutation.mutate(reviewData, {
@@ -99,16 +87,6 @@ export function UpdateReviewDialog({
     });
   };
 
-  const handleUpload = async (file: File) => {
-    try {
-      const result = await uploadImage(file);
-      return result.ufsUrl;
-    } catch (err) {
-      console.error("Upload failed", err);
-      throw err;
-    }
-  };
-
   return (
     <DialogContent className="sm:max-w-xl">
       <DialogHeader>
@@ -119,144 +97,62 @@ export function UpdateReviewDialog({
       </DialogHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <ScrollArea className="h-72">
-            <div className="flex flex-col gap-4">
-              <FormField
-                control={form.control}
-                name="liked"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Did you like this place?</FormLabel>
-                    <FormControl>
-                      <div className="flex flex-row gap-2">
-                        <Button
-                          type="button"
-                          variant={field.value ? "secondary" : "outline"}
-                          onClick={() => field.onChange(true)}
-                          className="flex-1"
-                        >
-                          <LikeButton active={field.value} /> Like
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={!field.value ? "secondary" : "outline"}
-                          onClick={() => field.onChange(false)}
-                          className="flex-1"
-                        >
-                          <DislikeButton active={!field.value} /> Dislike
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <div className="flex flex-col gap-4">
+            <FormField
+              control={form.control}
+              name="liked"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Did you like this place?</FormLabel>
+                  <FormControl>
+                    <div className="flex flex-row gap-2">
+                      <Button
+                        type="button"
+                        variant={field.value ? "secondary" : "outline"}
+                        onClick={() => field.onChange(true)}
+                        className="flex-1"
+                      >
+                        <LikeButton active={field.value} /> Like
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={!field.value ? "secondary" : "outline"}
+                        onClick={() => field.onChange(false)}
+                        className="flex-1"
+                      >
+                        <DislikeButton active={!field.value} /> Dislike
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="comment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Comment (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Share your thoughts about this place..."
-                        className="min-h-[80px]"
-                        maxLength={255}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-sm text-muted-foreground">
-                      {field.value?.length || 0}/255 characters
-                    </p>
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="comment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comment (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Share your thoughts about this place..."
+                      className="min-h-[80px]"
+                      maxLength={255}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-sm text-muted-foreground">
+                    {field.value?.length || 0}/255 characters
+                  </p>
+                </FormItem>
+              )}
+            />
+          </div>
 
-              <FormField
-                control={form.control}
-                name="images"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Photos (Optional)</FormLabel>
-                    <FormControl>
-                      <FilePond
-                        allowMultiple={true}
-                        maxFiles={3}
-                        name="images"
-                        acceptedFileTypes={["image/*"]}
-                        labelIdle='Drag & Drop your photos or <span class="filepond--label-action">Browse</span>'
-                        onaddfilestart={() => setFilePending(true)}
-                        onprocessfiles={() => setFilePending(false)}
-                        server={{
-                          process: async (
-                            fieldName,
-                            file,
-                            metadata,
-                            load,
-                            error,
-                            progress,
-                            abort
-                          ) => {
-                            try {
-                              // Convert filepond actualFile to File
-                              const realFile = new File([file], file.name, {
-                                type: file.type,
-                                lastModified: file.lastModified ?? Date.now(),
-                              });
-
-                              const result = await handleUpload(realFile);
-                              if (!result) {
-                                error("Upload failed");
-                                return;
-                              }
-
-                              // Add image to form
-                              const images = [
-                                ...(form.getValues("images") ?? []),
-                                result,
-                              ];
-                              form.setValue("images", images, {
-                                shouldValidate: true,
-                                shouldDirty: true,
-                              });
-                              load(result); // Tell FilePond it's done
-                            } catch (err) {
-                              console.error("Filepond upload failed", err);
-                              error("Upload failed");
-                            }
-
-                            return {
-                              abort,
-                            };
-                          },
-                          revert: (fileUfsUrl, load) => {
-                            console.log(`File Removed: ${fileUfsUrl}`);
-                            // Remove the image from the form
-                            const images = (
-                              form.getValues("images") ?? []
-                            ).filter((file) => file !== fileUfsUrl);
-                            form.setValue("images", images, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                            });
-                            load();
-                          },
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-sm text-muted-foreground">
-                      Upload up to 3 photos to share your experience
-                    </p>
-                  </FormItem>
-                )}
-              />
-            </div>
-          </ScrollArea>
-
-          <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
+          <DialogFooter className="flex sm:flex-col flex-col gap-4 w-full sm:justify-start">
             {updateReviewMutation.isError && (
               <Alert variant="destructive">
                 <AlertTitle>Unable to update review.</AlertTitle>
@@ -274,19 +170,11 @@ export function UpdateReviewDialog({
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={updateReviewMutation.isPending || filePending}
-              >
+              <Button type="submit" disabled={updateReviewMutation.isPending}>
                 {updateReviewMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Updating...
-                  </>
-                ) : filePending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
                   </>
                 ) : (
                   "Update"

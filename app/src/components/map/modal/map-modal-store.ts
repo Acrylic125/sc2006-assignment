@@ -77,6 +77,17 @@ export type MapModalAction =
         images: string[];
         defaultIndex?: number;
       };
+    }
+  | {
+      type: "update-review-images";
+      options: {
+        reviewId: number;
+        poiId: number;
+        images: {
+          id: number;
+          url: string;
+        }[];
+      };
     };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<

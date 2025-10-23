@@ -14,6 +14,7 @@ import { RenameItineraryModal } from "./rename-itinerary-modal";
 import { RemovePOIFromItineraryModal } from "./remove-poi-from-itinerary-modal";
 import { DeleteReviewModal } from "./delete-review-modal";
 import { ReviewImageDialog } from "./review-image-carousel-modal";
+import { UpdateReviewImagesDialog } from "./update-review-images-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -92,6 +93,12 @@ export function MapModal() {
       )}
       {modalStore.action?.type === "review-image-carousel" && (
         <ReviewImageDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "update-review-images" && (
+        <UpdateReviewImagesDialog
+          options={modalStore.action.options}
+          close={close}
+        />
       )}
     </Dialog>
   );
