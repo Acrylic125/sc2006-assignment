@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { MapEvent, MapMouseEvent } from "mapbox-gl";
 import { env } from "@/lib/env";
 
@@ -12,7 +12,18 @@ import Map, { Layer, Source, ViewStateChangeEvent } from "react-map-gl/mapbox";
 import { useMapProvider } from "./map-provider";
 import { useThemeStore } from "../theme-store";
 import { Button } from "../ui/button";
-import { AlignCenter, Locate, Minus, Plus } from "lucide-react";
+import { Locate, Minus, Plus, Sparkle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from "../ui/dropdown-menu";
+import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 
 function createPinURL(color: string) {
   return (
@@ -775,5 +786,59 @@ export function MapHintTopBar() {
         .
       </p>
     </div>
+  );
+}
+
+export function MapViewTabGroupDropdown() {
+  const auth = useAuth();
+  const mapStore = useMapStore(
+    useShallow(({ currentMapTab, setCurrentMapTab }) => ({
+      currentMapTab,
+      setCurrentMapTab,
+    }))
+  );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          <span className="hidden sm:block">
+            {mapStore.currentMapTab === "explore" ? "Explore" : "Recommend"}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuLabel>Map View</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={mapStore.currentMapTab === "explore"}
+          onCheckedChange={() => mapStore.setCurrentMapTab("explore")}
+        >
+          Explore
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={mapStore.currentMapTab === "recommend"}
+          onCheckedChange={() => mapStore.setCurrentMapTab("recommend")}
+        >
+          Recommend
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        {auth.isSignedIn ? (
+          <DropdownMenuItem asChild>
+            <Link href="/surprise-me">
+              <div className="flex flex-row items-center gap-2">
+                <Sparkle />
+                <span>Surprise Me!</span>
+              </div>
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled>
+            <div className="flex items-center gap-2">
+              <span>Sign in to use Surprise Me</span>
+            </div>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -2,15 +2,6 @@
 // import { ExploreMap } from "@/components/map/map";
 import { MainNavbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -25,7 +16,11 @@ import { MapViewTabGroup } from "@/components/map/map-view-tab-group";
 import dynamic from "next/dynamic";
 import { useAuth } from "@clerk/nextjs";
 import { MapProvider } from "@/components/map/map-provider";
-import { MapControls, MapHintTopBar } from "../components/map/map";
+import {
+  MapControls,
+  MapHintTopBar,
+  MapViewTabGroupDropdown,
+} from "../components/map/map";
 
 const _ExploreMap = dynamic(() => import("../components/map/map"), {
   ssr: false,
@@ -49,38 +44,7 @@ export default function Home() {
               </div>
 
               <div className="flex-1 flex flex-row items-center gap-2 lg:hidden justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" disabled={!auth.isSignedIn}>
-                      <Sparkles />
-                      <span className="hidden sm:block">Surprise Me</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel>Map View</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem>Explore</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem>
-                      Recommend
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuSeparator />
-                    {auth.isSignedIn ? (
-                      <DropdownMenuItem asChild>
-                        <Link href="/surprise-me">
-                          <div className="flex items-center gap-2">
-                            <span>Take a quiz!</span>
-                          </div>
-                        </Link>
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem disabled>
-                        <div className="flex items-center gap-2">
-                          <span>Sign in to use Surprise Me</span>
-                        </div>
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <MapViewTabGroupDropdown />
               </div>
 
               <div className="flex-1 hidden lg:flex flex-row justify-end items-center gap-1">
