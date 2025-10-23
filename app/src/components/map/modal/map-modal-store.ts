@@ -54,7 +54,7 @@ export type MapModalAction =
         description: string;
         images: string[];
       };
-    } 
+    }
   | {
       type: "poi-image-carousel";
       options: {
@@ -68,6 +68,25 @@ export type MapModalAction =
         poiId: number;
         name: string;
         images: string[];
+      };
+    }
+  | {
+      type: "review-image-carousel";
+      options: {
+        name: string;
+        images: string[];
+        defaultIndex?: number;
+      };
+    }
+  | {
+      type: "update-review-images";
+      options: {
+        reviewId: number;
+        poiId: number;
+        images: {
+          id: number;
+          url: string;
+        }[];
       };
     };
 

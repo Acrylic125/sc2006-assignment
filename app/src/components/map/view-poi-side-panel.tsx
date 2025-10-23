@@ -10,6 +10,7 @@ import {
   MapPin,
   MessageSquareWarning,
   Navigation,
+  Pencil,
   Plus,
   Pointer,
   ThumbsDown,
@@ -29,8 +30,20 @@ import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
-export function ViewPOIReviews({ poiId }: { poiId: number }) {
+export function ViewPOIReviews({
+  poiId,
+  poiName,
+}: {
+  poiId: number;
+  poiName: string;
+}) {
   const auth = useAuth();
 
   // Get reviews from the backend
@@ -39,8 +52,6 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
     { poiId },
     { enabled: !!auth.isSignedIn }
   );
-
-  const utils = trpc.useUtils();
 
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
@@ -65,21 +76,7 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
       <div className="flex flex-col gap-1">
         <div className="flex flex-row items-center justify-between">
           <h3 className="font-medium">Reviews</h3>
-          <Button
-            variant="default"
-            size="sm"
-            disabled={!auth.isSignedIn}
-            onClick={() => {
-              modalStore.setAction({
-                type: "itinerary-poi-review",
-                options: {
-                  poiId: poiId,
-                },
-              });
-            }}
-          >
-            <Plus /> {userReviewQuery.data ? "Edit Review" : "Review"}
-          </Button>
+          <Skeleton className="w-24 h-8" />
         </div>
         <div className="flex flex-col gap-2">
           {[1, 2, 3].map((i) => (
@@ -91,26 +88,69 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
   }
 
   const reviews = reviewsQuery.data || [];
+  const userReview = userReviewQuery.data;
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-row items-center justify-between">
         <h3 className="font-medium">Reviews ({reviews.length})</h3>
-        <Button
-          variant="default"
-          size="sm"
-          disabled={!auth.isSignedIn}
-          onClick={() => {
-            modalStore.setAction({
-              type: "itinerary-poi-review",
-              options: {
-                poiId: poiId,
-              },
-            });
-          }}
-        >
-          <Plus /> {userReviewQuery.data ? "Edit Review" : "Review"}
-        </Button>
+        {userReview ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="default"
+                size="sm"
+                disabled={!auth.isSignedIn || reviewsQuery.isPending}
+              >
+                <Pencil /> Edit Review
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => {
+                  modalStore.setAction({
+                    type: "itinerary-poi-review",
+                    options: {
+                      poiId: poiId,
+                    },
+                  });
+                }}
+              >
+                Edit Review
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  modalStore.setAction({
+                    type: "update-review-images",
+                    options: {
+                      reviewId: userReview.id,
+                      poiId: poiId,
+                      images: userReview.images,
+                    },
+                  });
+                }}
+              >
+                Edit Images
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            disabled={!auth.isSignedIn || reviewsQuery.isPending}
+            onClick={() => {
+              modalStore.setAction({
+                type: "itinerary-poi-review",
+                options: {
+                  poiId: poiId,
+                },
+              });
+            }}
+          >
+            <Plus /> Review
+          </Button>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         {reviews.length === 0 ? (
@@ -128,12 +168,7 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                 <div className="flex flex-row items-center justify-between gap-2">
                   <div className="flex flex-row items-center gap-2">
                     <Avatar>
-                      <AvatarImage
-                        src={
-                          review.user?.imageUrl ||
-                          "https://github.com/shadcn.png"
-                        }
-                      />
+                      <AvatarImage src={review.user?.imageUrl} />
                       <AvatarFallback>
                         {isCurrentUser
                           ? "You"
@@ -174,30 +209,34 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
                   </p>
                 )}
                 {/* Always show example image for now */}
-                <div className="flex flex-row items-center gap-2">
-                  <div className="w-1/3 aspect-square relative">
-                    <Image
-                      src="/example.png"
-                      alt={review.comment || "Review image"}
-                      className="object-cover rounded"
-                      fill
-                    />
+                {review.images && review.images.length > 0 && (
+                  <div className="flex flex-row items-center gap-2">
+                    {review.images.slice(0, 3).map((image, i) => (
+                      <Button
+                        className="flex-1 h-fit px-0 py-0 has-[>svg]:px-0 aspect-square relative cursor-pointer hover:opacity-80 transition-opacity"
+                        key={i}
+                        variant="ghost"
+                        onClick={() => {
+                          modalStore.setAction({
+                            type: "review-image-carousel",
+                            options: {
+                              name: poiName,
+                              images: review.images.map((image) => image.url),
+                              defaultIndex: i,
+                            },
+                          });
+                        }}
+                      >
+                        <Image
+                          src={image.url}
+                          alt={review.comment || "Review image"}
+                          className="object-cover rounded"
+                          fill
+                        />
+                      </Button>
+                    ))}
                   </div>
-                  {review.images && review.images.length > 1 && (
-                    <>
-                      {review.images.slice(1, 3).map((image, i) => (
-                        <div className="w-1/3 aspect-square relative" key={i}>
-                          <Image
-                            src={image}
-                            alt={review.comment || "Review image"}
-                            className="object-cover rounded"
-                            fill
-                          />
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
+                )}
               </div>
             );
           })
@@ -300,9 +339,6 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
     return { tagsData: sortedTagNames, tagOrder: tagOrderData };
   }, [poiTagQuery.data, mapStore.excludedTags, mapStore.tagBadgeOrder]);
 
-  // Get user's itineraries
-  const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
-
   // Mutation for adding POI to itinerary
   const addPOIToItineraryMutation =
     trpc.itinerary.addPOIToItinerary.useMutation({
@@ -327,24 +363,6 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       },
       onError: (error) => {
         toast.error(error.message);
-        // console.error("Failed to add POI to itinerary:", error);
-        // if (
-        //   error.message &&
-        //   error.message.includes("already in this itinerary")
-        // ) {
-        //   console.log(
-        //     "POI is already in this itinerary, switching to itinerary panel to show current state"
-        //   );
-        // }
-        // Even if there's an error (like POI already in itinerary),
-        // still switch to the itinerary panel to show the current state
-        // mapStore.setCurrentSidePanelTab("itinerary");
-        // // Invalidate queries to refresh the data
-        // utils.itinerary.getItinerary.invalidate({
-        //   id: mapStore.viewingItineraryId!,
-        // });
-        // utils.map.search.invalidate();
-        // utils.itinerary.getAllItineraries.invalidate();
       },
     });
   const removePOIFromItineraryMutation =
@@ -512,15 +530,8 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
       <div className="w-full aspect-[4/3] relative">
         {poi.images.length > 0 && poi.images[0] !== "" ? (
           <div className="inline-block">
-            <Image
-              src={
-                poi.images[0].startsWith("https://")
-                  ? poi.images[0]
-                  : `https://${poi.images[0]}`
-              }
-              alt={poi.name}
-              fill
-              className="object-cover cursor-pointer"
+            <Button
+              variant="ghost"
               onClick={(e) => {
                 e.stopPropagation();
                 modalStore.setAction({
@@ -531,9 +542,20 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
                   },
                 });
               }}
-            />
-            <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800 opacity-70">
-              <p className="text-xs text-gray-300">
+            >
+              <Image
+                src={
+                  poi.images[0].startsWith("https://")
+                    ? poi.images[0]
+                    : `https://${poi.images[0]}`
+                }
+                alt={poi.name}
+                fill
+                className="object-cover cursor-pointer"
+              />
+            </Button>
+            <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800/70">
+              <p className="text-xs text-white">
                 {poi.images.length} Image{poi.images.length > 1 ? "s" : ""}
               </p>
             </div>
@@ -554,7 +576,7 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
                 });
               }}
             >
-              <Upload className="size-5" />
+              <Upload className="size-5 stroke-white" />
             </Button>
           </div>
         ) : (
@@ -651,7 +673,7 @@ export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
             Start Itinerary
           </Button>
         </div>
-        <ViewPOIReviews poiId={poiId} />
+        <ViewPOIReviews poiId={poiId} poiName={poi.name} />
       </div>
     </div>
   );

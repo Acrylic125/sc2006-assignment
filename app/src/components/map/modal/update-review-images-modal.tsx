@@ -20,12 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/server/client";
-import { Upload, Loader2, X } from "lucide-react";
-import {
-  DislikeButton,
-  LikeButton,
-} from "@/components/icons/like-dislike-icons";
-import { Textarea } from "@/components/ui/textarea";
+import { Loader2, TrashIcon, X } from "lucide-react";
 import { useState } from "react";
 import { useUploadImage } from "@/app/api/uploadthing/client";
 import { FilePond, registerPlugin } from "react-filepond";
@@ -34,8 +29,9 @@ import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orien
 import FilePondPluginImagePreview from "filepond-plugin-image-preview";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
-import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
 
 registerPlugin(
   FilePondPluginImageExifOrientation,
@@ -43,43 +39,41 @@ registerPlugin(
   FilePondPluginFileValidateType
 );
 
-const CreateReviewFormSchema = z.object({
-  liked: z.boolean(),
-  comment: z.string().max(255).optional(),
-  images: z.array(z.string()).optional(),
+const UpdateReviewFormSchema = z.object({
+  images: z.array(z.string()),
+  toDeleteImages: z.array(z.number()),
 });
 
-export function CreateReviewDialog({
+export function UpdateReviewImagesDialog({
   options,
   close,
 }: {
-  options: ExtractOptions<"itinerary-poi-review">;
+  options: ExtractOptions<"update-review-images">;
   close: () => void;
 }) {
   const [filePending, setFilePending] = useState(false);
 
-  const createReviewMutation = trpc.review.createReview.useMutation();
+  const updateReviewImagesMutation =
+    trpc.review.updateReviewImages.useMutation();
   const utils = trpc.useUtils();
   const { uploadImage } = useUploadImage();
 
-  const form = useForm<z.infer<typeof CreateReviewFormSchema>>({
-    resolver: zodResolver(CreateReviewFormSchema),
+  const form = useForm<z.infer<typeof UpdateReviewFormSchema>>({
+    resolver: zodResolver(UpdateReviewFormSchema),
     defaultValues: {
-      liked: true, // Default to "like" button
-      comment: "",
       images: [],
+      toDeleteImages: [],
     },
   });
 
-  const onSubmit = (data: z.infer<typeof CreateReviewFormSchema>) => {
+  const onSubmit = (data: z.infer<typeof UpdateReviewFormSchema>) => {
     const reviewData = {
-      poiId: options.poiId,
-      liked: data.liked,
-      comment: data.comment,
-      images: data.images ?? [],
+      reviewId: options.reviewId,
+      images: data.images,
+      toDeleteImages: data.toDeleteImages,
     };
 
-    createReviewMutation.mutate(reviewData, {
+    updateReviewImagesMutation.mutate(reviewData, {
       onSuccess: () => {
         // Invalidate queries to refresh data
         utils.review.getReviews.invalidate({ poiId: options.poiId });
@@ -102,74 +96,77 @@ export function CreateReviewDialog({
   return (
     <DialogContent className="sm:max-w-xl">
       <DialogHeader>
-        <DialogTitle>Review this Place!</DialogTitle>
+        <DialogTitle>Update Your Review</DialogTitle>
         <DialogDescription>
-          Let us know how you felt about it.
+          Modify your existing review for this place.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 ">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <ScrollArea className="h-72">
             <div className="flex flex-col gap-4">
               <FormField
                 control={form.control}
-                name="liked"
+                name="toDeleteImages"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Did you like this place?</FormLabel>
+                    <FormLabel>My Photos</FormLabel>
                     <FormControl>
-                      <div className="flex flex-row gap-2">
-                        <Button
-                          type="button"
-                          variant={field.value ? "secondary" : "outline"}
-                          onClick={() => field.onChange(true)}
-                          className="flex-1"
-                        >
-                          <LikeButton active={field.value} /> Like
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={!field.value ? "secondary" : "outline"}
-                          onClick={() => field.onChange(false)}
-                          className="flex-1"
-                        >
-                          <DislikeButton active={!field.value} /> Dislike
-                        </Button>
-                      </div>
+                      {options.images.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {options.images.map((image) => (
+                            <Button
+                              key={image.id}
+                              type="button"
+                              variant="ghost"
+                              className="px-0 py-0 h-full relative w-full aspect-square"
+                              onClick={() => {
+                                const currentSet = new Set(field.value);
+                                if (currentSet.has(image.id)) {
+                                  currentSet.delete(image.id);
+                                } else {
+                                  currentSet.add(image.id);
+                                }
+                                field.onChange(Array.from(currentSet));
+                              }}
+                            >
+                              <Image
+                                src={image.url}
+                                alt="Review Image"
+                                fill
+                                className="object-cover"
+                              />
+                              {field.value.includes(image.id) ? (
+                                <Badge
+                                  variant="destructive"
+                                  className="absolute top-2 right-2"
+                                >
+                                  To Remove
+                                </Badge>
+                              ) : (
+                                <X className="h-4 w-4 absolute top-2 right-2" />
+                              )}
+                            </Button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="h-24 w-full flex flex-col items-center justify-center gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            No photos added yet.
+                          </p>
+                        </div>
+                      )}
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="comment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Comment (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Share your thoughts about this place..."
-                        className="min-h-[80px]"
-                        maxLength={255}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-sm text-muted-foreground">
-                      {field.value?.length || 0}/255 characters
-                    </p>
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="images"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Photos (Optional)</FormLabel>
+                    <FormLabel>Add new photos</FormLabel>
                     <FormControl>
                       <FilePond
                         allowMultiple={true}
@@ -246,12 +243,12 @@ export function CreateReviewDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="flex flex-col gap-2 w-full sm:justify-start">
-            {createReviewMutation.isError && (
-              <Alert variant="destructive">
-                <AlertTitle>Unable to create review.</AlertTitle>
+          <DialogFooter className="flex flex-col sm:flex-col gap-4 w-full sm:justify-start">
+            {updateReviewImagesMutation.isError && (
+              <Alert variant="destructive" className="w-full">
+                <AlertTitle>Unable to update review images.</AlertTitle>
                 <AlertDescription>
-                  <p>{createReviewMutation.error.message}</p>
+                  <p>{updateReviewImagesMutation.error.message}</p>
                 </AlertDescription>
               </Alert>
             )}
@@ -260,18 +257,18 @@ export function CreateReviewDialog({
                 type="button"
                 variant="outline"
                 onClick={close}
-                disabled={createReviewMutation.isPending}
+                disabled={updateReviewImagesMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={createReviewMutation.isPending || filePending}
+                disabled={updateReviewImagesMutation.isPending || filePending}
               >
-                {createReviewMutation.isPending ? (
+                {updateReviewImagesMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
+                    Updating...
                   </>
                 ) : filePending ? (
                   <>
@@ -279,7 +276,7 @@ export function CreateReviewDialog({
                     Uploading...
                   </>
                 ) : (
-                  "Review"
+                  "Update"
                 )}
               </Button>
             </div>

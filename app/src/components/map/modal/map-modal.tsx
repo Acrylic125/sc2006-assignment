@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { useCallback } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMapModalStore } from "./map-modal-store";
@@ -9,11 +9,12 @@ import { CreateItineraryDialog } from "./create-itinerary-modal";
 import { CreatePOIDialog } from "./create-poi-modal";
 import { POIImageCarouselDialog } from "./poi-image-carousel-modal";
 import { UploadImageDialog } from "./upload-poi-image-modal";
-import { VisuallyHidden } from "@/components/ui/visually-hidden";
 import { DeleteItineraryModal } from "./delete-itinerary-modal";
 import { RenameItineraryModal } from "./rename-itinerary-modal";
 import { RemovePOIFromItineraryModal } from "./remove-poi-from-itinerary-modal";
 import { DeleteReviewModal } from "./delete-review-modal";
+import { ReviewImageDialog } from "./review-image-carousel-modal";
+import { UpdateReviewImagesDialog } from "./update-review-images-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -89,6 +90,15 @@ export function MapModal() {
       )}
       {modalStore.action?.type === "upload-poi-image" && (
         <UploadImageDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "review-image-carousel" && (
+        <ReviewImageDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "update-review-images" && (
+        <UpdateReviewImagesDialog
+          options={modalStore.action.options}
+          close={close}
+        />
       )}
     </Dialog>
   );

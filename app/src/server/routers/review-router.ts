@@ -40,6 +40,7 @@ export const reviewRouter = createTRPCRouter({
       const reviewImages = await db
         .select({
           reviewId: reviewImagesTable.reviewId,
+          id: reviewImagesTable.id,
           imageUrl: reviewImagesTable.imageUrl,
         })
         .from(reviewImagesTable)
@@ -56,10 +57,13 @@ export const reviewRouter = createTRPCRouter({
           if (!acc[img.reviewId]) {
             acc[img.reviewId] = [];
           }
-          acc[img.reviewId].push(img.imageUrl);
+          acc[img.reviewId].push({
+            id: img.id,
+            url: img.imageUrl,
+          });
           return acc;
         },
-        {} as Record<number, string[]>
+        {} as Record<number, { id: number; url: string }[]>
       );
 
       // Get unique user IDs
@@ -139,6 +143,7 @@ export const reviewRouter = createTRPCRouter({
       // Get review images
       const reviewImages = await db
         .select({
+          id: reviewImagesTable.id,
           imageUrl: reviewImagesTable.imageUrl,
         })
         .from(reviewImagesTable)
@@ -162,7 +167,10 @@ export const reviewRouter = createTRPCRouter({
 
       return {
         ...review[0],
-        images: reviewImages.map((img) => img.imageUrl),
+        images: reviewImages.map((img) => ({
+          id: img.id,
+          url: img.imageUrl,
+        })),
         user: userInfo || {
           id: userId,
           firstName: null,
@@ -258,7 +266,7 @@ export const reviewRouter = createTRPCRouter({
         poiId: z.number(),
         liked: z.boolean(),
         comment: z.string().max(255).optional(),
-        images: z.array(z.string()).optional().default([]),
+        // images: z.array(z.string()).optional().default([]),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -305,21 +313,97 @@ export const reviewRouter = createTRPCRouter({
         .where(eq(reviewImagesTable.reviewId, existingReview[0].id));
 
       // Add new images if provided
-      if (input.images && input.images.length > 0) {
-        await db.insert(reviewImagesTable).values(
-          input.images.map((imageUrl) => ({
-            reviewId: existingReview[0].id,
-            imageUrl: imageUrl,
-          }))
-        );
-      }
+      // if (input.images && input.images.length > 0) {
+      //   await db.insert(reviewImagesTable).values(
+      //     input.images.map((imageUrl) => ({
+      //       reviewId: existingReview[0].id,
+      //       imageUrl: imageUrl,
+      //     }))
+      //   );
+      // }
 
       return {
         ...updatedReview[0],
-        images: input.images || [],
+        // images: input.images || [],
       };
     }),
+  updateReviewImages: protectedProcedure
+    .input(
+      z.object({
+        reviewId: z.number(),
+        images: z.array(z.string()),
+        toDeleteImages: z.array(z.number()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
 
+      // Check if the user owns this review
+      const existingReview = await db
+        .select({ userId: reviewTable.userId })
+        .from(reviewTable)
+        .where(eq(reviewTable.id, input.reviewId))
+        .limit(1);
+
+      if (existingReview.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Review not found",
+        });
+      }
+
+      if (existingReview[0].userId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only update your own reviews",
+        });
+      }
+
+      // Get review images
+      const reviewImages = await db
+        .select({ id: reviewImagesTable.id })
+        .from(reviewImagesTable)
+        .where(and(eq(reviewImagesTable.reviewId, input.reviewId)));
+
+      const validRemovalIds = reviewImages
+        .filter((image) => input.toDeleteImages.includes(image.id))
+        .map((image) => image.id);
+
+      const newNumberOfImages =
+        reviewImages.length - validRemovalIds.length + input.images.length;
+
+      if (newNumberOfImages > 3) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You can only have a maximum of 3 images per review",
+        });
+      }
+
+      await db.transaction(async (tx) => {
+        // Delete existing images
+        if (validRemovalIds.length > 0) {
+          await tx
+            .delete(reviewImagesTable)
+            .where(
+              and(
+                eq(reviewImagesTable.reviewId, input.reviewId),
+                inArray(reviewImagesTable.id, validRemovalIds)
+              )
+            );
+        }
+
+        if (input.images.length > 0) {
+          await tx.insert(reviewImagesTable).values(
+            input.images.map((imageUrl) => ({
+              reviewId: input.reviewId,
+              imageUrl: imageUrl,
+            }))
+          );
+        }
+      });
+
+      return { success: true };
+    }),
   deleteReview: protectedProcedure
     .input(
       z.object({
