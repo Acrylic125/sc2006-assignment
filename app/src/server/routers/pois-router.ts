@@ -7,7 +7,6 @@ import {
   poiTagTable,
   userSurpriseMePreferencesTable,
 } from "@/db/schema";
-import { TRPCError } from "@trpc/server";
 import { sql, eq } from "drizzle-orm";
 import z from "zod";
 

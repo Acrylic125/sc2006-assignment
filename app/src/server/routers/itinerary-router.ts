@@ -10,55 +10,6 @@ import {
 import { and, eq, exists, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-// TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
-const itinerary = {
-  id: 1,
-  name: "Itinerary 1",
-  pois: [
-    {
-      id: 10,
-      name: "Place 1",
-      checked: true,
-      orderPriority: 1,
-    },
-    {
-      id: 20,
-      name: "Place 2",
-      checked: true,
-      orderPriority: 2,
-    },
-    {
-      id: 30,
-      name: "Place 3",
-      checked: false,
-      orderPriority: 3,
-    },
-    {
-      id: 40,
-      name: "Place 4",
-      checked: true,
-      orderPriority: 4,
-    },
-    {
-      id: 50,
-      name: "Place 5",
-      checked: true,
-      orderPriority: 5,
-    },
-  ],
-};
-
-const itineraries = [
-  {
-    id: 1,
-    name: "Itinerary 1",
-  },
-  {
-    id: 2,
-    name: "Itinerary 2",
-  },
-];
-
 export const itineraryRouter = createTRPCRouter({
   getAllItineraries: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.auth.userId;
