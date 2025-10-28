@@ -5,7 +5,6 @@ import {
   publicOrProtectedProcedure,
   publicProcedure,
 } from "../trpc";
-import { cookies } from "next/headers";
 import { db } from "@/db";
 import {
   itineraryPOITable,
@@ -17,10 +16,8 @@ import {
   tagTable,
   userSurpriseMePreferencesTable,
 } from "@/db/schema";
-import { and, asc, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, lt, not, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
-import { Input } from "@/components/ui/input";
-//import { currentUser } from "@clerk/nextjs/server";
 import { createClerkClient } from "@clerk/backend";
 
 const clerkClient = createClerkClient({
@@ -661,23 +658,6 @@ export const mapRouter = createTRPCRouter({
         .innerJoin(tagTable, eq(poiTagTable.tagId, tagTable.id))
         .where(eq(poiTagTable.poiId, input.poiId));
       return tags;
-
-      // const tagNames = await db
-      //   .select({
-      //     tagId: tagTable.id,
-      //     tagName: tagTable.name,
-      //   })
-      //   .from(tagTable)
-      //   .where(
-      //     inArray(
-      //       tagTable.id,
-      //       tags.map((tag) => tag.tag)
-      //     )
-      //   );
-      //console.log(input.excludedTags)
-      //console.log(tags)
-      //console.log(tagNames)
-      // return { tagsData: sortedTagNames, tagOrder: input.tagIdOrder };
     }),
   getAddress: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
