@@ -117,15 +117,21 @@ class RecommendationEngine {
 
   public recommend(userPreferences: { tagId: number; likedScore: number }[]) {
     // Create |T| x 1 matrix containing the user preference score for each poi.
-    const poiUserPreferenceMatrix = new Array<number>(this.numberOfTags).fill(
+    const poiUserPreferenceMatrix = new Array<number>(this.numberOfPois).fill(
       0
     );
+
+    const userPreferenceMap = new Map<number, number>();
     for (const userPreference of userPreferences) {
-      const tagIndex = this.tagMapping.get(userPreference.tagId);
-      if (tagIndex === undefined) {
-        continue;
+      userPreferenceMap.set(userPreference.tagId, userPreference.likedScore);
+    }
+
+    for (let i = 0; i < this.numberOfPois; i++) {
+      for (let j = 0; j < this.numberOfTags; j++) {
+        if (this.poiTagMatrix[i][j] === 1) {
+          poiUserPreferenceMatrix[i] += userPreferenceMap.get(j) ?? 0;
+        }
       }
-      poiUserPreferenceMatrix[tagIndex] = userPreference.likedScore;
     }
 
     const M = [
@@ -136,6 +142,7 @@ class RecommendationEngine {
     if (M.length !== this.weights.length) {
       throw new Error("The number of matrices and weights must be the same.");
     }
+    console.log(M);
 
     // Now we compute the preference scores for each poi.
     const poiScores = new Array<{ index: number; score: number }>(
@@ -382,7 +389,7 @@ export const mapRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      const [tags, allPois, userPreferences] = await Promise.all([
+      const [tags, allPois, _userPreferences] = await Promise.all([
         db
           .select({
             id: tagTable.id,
@@ -403,7 +410,7 @@ export const mapRouter = createTRPCRouter({
           return db
             .select({
               tagId: poiTagTable.tagId,
-              likedScore: sql<number>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)`,
+              likedScore: sql<string>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)`,
             })
             .from(userSurpriseMePreferencesTable)
             .innerJoin(
@@ -414,6 +421,10 @@ export const mapRouter = createTRPCRouter({
             .groupBy(poiTagTable.tagId);
         })(),
       ]);
+      const userPreferences = _userPreferences.map((preference) => ({
+        tagId: preference.tagId,
+        likedScore: parseInt(preference.likedScore),
+      }));
 
       const recommendationRadius = input.recommendRadius / 111.32;
       const pois: typeof allPois = [];
@@ -467,7 +478,7 @@ export const mapRouter = createTRPCRouter({
       recommendationEngine.setNumberOfPoiReviews(poiReviews);
       recommendationEngine.setPoiLikesProportion(poiReviews);
       const poiScores = recommendationEngine.recommend(userPreferences);
-
+      console.log(poiScores);
       const poiPopularity = computePoiPopularity(poiReviews);
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
       const recommended = top5.map((poi) => ({
