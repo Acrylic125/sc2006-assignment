@@ -24,7 +24,7 @@ const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
 
-class RecommendationEngine {
+export class RecommendationEngine {
   private numberOfTags: number;
   private numberOfPois: number;
 
