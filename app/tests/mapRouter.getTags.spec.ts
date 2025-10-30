@@ -1,58 +1,99 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vitest";
+import { appRouter } from "@/server/router";
+import { describe, expect, it, vi, beforeAll } from "vitest";
 import { createCallerFactory } from "@/server/trpc";
-import { mapRouter } from "@/server/routers/map.router";
+import { db } from "@/db";
+import { userSurpriseMePreferencesTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
-// Mock env BEFORE importing modules that read it
-vi.mock("@/lib/env", () => ({
-  env: {
-    DATABASE_URL: "postgres://user:pass@localhost:5432/db",
-    UPLOADTHING_TOKEN: "test-token",
-    NEXT_PUBLIC_MAPBOX_PK: "pk.test",
-  },
-}));
+const TEST_USER_ID = "test-user";
 
-// Mock the database layer used by getTags BEFORE importing the router
-let selectCallCount = 0;
-vi.mock("@/db", () => {
-  return {
-    db: {
-      select: vi.fn(() => {
-        selectCallCount += 1;
-        // First select().from(tagTable) → resolves to tags
-        if (selectCallCount === 1) {
-          return {
-            from: vi.fn(async () => [{ id: 1, name: "Sample Tag" }]),
-          };
-        }
-        // Second select().from(poiTagTable).groupBy(tagId) → resolves to counts
-        return {
-          from: vi.fn(() => ({
-            groupBy: vi.fn(async () => [{ tagId: 1, count: 3 }]),
-          })),
-        };
-      }),
-    },
-  };
-});
+function createCaller() {
+  return createCallerFactory(appRouter)({
+    auth: {
+      userId: TEST_USER_ID,
+    } as unknown as import("../src/server/context").Context["auth"],
+  });
+}
 
-// No need to mock schema; the mocked db ignores the table value
+function createNotLoggedInCaller() {
+  return createCallerFactory(appRouter)({
+    auth: {
+      userId: null,
+    } as unknown as import("../src/server/context").Context["auth"],
+  });
+}
 
-describe("mapRouter.getTags", () => {
-  it("should return at least 1 tag", async () => {
-    const createCaller = createCallerFactory(mapRouter);
-    const caller = createCaller({
-      auth: {
-        userId: null,
-      } as unknown as import("../src/server/context").Context["auth"],
+describe("When user accesses surprise me", () => {
+  it("should not allow not logged in user to indicate preferences", async () => {
+    const caller = createNotLoggedInCaller();
+    await expect(
+      caller.pois.indicatePreference({
+        preferences: [],
+        removeOld: true,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should allow user to indicate preferences", async () => {
+    const caller = createCaller();
+    const preferences = [
+      { poiId: 0, liked: true },
+      { poiId: 1, liked: true },
+      { poiId: 2, liked: true },
+      { poiId: 3, liked: true },
+      { poiId: 4, liked: true },
+      { poiId: 5, liked: true },
+      { poiId: 6, liked: false },
+      { poiId: 7, liked: false },
+      { poiId: 8, liked: false },
+      { poiId: 9, liked: false },
+      { poiId: 10, liked: false },
+      { poiId: 11, liked: false },
+    ];
+    await caller.pois.indicatePreference({
+      preferences: preferences,
+      removeOld: true,
     });
+    const result = await db
+      .select()
+      .from(userSurpriseMePreferencesTable)
+      .where(eq(userSurpriseMePreferencesTable.userId, TEST_USER_ID));
+    expect(result.length).toBe(preferences.length);
+    for (const preference of preferences) {
+      expect(result.find((p) => p.poiId === preference.poiId)?.liked).toBe(
+        preference.liked
+      );
+    }
+  });
 
-    const result = await caller.getTags();
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBeGreaterThan(0);
-    // Optional: validate shape
-    expect(result[0]).toHaveProperty("id");
-    expect(result[0]).toHaveProperty("name");
-    expect(result[0]).toHaveProperty("count");
+  it("should allow user to reindicate preferences", async () => {
+    const caller = createCaller();
+    const preferences = [
+      { poiId: 0, liked: true },
+      { poiId: 1, liked: true },
+      { poiId: 2, liked: true },
+      { poiId: 3, liked: true },
+      { poiId: 4, liked: true },
+      { poiId: 5, liked: true },
+      { poiId: 6, liked: false },
+      { poiId: 7, liked: false },
+      { poiId: 8, liked: false },
+      { poiId: 9, liked: false },
+    ];
+    await caller.pois.indicatePreference({
+      preferences: preferences,
+      removeOld: true,
+    });
+    const result = await db
+      .select()
+      .from(userSurpriseMePreferencesTable)
+      .where(eq(userSurpriseMePreferencesTable.userId, TEST_USER_ID));
+    expect(result.length).toBe(preferences.length);
+    for (const preference of preferences) {
+      expect(result.find((p) => p.poiId === preference.poiId)?.liked).toBe(
+        preference.liked
+      );
+    }
   });
 });
