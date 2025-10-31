@@ -60,8 +60,8 @@ function createAddPin(width: number = 128) {
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <circle cx="16" cy="48" r="16" fill="#7BF1A8" fill-opacity="0.5"/>
-    <circle cx="16" cy="48" r="6" fill="white"/>
+    <circle cx="16" cy="48" r="16" fill="#00a63e" fill-opacity="0.6"/>
+    <circle cx="16" cy="48" r="3" fill="white"/>
     <mask id="path-3-inside-1_55_15" fill="white">
       <path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z"/>
     </mask>
@@ -84,24 +84,26 @@ const PX_PER_SCALE = 128;
 
 const ADD_PIN_SIZE = 40;
 const ADD_PIN_SCALE = Math.sqrt(ADD_PIN_SIZE/PX_PER_SCALE);
-const BUBBLE_MIN_SIZE = 40;
-const BUBBLE_MAX_SIZE = 80;
+const BUBBLE_MIN_SIZE = 30;
+const BUBBLE_MAX_SIZE = 70;
 const BUBBLE_MIN_SCALE = Math.sqrt(BUBBLE_MIN_SIZE/PX_PER_SCALE);
 const BUBBLE_MAX_SCALE = Math.sqrt(BUBBLE_MAX_SIZE/PX_PER_SCALE);
 
-const BUBBLE_OPACITY = 0.6
+const BUBBLE_OPACITY = 0.65
 
 const pins = {
-  red: createPinURL("#FB2C36"),
+  red: createPinURL("#e7000b"), //red-600
   yellow: createPinURL("#efb100"),
-  blue_bubble: createBubbleURL("#1447e6", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
-  red_bubble: createBubbleURL("#ff6467", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  blue_bubble: createBubbleURL("#193cb8", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //blue-800
+  red_bubble: createBubbleURL("#ff2056", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //rose-500
   green_bubble: createBubbleURL("#10B981", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
   gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
   add_pin: createAddPin(PX_PER_SCALE*ADD_PIN_SCALE),
 };
 
-const CLUSTER_COLOR = "#0084d1"
+const BUBBLE_DOT_SIZE = 4;
+
+const CLUSTER_COLOR = "#0084d1" //sky-600
 const CLUSTER_OPACITY = 0.6
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
@@ -253,7 +255,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           filter={["!", ["has", "point_count"]]}
           paint={{
             "circle-color": "#ffffff",
-            "circle-radius": 5,
+            "circle-radius": BUBBLE_DOT_SIZE,
             "circle-opacity": 1,
           }}
         />
@@ -562,7 +564,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           filter={["!", ["has", "point_count"]]}
           paint={{
             "circle-color": "#ffffff",
-            "circle-radius": 5,
+            "circle-radius": BUBBLE_DOT_SIZE,
             "circle-opacity": 1,
           }}
         />
