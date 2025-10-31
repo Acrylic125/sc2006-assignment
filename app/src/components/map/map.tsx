@@ -44,7 +44,6 @@ function createBubbleURL(color: string, width: number = 256) {
     encodeURIComponent(`
     <svg width="${width}" height="${width}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="0.5" />
-      <circle cx="32" cy="32" r="6" fill="white" />
     </svg>
     `)
   );
@@ -240,6 +239,17 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+        <Layer
+          id="poi-pins_center"
+          type="circle"
+          source="pins"
+          filter={["!", ["has", "point_count"]]}
+          paint={{
+            "circle-color": "#ffffff",
+            "circle-radius": 5,
+            "circle-opacity": 1,
           }}
         />
       </Source>
@@ -538,6 +548,17 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+        <Layer
+          id="poi-pins_center"
+          type="circle"
+          source="pins"
+          filter={["!", ["has", "point_count"]]}
+          paint={{
+            "circle-color": "#ffffff",
+            "circle-radius": 5,
+            "circle-opacity": 1,
           }}
         />
       </Source>
