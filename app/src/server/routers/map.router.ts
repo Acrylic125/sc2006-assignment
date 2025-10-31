@@ -142,7 +142,6 @@ class RecommendationEngine {
     if (M.length !== this.weights.length) {
       throw new Error("The number of matrices and weights must be the same.");
     }
-    console.log(M);
 
     // Now we compute the preference scores for each poi.
     const poiScores = new Array<{ index: number; score: number }>(
@@ -308,13 +307,19 @@ async function searchPOIS(
       id: poiTable.id,
       pos: {
         // Parse as number
-        latitude: sql<number>`CAST(${poiTable.latitude} AS numeric)`,
-        longitude: sql<number>`CAST(${poiTable.longitude} AS numeric)`,
+        latitude: sql<string>`CAST(${poiTable.latitude} AS numeric)`,
+        longitude: sql<string>`CAST(${poiTable.longitude} AS numeric)`,
       },
     })
     .from(poiTable)
     .where(and(...conditions));
-  return pois;
+  return pois.map((poi) => ({
+    ...poi,
+    pos: {
+      latitude: parseFloat(poi.pos.latitude) ?? 0,
+      longitude: parseFloat(poi.pos.longitude) ?? 0,
+    },
+  }));
 }
 
 export const mapRouter = createTRPCRouter({
@@ -385,7 +390,12 @@ export const mapRouter = createTRPCRouter({
           latitude: z.number(),
           longitude: z.number(),
         }),
-        recommendRadius: z.number().default(5),
+        recommendRadius: z.number().min(0).default(5),
+        options: z
+          .object({
+            weights: z.array(z.number()).default([0.5, 0.3, 0.2]),
+          })
+          .optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -474,11 +484,11 @@ export const mapRouter = createTRPCRouter({
       ]);
 
       const recommendationEngine = new RecommendationEngine(tags, pois);
+      recommendationEngine.weights = input.options?.weights ?? [0.5, 0.3, 0.2];
       recommendationEngine.setPoiTags(poiTags);
       recommendationEngine.setNumberOfPoiReviews(poiReviews);
       recommendationEngine.setPoiLikesProportion(poiReviews);
       const poiScores = recommendationEngine.recommend(userPreferences);
-      console.log(poiScores);
       const poiPopularity = computePoiPopularity(poiReviews);
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
       const recommended = top5.map((poi) => ({
@@ -502,13 +512,13 @@ export const mapRouter = createTRPCRouter({
   createPOI: protectedProcedure
     .input(
       z.object({
-        address: z.string().max(255),
+        address: z.string().trim().min(1).max(255),
         lat: z.number(),
         lng: z.number(),
-        name: z.string().max(255),
-        description: z.string().max(255),
-        images: z.array(z.string()),
-        tags: z.array(z.number()),
+        name: z.string().trim().min(1).max(255),
+        description: z.string().trim().min(1).max(255),
+        images: z.array(z.url()).max(3),
+        tags: z.array(z.number()).max(5),
       })
     )
     .mutation(async ({ ctx, input }) => {
