@@ -93,10 +93,10 @@ const BUBBLE_OPACITY = 0.65
 
 const pins = {
   red: createPinURL("#e7000b"), //red-600
-  yellow: createPinURL("#efb100"),
+  yellow: createPinURL("#fd9a00"), //amber-500
   blue_bubble: createBubbleURL("#193cb8", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //blue-800
   red_bubble: createBubbleURL("#ff2056", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //rose-500
-  green_bubble: createBubbleURL("#10B981", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  yellow_bubble: createBubbleURL("#ffba00", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //amber-400
   gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
   add_pin: createAddPin(PX_PER_SCALE*ADD_PIN_SCALE),
 };
@@ -154,6 +154,9 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     if (!poisQuery.data || poisQuery.data.length === 0) {
       return [];
     }
+    const itineraryPOIIds = new Set(
+      itinerariesQuery.data?.pois?.map((p) => p.id) ?? []
+    );
     const minScore = Math.min(
       ...poisQuery.data.map((poi) => poi.popularityScore)
     );
@@ -163,6 +166,9 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue_bubble"; // default
+      if (itineraryPOIIds.has(poi.id)) {
+        color = "yellow_bubble";
+      }
       if (
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
@@ -186,7 +192,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         scale: poiScale,
       };
     });
-  }, [poisQuery.data, mapStore.viewingPOI]);
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
@@ -594,7 +600,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           source="poi-pins-itinerary"
           layout={{
             "icon-image": "pin-yellow",
-            "icon-size": 1,
+            "icon-size": 0.8,
             "icon-anchor": "bottom",
           }}
         />
@@ -696,7 +702,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("yellow"),
       ensurePinImage("blue_bubble"),
       ensurePinImage("red_bubble"),
-      ensurePinImage("green_bubble"),
+      ensurePinImage("yellow_bubble"),
       ensurePinImage("gray_bubble"),
       ensurePinImage("add_pin"),
     ]);
