@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable,
+  // pgTable,
   varchar,
   customType,
   boolean,
@@ -12,7 +12,12 @@ import {
   integer,
   uniqueIndex,
   unique,
+  pgTableCreator,
 } from "drizzle-orm/pg-core";
+
+const pgTable = pgTableCreator((name) =>
+  process.env.NODE_ENV === "test" ? `test_${name}` : `${name}`
+);
 
 // Ignore this. It is used for full-text search.
 export const tsvector = customType<{
@@ -48,12 +53,12 @@ export const poiTable = pgTable("poi", {
   description: text("description").notNull(),
   latitude: numeric("latitude").notNull(),
   longitude: numeric("longitude").notNull(),
-  address: text("address").default(''),
+  address: text("address").default(""),
   openingHours: text("opening_hours"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-  uploaderId: text("uploader_id").default(''),
+  uploaderId: text("uploader_id").default(""),
 });
 
 // Since this is Postgres, we split the images into a separate table.
@@ -69,7 +74,7 @@ export const poiImagesTable = pgTable("poi_images", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-  uploaderId: text("uploader_id").default(''),
+  uploaderId: text("uploader_id").default(""),
 });
 
 export const itineraryTable = pgTable("itinerary", {
