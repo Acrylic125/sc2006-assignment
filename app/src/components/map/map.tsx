@@ -38,12 +38,12 @@ function createPinURL(color: string) {
   );
 }
 
-function createBubbleURL(color: string, width: number = 256) {
+function createBubbleURL(color: string, width: number = 256, opacity: number = 0.5) {
   return (
     "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(`
     <svg width="${width}" height="${width}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="0.5" />
+      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="${opacity}" />
     </svg>
     `)
   );
@@ -89,15 +89,20 @@ const BUBBLE_MAX_SIZE = 80;
 const BUBBLE_MIN_SCALE = Math.sqrt(BUBBLE_MIN_SIZE/PX_PER_SCALE);
 const BUBBLE_MAX_SCALE = Math.sqrt(BUBBLE_MAX_SIZE/PX_PER_SCALE);
 
+const BUBBLE_OPACITY = 0.6
+
 const pins = {
   red: createPinURL("#FB2C36"),
   yellow: createPinURL("#efb100"),
-  blue_bubble: createBubbleURL("#3B82F6", PX_PER_SCALE*BUBBLE_MAX_SCALE),
-  red_bubble: createBubbleURL("#ff6467", PX_PER_SCALE*BUBBLE_MAX_SCALE),
-  green_bubble: createBubbleURL("#10B981", PX_PER_SCALE*BUBBLE_MAX_SCALE),
-  gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE),
+  blue_bubble: createBubbleURL("#1447e6", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  red_bubble: createBubbleURL("#ff6467", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  green_bubble: createBubbleURL("#10B981", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
   add_pin: createAddPin(PX_PER_SCALE*ADD_PIN_SCALE),
 };
+
+const CLUSTER_COLOR = "#0084d1"
+const CLUSTER_OPACITY = 0.6
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
   const mapStore = useMapStore(
@@ -215,7 +220,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           filter={["has", "point_count"]}
           paint={{
-            "circle-color": "#8ec5ff",
+            "circle-color": CLUSTER_COLOR,
             "circle-radius": [
               "step",
               ["get", "point_count"],
@@ -225,7 +230,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
               30,
               48, // radius for clusters with 30+ points
             ],
-            "circle-opacity": 0.6,
+            "circle-opacity": CLUSTER_OPACITY,
           }}
         />
         <Layer
@@ -792,13 +797,14 @@ export default function ExploreMap({ className }: { className: string }) {
       zoom={mapStore.viewState.zoom}
       onLoad={onLoad}
       // Dark mode map
-      mapStyle={
+      /*mapStyle={
         theme === "dark"
           ? "mapbox://styles/mapbox/navigation-night-v1"
           : "mapbox://styles/mapbox/streets-v12"
-      }
+      }*/
       key={theme}
-      // mapStyle="mapbox://styles/mapbox/streets-v12"
+      //mapStyle="mapbox://styles/mapbox/streets-v12"
+      mapStyle="mapbox://styles/mapbox/outdoors-v12"
       onClick={onClick}
     >
       {mapStore.currentMapTab === "explore" && <ExploreMapLayers enabled />}
