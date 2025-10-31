@@ -5,6 +5,7 @@ import { createCallerFactory } from "@/server/trpc";
 import { db } from "@/db";
 import { poiImagesTable, poiTagTable, poiTable } from "@/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
+import z from "zod";
 
 const TEST_USER_ID = "test-user";
 
@@ -73,7 +74,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "string",
+          "code": "too_small",
+          "minimum": 1,
+          "inclusive": true,
+          "path": [
+            "address"
+          ],
+          "message": "Too small: expected string to have >=1 characters"
+        }
+      ]]
+    `);
   });
 
   it("should error if address length exceeds 255 characters", async () => {
@@ -89,7 +103,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "string",
+          "code": "too_big",
+          "maximum": 255,
+          "inclusive": true,
+          "path": [
+            "address"
+          ],
+          "message": "Too big: expected string to have <=255 characters"
+        }
+      ]]
+    `);
   });
 
   it("should error if name has only spaces", async () => {
@@ -104,7 +131,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "string",
+          "code": "too_small",
+          "minimum": 1,
+          "inclusive": true,
+          "path": [
+            "name"
+          ],
+          "message": "Too small: expected string to have >=1 characters"
+        }
+      ]]
+    `);
   });
 
   it("should error if name length exceeds 255 characters", async () => {
@@ -120,7 +160,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "string",
+          "code": "too_big",
+          "maximum": 255,
+          "inclusive": true,
+          "path": [
+            "name"
+          ],
+          "message": "Too big: expected string to have <=255 characters"
+        }
+      ]]
+    `);
   });
 
   it("should error if description length exceeds 255 characters", async () => {
@@ -136,7 +189,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "string",
+          "code": "too_big",
+          "maximum": 255,
+          "inclusive": true,
+          "path": [
+            "description"
+          ],
+          "message": "Too big: expected string to have <=255 characters"
+        }
+      ]]
+    `);
   });
 
   it("should error if images contain invalid URLs", async () => {
@@ -151,7 +217,28 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "code": "invalid_format",
+          "format": "url",
+          "path": [
+            "images",
+            0
+          ],
+          "message": "Invalid URL"
+        },
+        {
+          "code": "invalid_format",
+          "format": "url",
+          "path": [
+            "images",
+            1
+          ],
+          "message": "Invalid URL"
+        }
+      ]]
+    `);
   });
 
   it("should error if images exceed 3 entries", async () => {
@@ -173,7 +260,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "array",
+          "code": "too_big",
+          "maximum": 3,
+          "inclusive": true,
+          "path": [
+            "images"
+          ],
+          "message": "Too big: expected array to have <=3 items"
+        }
+      ]]
+    `);
   });
 
   it("should error if tags exceed 5 entries", async () => {
@@ -188,7 +288,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "array",
+          "code": "too_big",
+          "maximum": 5,
+          "inclusive": true,
+          "path": [
+            "tags"
+          ],
+          "message": "Too big: expected array to have <=5 items"
+        }
+      ]]
+    `);
   });
 
   it("should error if latitude < -90", async () => {
@@ -203,7 +316,20 @@ describe("When user creates POIs", () => {
         lat: -90.01,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "number",
+          "code": "too_small",
+          "minimum": -90,
+          "inclusive": true,
+          "path": [
+            "lat"
+          ],
+          "message": "Too small: expected number to be >=-90"
+        }
+      ]]
+    `);
   });
 
   it("should error if latitude > 90", async () => {
@@ -218,7 +344,20 @@ describe("When user creates POIs", () => {
         lat: 90.01,
         lng: 0,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "number",
+          "code": "too_big",
+          "maximum": 90,
+          "inclusive": true,
+          "path": [
+            "lat"
+          ],
+          "message": "Too big: expected number to be <=90"
+        }
+      ]]
+    `);
   });
 
   it("should error if longitude < -180", async () => {
@@ -233,7 +372,20 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: -180.01,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "number",
+          "code": "too_small",
+          "minimum": -180,
+          "inclusive": true,
+          "path": [
+            "lng"
+          ],
+          "message": "Too small: expected number to be >=-180"
+        }
+      ]]
+    `);
   });
 
   it("should error if longitude > 180", async () => {
@@ -248,6 +400,19 @@ describe("When user creates POIs", () => {
         lat: 0,
         lng: 180.01,
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchInlineSnapshot(`
+      [TRPCError: [
+        {
+          "origin": "number",
+          "code": "too_big",
+          "maximum": 180,
+          "inclusive": true,
+          "path": [
+            "lng"
+          ],
+          "message": "Too big: expected number to be <=180"
+        }
+      ]]
+    `);
   });
 });
