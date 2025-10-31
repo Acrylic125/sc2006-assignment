@@ -671,6 +671,7 @@ export default function ExploreMap({ className }: { className: string }) {
         }
         return;
       }
+      let cluster_clicked = false; //initialise add poi pin condition
       if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
         const features = map.queryRenderedFeatures(e.point, {
           layers: ["clusters"],
@@ -680,6 +681,7 @@ export default function ExploreMap({ className }: { className: string }) {
           const clusterId = clusterFeature.properties?.cluster_id;
           const source = map.getSource("pins");
           if (source && "getClusterExpansionZoom" in source) {
+            cluster_clicked = true; //set add poi pin to not appear
             (source as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
               clusterId,
               (err, zoom) => {
@@ -706,7 +708,7 @@ export default function ExploreMap({ className }: { className: string }) {
         });
       }
       // For explore map.
-      else if (mapStore.currentMapTab == "explore") {
+      else if (!cluster_clicked && mapStore.currentMapTab == "explore") {
         // TODO: Add stuff here for explore map.
         const pos = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
         mapStore.setExplorePos(pos);
