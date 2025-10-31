@@ -177,3 +177,11 @@ VALUES (1, 1, 1, true),
     (1, 3, 2, true),
     (2, 5, 1, true),
     (2, 7, 2, false);
+SELECT setval(
+        'test_poi_id_seq',
+        (
+            SELECT MAX(id)
+            FROM "test_poi"
+        ),
+        true
+    );

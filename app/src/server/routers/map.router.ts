@@ -513,10 +513,10 @@ export const mapRouter = createTRPCRouter({
     .input(
       z.object({
         address: z.string().trim().min(1).max(255),
-        lat: z.number(),
-        lng: z.number(),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
         name: z.string().trim().min(1).max(255),
-        description: z.string().trim().min(1).max(255),
+        description: z.string().max(255),
         images: z.array(z.url()).max(3),
         tags: z.array(z.number()).max(5),
       })
