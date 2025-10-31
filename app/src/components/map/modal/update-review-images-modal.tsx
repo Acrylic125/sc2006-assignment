@@ -119,7 +119,7 @@ export function UpdateReviewImagesDialog({
                               key={image.id}
                               type="button"
                               variant="ghost"
-                              className="px-0 py-0 h-full relative w-full aspect-square"
+                              className="px-0 py-0 h-full relative w-full aspect-square cursor-pointer"
                               onClick={() => {
                                 const currentSet = new Set(field.value);
                                 if (currentSet.has(image.id)) {
@@ -139,7 +139,7 @@ export function UpdateReviewImagesDialog({
                               {field.value.includes(image.id) ? (
                                 <Badge
                                   variant="destructive"
-                                  className="absolute top-2 right-2"
+                                  className="absolute top-2 right-2 cursor-pointer"
                                 >
                                   To Remove
                                 </Badge>

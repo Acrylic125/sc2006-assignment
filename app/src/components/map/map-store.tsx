@@ -49,6 +49,9 @@ type MapStore = {
   explore: {
     explorePos: Coordinates | null;
   };
+  view: {
+    viewingPos: Coordinates | null;
+  };
   filters: {
     showVisited: boolean;
     showUnvisited: boolean;
@@ -67,6 +70,7 @@ type MapStore = {
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
   setExplorePos: (pos: Coordinates | null) => void;
+  setViewingPos: (pos: Coordinates | null) => void;
   setViewingPOI: (poi: ViewingPOI) => void;
   setTagBadgeOrder: (tagIdOrder: number[]) => void;
 };
@@ -87,6 +91,9 @@ export const useMapStore = create<MapStore>((set, get) => ({
   },
   explore: {
     explorePos: null,
+  },
+    view: {
+    viewingPos: null,
   },
   filters: {
     showVisited: true,
@@ -116,6 +123,8 @@ export const useMapStore = create<MapStore>((set, get) => ({
     })),
   setExplorePos: (pos: Coordinates | null) =>
     set({ explore: { explorePos: pos } }),
+  setViewingPos: (pos: Coordinates | null) =>
+    set({ view: { viewingPos: pos } }),
   setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
   setTagBadgeOrder: (tagIdOrder: number[]) =>
     set({ tagBadgeOrder: tagIdOrder }),

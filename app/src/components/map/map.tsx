@@ -38,42 +38,73 @@ function createPinURL(color: string) {
   );
 }
 
-function createBubbleURL(color: string) {
+function createBubbleURL(color: string, width: number = 256, opacity: number = 0.5) {
   return (
     "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(`
-    <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="0.5" />
-      <circle cx="32" cy="32" r="6" fill="white" />
+    <svg width="${width}" height="${width}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="${opacity}" />
     </svg>
     `)
   );
 }
 
-function createAddPin() {
-  const svg = `<svg width="32" height="64" viewBox="0 0 32 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="16" cy="48" r="16" fill="#7BF1A8" fill-opacity="0.5"/>
-<circle cx="16" cy="48" r="6" fill="white"/>
-<mask id="path-3-inside-1_55_15" fill="white">
-<path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z"/>
-</mask>
-<path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z" fill="#008236"/>
-<rect x="14" y="9" width="4" height="16" rx="2" fill="#ffffff"/>
-<rect x="8" y="15" width="16" height="4" rx="2" fill="#ffffff"/>
-</svg>
-`;
+function createAddPin(width: number = 128) {
+  const aspectRatio = 2; // original is 32 wide, 64 tall → 1:2
+  const height = width * aspectRatio;
+
+  const svg = `<svg
+    width="${width}"
+    height="${height}"
+    viewBox="0 0 32 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="16" cy="48" r="16" fill="#00a63e" fill-opacity="0.6"/>
+    <circle cx="16" cy="48" r="3" fill="white"/>
+    <mask id="path-3-inside-1_55_15" fill="white">
+      <path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z"/>
+    </mask>
+    <path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z" fill="#008236"/>
+    <rect x="14" y="9" width="4" height="16" rx="2" fill="#ffffff"/>
+    <rect x="8" y="15" width="16" height="4" rx="2" fill="#ffffff"/>
+  </svg>`;
+
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 
+
+//below ensures pins do not become blurry from over-scaling
+//target constant: px_per_scale
+//input var: size = width*scale
+//.: width = px_per_scale * scale
+//   scale = size/width = sqrt(size/px_per_scale)
+
+const PX_PER_SCALE = 128;
+
+const ADD_PIN_SIZE = 40;
+const ADD_PIN_SCALE = Math.sqrt(ADD_PIN_SIZE/PX_PER_SCALE);
+const BUBBLE_MIN_SIZE = 30;
+const BUBBLE_MAX_SIZE = 70;
+const BUBBLE_MIN_SCALE = Math.sqrt(BUBBLE_MIN_SIZE/PX_PER_SCALE);
+const BUBBLE_MAX_SCALE = Math.sqrt(BUBBLE_MAX_SIZE/PX_PER_SCALE);
+
+const BUBBLE_OPACITY = 0.65
+
 const pins = {
-  red: createPinURL("#FB2C36"),
-  yellow: createPinURL("#efb100"),
-  blue_bubble: createBubbleURL("#3B82F6"),
-  red_bubble: createBubbleURL("#ff6467"),
-  green_bubble: createBubbleURL("#10B981"),
-  gray_bubble: createBubbleURL("#90a1b9"),
-  add_pin: createAddPin(),
+  red: createPinURL("#e7000b"), //red-600
+  yellow: createPinURL("#fd9a00"), //amber-500
+  blue_bubble: createBubbleURL("#193cb8", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //blue-800
+  red_bubble: createBubbleURL("#ff2056", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //rose-500
+  yellow_bubble: createBubbleURL("#ffba00", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //amber-400
+  gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  add_pin: createAddPin(PX_PER_SCALE*ADD_PIN_SCALE),
 };
+
+const BUBBLE_DOT_SIZE = 4;
+
+const CLUSTER_COLOR = "#0084d1" //sky-600
+const CLUSTER_OPACITY = 0.6
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
   const mapStore = useMapStore(
@@ -85,6 +116,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         setCurrentSidePanelTab,
         setViewingPOI,
         explore,
+        view,
       }) => {
         return {
           filters,
@@ -93,6 +125,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           setCurrentSidePanelTab,
           setViewingPOI,
           explorePos: explore.explorePos,
+          viewingPos: view.viewingPos,
         };
       }
     )
@@ -117,12 +150,13 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     }
   );
 
-  const MIN_PIN_SIZE = 1;
-  const MAX_PIN_SIZE = 2;
   const poiPins = useMemo(() => {
     if (!poisQuery.data || poisQuery.data.length === 0) {
       return [];
     }
+    const itineraryPOIIds = new Set(
+      itinerariesQuery.data?.pois?.map((p) => p.id) ?? []
+    );
     const minScore = Math.min(
       ...poisQuery.data.map((poi) => poi.popularityScore)
     );
@@ -132,20 +166,23 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
     return poisQuery.data?.map((poi) => {
       // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
       let color = "blue_bubble"; // default
+      if (itineraryPOIIds.has(poi.id)) {
+        color = "yellow_bubble";
+      }
       if (
         mapStore.viewingPOI?.type === "existing-poi" &&
         mapStore.viewingPOI.poiId === poi.id
       ) {
         color = "red_bubble"; // currently selected POI
       }
-      let poiScale = MIN_PIN_SIZE;
+      let poiScale = BUBBLE_MIN_SCALE;
       if (maxScore === minScore) {
-        poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
+        poiScale = (BUBBLE_MIN_SCALE + BUBBLE_MAX_SCALE) / 2;
       } else {
         poiScale =
-          MIN_PIN_SIZE +
+          BUBBLE_MIN_SCALE +
           ((poi.popularityScore - minScore) / (maxScore - minScore)) *
-            (MAX_PIN_SIZE - MIN_PIN_SIZE);
+            (BUBBLE_MAX_SCALE - BUBBLE_MIN_SCALE);
       }
 
       return {
@@ -155,7 +192,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         scale: poiScale,
       };
     });
-  }, [poisQuery.data, mapStore.viewingPOI]);
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
 
   return (
     <>
@@ -191,7 +228,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           source="pins"
           filter={["has", "point_count"]}
           paint={{
-            "circle-color": "#8ec5ff",
+            "circle-color": CLUSTER_COLOR,
             "circle-radius": [
               "step",
               ["get", "point_count"],
@@ -201,7 +238,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
               30,
               48, // radius for clusters with 30+ points
             ],
-            "circle-opacity": 0.6,
+            "circle-opacity": CLUSTER_OPACITY,
           }}
         />
         <Layer
@@ -215,6 +252,17 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
             "text-offset": [0, 1.2],
             "text-anchor": "top",
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+        <Layer
+          id="poi-pins_center"
+          type="circle"
+          source="pins"
+          filter={["!", ["has", "point_count"]]}
+          paint={{
+            "circle-color": "#ffffff",
+            "circle-radius": BUBBLE_DOT_SIZE,
+            "circle-opacity": 1,
           }}
         />
       </Source>
@@ -275,7 +323,40 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
             source="explore-pin-from"
             layout={{
               "icon-image": "pin-add_pin",
-              "icon-size": 2,
+              "icon-size": ADD_PIN_SCALE,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
+      {mapStore.viewingPos && (
+        <Source
+          id="viewing-pin-from"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.viewingPos.longitude,
+                    mapStore.viewingPos.latitude,
+                  ],
+                },
+                properties: {},
+              },
+            ],
+          }}
+        >
+          <Layer
+            id="viewing-pin-from"
+            type="symbol"
+            source="viewing-pin-from"
+            layout={{
+              "icon-image": "pin-red",
+              "icon-size": 1,
               "icon-anchor": "bottom",
             }}
           />
@@ -327,8 +408,6 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
     }
   );
 
-  const MIN_PIN_SIZE = 1;
-  const MAX_PIN_SIZE = 2;
   const poiPins = useMemo(() => {
     if (!poisQuery.data) {
       return {
@@ -364,14 +443,14 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
         ) {
           color = "red_bubble"; // currently selected POI
         }
-        let poiScale = MIN_PIN_SIZE;
+        let poiScale = BUBBLE_MIN_SCALE;
         if (maxScore === minScore) {
-          poiScale = (MIN_PIN_SIZE + MAX_PIN_SIZE) / 2;
+          poiScale = (BUBBLE_MIN_SCALE + BUBBLE_MAX_SCALE) / 2;
         } else {
           poiScale =
-            MIN_PIN_SIZE +
+            BUBBLE_MIN_SCALE +
             ((poi.popularityScore - minScore) / (maxScore - minScore)) *
-              (MAX_PIN_SIZE - MIN_PIN_SIZE);
+              (BUBBLE_MAX_SCALE - BUBBLE_MIN_SCALE);
         }
 
         return {
@@ -484,6 +563,17 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
             "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
           }}
         />
+        <Layer
+          id="poi-pins_center"
+          type="circle"
+          source="pins"
+          filter={["!", ["has", "point_count"]]}
+          paint={{
+            "circle-color": "#ffffff",
+            "circle-radius": BUBBLE_DOT_SIZE,
+            "circle-opacity": 1,
+          }}
+        />
       </Source>
       <Source
         id="poi-pins-itinerary"
@@ -510,7 +600,7 @@ function RecommendMapLayers({ enabled }: { enabled: boolean }) {
           source="poi-pins-itinerary"
           layout={{
             "icon-image": "pin-yellow",
-            "icon-size": 1,
+            "icon-size": 0.8,
             "icon-anchor": "bottom",
           }}
         />
@@ -559,6 +649,7 @@ export default function ExploreMap({ className }: { className: string }) {
         currentMapTab,
         setRecommendFromPos,
         setExplorePos,
+        setViewingPos,
         setViewingPOI,
         setCurrentSidePanelTab,
         setViewState,
@@ -569,6 +660,7 @@ export default function ExploreMap({ className }: { className: string }) {
           currentMapTab,
           setRecommendFromPos,
           setExplorePos,
+          setViewingPos,
           setViewingPOI,
           setCurrentSidePanelTab,
           setViewState,
@@ -610,7 +702,7 @@ export default function ExploreMap({ className }: { className: string }) {
       ensurePinImage("yellow"),
       ensurePinImage("blue_bubble"),
       ensurePinImage("red_bubble"),
-      ensurePinImage("green_bubble"),
+      ensurePinImage("yellow_bubble"),
       ensurePinImage("gray_bubble"),
       ensurePinImage("add_pin"),
     ]);
@@ -646,10 +738,15 @@ export default function ExploreMap({ className }: { className: string }) {
           // Reset explore pos when a new POI is clicked(set though the cluster layer)
           if (mapStore.currentMapTab === "explore") {
             mapStore.setExplorePos(null);
+            if (poiPins[0].geometry?.type === "Point") {
+              const [lng, lat] = poiPins[0].geometry.coordinates;
+              mapStore.setViewingPos({ latitude: lat, longitude: lng });
+            }
           }
         }
         return;
       }
+
       if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
         const features = map.queryRenderedFeatures(e.point, {
           layers: ["clusters"],
@@ -673,6 +770,7 @@ export default function ExploreMap({ className }: { className: string }) {
                 }
               }
             );
+            return;
           }
         }
       }
@@ -689,6 +787,7 @@ export default function ExploreMap({ className }: { className: string }) {
         // TODO: Add stuff here for explore map.
         const pos = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
         mapStore.setExplorePos(pos);
+        mapStore.setViewingPos(null);
         mapStore.setViewingPOI({ type: "new-poi", pos });
         mapStore.setCurrentSidePanelTab("place");
       }
@@ -706,13 +805,14 @@ export default function ExploreMap({ className }: { className: string }) {
       zoom={mapStore.viewState.zoom}
       onLoad={onLoad}
       // Dark mode map
-      mapStyle={
+      /*mapStyle={
         theme === "dark"
           ? "mapbox://styles/mapbox/navigation-night-v1"
           : "mapbox://styles/mapbox/streets-v12"
-      }
+      }*/
       key={theme}
-      // mapStyle="mapbox://styles/mapbox/streets-v12"
+      //mapStyle="mapbox://styles/mapbox/streets-v12"
+      mapStyle="mapbox://styles/mapbox/outdoors-v12"
       onClick={onClick}
     >
       {mapStore.currentMapTab === "explore" && <ExploreMapLayers enabled />}
@@ -842,3 +942,4 @@ export function MapViewTabGroupDropdown() {
     </DropdownMenu>
   );
 }
+
