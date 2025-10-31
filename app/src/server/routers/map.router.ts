@@ -117,15 +117,21 @@ class RecommendationEngine {
 
   public recommend(userPreferences: { tagId: number; likedScore: number }[]) {
     // Create |T| x 1 matrix containing the user preference score for each poi.
-    const poiUserPreferenceMatrix = new Array<number>(this.numberOfTags).fill(
+    const poiUserPreferenceMatrix = new Array<number>(this.numberOfPois).fill(
       0
     );
+
+    const userPreferenceMap = new Map<number, number>();
     for (const userPreference of userPreferences) {
-      const tagIndex = this.tagMapping.get(userPreference.tagId);
-      if (tagIndex === undefined) {
-        continue;
+      userPreferenceMap.set(userPreference.tagId, userPreference.likedScore);
+    }
+
+    for (let i = 0; i < this.numberOfPois; i++) {
+      for (let j = 0; j < this.numberOfTags; j++) {
+        if (this.poiTagMatrix[i][j] === 1) {
+          poiUserPreferenceMatrix[i] += userPreferenceMap.get(j) ?? 0;
+        }
       }
-      poiUserPreferenceMatrix[tagIndex] = userPreference.likedScore;
     }
 
     const M = [
@@ -301,13 +307,19 @@ async function searchPOIS(
       id: poiTable.id,
       pos: {
         // Parse as number
-        latitude: sql<number>`CAST(${poiTable.latitude} AS numeric)`,
-        longitude: sql<number>`CAST(${poiTable.longitude} AS numeric)`,
+        latitude: sql<string>`CAST(${poiTable.latitude} AS numeric)`,
+        longitude: sql<string>`CAST(${poiTable.longitude} AS numeric)`,
       },
     })
     .from(poiTable)
     .where(and(...conditions));
-  return pois;
+  return pois.map((poi) => ({
+    ...poi,
+    pos: {
+      latitude: parseFloat(poi.pos.latitude) ?? 0,
+      longitude: parseFloat(poi.pos.longitude) ?? 0,
+    },
+  }));
 }
 
 export const mapRouter = createTRPCRouter({
@@ -378,11 +390,16 @@ export const mapRouter = createTRPCRouter({
           latitude: z.number(),
           longitude: z.number(),
         }),
-        recommendRadius: z.number().default(5),
+        recommendRadius: z.number().min(0).default(5),
+        options: z
+          .object({
+            weights: z.array(z.number()).default([0.5, 0.3, 0.2]),
+          })
+          .optional(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const [tags, allPois, userPreferences] = await Promise.all([
+      const [tags, allPois, _userPreferences] = await Promise.all([
         db
           .select({
             id: tagTable.id,
@@ -403,7 +420,7 @@ export const mapRouter = createTRPCRouter({
           return db
             .select({
               tagId: poiTagTable.tagId,
-              likedScore: sql<number>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)`,
+              likedScore: sql<string>`SUM(CASE WHEN ${userSurpriseMePreferencesTable.liked} = true THEN 1 ELSE -1 END)`,
             })
             .from(userSurpriseMePreferencesTable)
             .innerJoin(
@@ -414,6 +431,10 @@ export const mapRouter = createTRPCRouter({
             .groupBy(poiTagTable.tagId);
         })(),
       ]);
+      const userPreferences = _userPreferences.map((preference) => ({
+        tagId: preference.tagId,
+        likedScore: parseInt(preference.likedScore),
+      }));
 
       const recommendationRadius = input.recommendRadius / 111.32;
       const pois: typeof allPois = [];
@@ -463,11 +484,11 @@ export const mapRouter = createTRPCRouter({
       ]);
 
       const recommendationEngine = new RecommendationEngine(tags, pois);
+      recommendationEngine.weights = input.options?.weights ?? [0.5, 0.3, 0.2];
       recommendationEngine.setPoiTags(poiTags);
       recommendationEngine.setNumberOfPoiReviews(poiReviews);
       recommendationEngine.setPoiLikesProportion(poiReviews);
       const poiScores = recommendationEngine.recommend(userPreferences);
-
       const poiPopularity = computePoiPopularity(poiReviews);
       const top5 = poiScores.sort((a, b) => b.score - a.score).slice(0, 5);
       const recommended = top5.map((poi) => ({
@@ -491,13 +512,13 @@ export const mapRouter = createTRPCRouter({
   createPOI: protectedProcedure
     .input(
       z.object({
-        address: z.string().max(255),
-        lat: z.number(),
-        lng: z.number(),
-        name: z.string().max(255),
+        address: z.string().trim().min(1).max(255),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        name: z.string().trim().min(1).max(255),
         description: z.string().max(255),
-        images: z.array(z.string()),
-        tags: z.array(z.number()),
+        images: z.array(z.url()).max(3),
+        tags: z.array(z.number()).max(5),
       })
     )
     .mutation(async ({ ctx, input }) => {
