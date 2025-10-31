@@ -110,6 +110,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
         setCurrentSidePanelTab,
         setViewingPOI,
         explore,
+        view,
       }) => {
         return {
           filters,
@@ -118,6 +119,7 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
           setCurrentSidePanelTab,
           setViewingPOI,
           explorePos: explore.explorePos,
+          viewingPos: view.viewingPos,
         };
       }
     )
@@ -299,6 +301,39 @@ function ExploreMapLayers({ enabled }: { enabled: boolean }) {
             layout={{
               "icon-image": "pin-add_pin",
               "icon-size": ADD_PIN_SCALE,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
+      {mapStore.viewingPos && (
+        <Source
+          id="viewing-pin-from"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.viewingPos.longitude,
+                    mapStore.viewingPos.latitude,
+                  ],
+                },
+                properties: {},
+              },
+            ],
+          }}
+        >
+          <Layer
+            id="viewing-pin-from"
+            type="symbol"
+            source="viewing-pin-from"
+            layout={{
+              "icon-image": "pin-red",
+              "icon-size": 1,
               "icon-anchor": "bottom",
             }}
           />
@@ -580,6 +615,7 @@ export default function ExploreMap({ className }: { className: string }) {
         currentMapTab,
         setRecommendFromPos,
         setExplorePos,
+        setViewingPos,
         setViewingPOI,
         setCurrentSidePanelTab,
         setViewState,
@@ -590,6 +626,7 @@ export default function ExploreMap({ className }: { className: string }) {
           currentMapTab,
           setRecommendFromPos,
           setExplorePos,
+          setViewingPos,
           setViewingPOI,
           setCurrentSidePanelTab,
           setViewState,
@@ -667,6 +704,10 @@ export default function ExploreMap({ className }: { className: string }) {
           // Reset explore pos when a new POI is clicked(set though the cluster layer)
           if (mapStore.currentMapTab === "explore") {
             mapStore.setExplorePos(null);
+            if (poiPins[0].geometry?.type === "Point") {
+              const [lng, lat] = poiPins[0].geometry.coordinates;
+              mapStore.setViewingPos({ latitude: lat, longitude: lng });
+            }
           }
         }
         return;
@@ -712,6 +753,7 @@ export default function ExploreMap({ className }: { className: string }) {
         // TODO: Add stuff here for explore map.
         const pos = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
         mapStore.setExplorePos(pos);
+        mapStore.setViewingPos(null);
         mapStore.setViewingPOI({ type: "new-poi", pos });
         mapStore.setCurrentSidePanelTab("place");
       }
@@ -865,3 +907,4 @@ export function MapViewTabGroupDropdown() {
     </DropdownMenu>
   );
 }
+
