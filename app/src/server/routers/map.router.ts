@@ -246,6 +246,7 @@ async function searchPOIS(
     );
   }
   if (input.showVisited !== input.showUnvisited && ctx.auth.userId) {
+    /*
     const existent = db
       .select()
       .from(itineraryPOITable)
@@ -264,6 +265,25 @@ async function searchPOIS(
     if (input.showVisited) {
       conditions.push(exists(existent));
     } else {
+      conditions.push(not(exists(existent)));
+    }
+  */
+    const existent = db
+      .select()
+      .from(reviewTable)
+      .where(
+        and(
+          eq(reviewTable.poiId, poiTable.id),
+          eq(reviewTable.userId, ctx.auth.userId)
+        )
+      )
+      .limit(1);
+
+    if (input.showVisited) {
+      // Show only POIs the user has reviewed
+      conditions.push(exists(existent));
+    } else {
+      // Show only POIs the user has NOT reviewed
       conditions.push(not(exists(existent)));
     }
   }
