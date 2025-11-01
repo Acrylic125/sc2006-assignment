@@ -12,7 +12,9 @@ import {
 import { Plus } from "lucide-react";
 import { trpc } from "@/server/client";
 import { useState } from "react";
-import { CreateItineraryModal } from "./create-itinerary-modal";
+import { Dialog } from "../ui/dialog";
+
+import { CreateItineraryDialog } from "../map/modal/create-itinerary-modal";
 
 interface AddToItineraryButtonProps {
   poiId: number;
@@ -79,11 +81,16 @@ export function AddToItineraryButton({ poiId }: AddToItineraryButtonProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CreateItineraryModal 
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={handleAddToItinerary}
-      />
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <CreateItineraryDialog 
+          close={() => {
+            setShowCreateModal(false);
+            setIsAdded(true); // Set isAdded to true when a new itinerary is created with the POI
+            utils.itinerary.getAllItineraries.invalidate();
+          }}
+          poiId={poiId}
+        />
+      </Dialog>
     </>
   );
 }
