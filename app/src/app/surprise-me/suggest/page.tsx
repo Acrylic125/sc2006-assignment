@@ -2,6 +2,7 @@ import { MainNavbar } from "@/components/navbar";
 import { ExploreMoreButton } from "@/components/surprise-me/explore-more-button";
 import { SeeMoreButton } from "@/components/surprise-me/see-more-button";
 import { Button } from "@/components/ui/button";
+import { AddToItineraryButton } from "@/components/surprise-me/add-to-itinerary-button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { db } from "@/db";
 import { poiImagesTable, poiTable, poiTagTable, userSurpriseMePreferencesTable } from "@/db/schema";
@@ -54,24 +55,52 @@ export default async function SuggestPage() {
 
     const likedTagIds = likedTags.map((tag) => tag.tagId);
 
-    // Fetch recommended POIs based on tags, excluding already liked POIs
-    const recommendedPOIs = await db
-      .select({
-        id: poiTable.id,
-        name: poiTable.name,
-        description: poiTable.description,
-        latitude: sql<number>`CAST(${poiTable.latitude} AS DOUBLE PRECISION)`,
-        longitude: sql<number>`CAST(${poiTable.longitude} AS DOUBLE PRECISION)`,
-      })
-      .from(poiTable)
-      .innerJoin(poiTagTable, sql`${poiTable.id} = ${poiTagTable.poiId}`)
-      .where(
-        sql`${inArray(poiTagTable.tagId, likedTagIds)} AND ${not(
-          inArray(poiTable.id, likedPoiIds)
-        )}`
-      )
-      .orderBy(sql`RANDOM()`)
-      .limit(5);
+    // Check if there are any liked POIs
+    let recommendedPOIs;
+    
+    if (likedPoiIds.length === 0) {
+      // If no POIs have been liked, fetch 5 random POIs that have images
+      recommendedPOIs = await db
+        .select({
+          id: poiTable.id,
+          name: poiTable.name,
+          description: poiTable.description,
+          latitude: sql<number>`CAST(${poiTable.latitude} AS DOUBLE PRECISION)`,
+          longitude: sql<number>`CAST(${poiTable.longitude} AS DOUBLE PRECISION)`,
+        })
+        .from(poiTable)
+        .innerJoin(
+          poiImagesTable,
+          sql`${poiTable.id} = ${poiImagesTable.poiId}`
+        )
+        .groupBy(poiTable.id)
+        .orderBy(sql`RANDOM()`)
+        .limit(5);
+    } else {
+      // Fetch recommended POIs based on tags, excluding already liked POIs, and ensuring they have images
+      recommendedPOIs = await db
+        .select({
+          id: poiTable.id,
+          name: poiTable.name,
+          description: poiTable.description,
+          latitude: sql<number>`CAST(${poiTable.latitude} AS DOUBLE PRECISION)`,
+          longitude: sql<number>`CAST(${poiTable.longitude} AS DOUBLE PRECISION)`,
+        })
+        .from(poiTable)
+        .innerJoin(poiTagTable, sql`${poiTable.id} = ${poiTagTable.poiId}`)
+        .innerJoin(
+          poiImagesTable,
+          sql`${poiTable.id} = ${poiImagesTable.poiId}`
+        )
+        .where(
+          sql`${inArray(poiTagTable.tagId, likedTagIds)} AND ${not(
+            inArray(poiTable.id, likedPoiIds)
+          )}`
+        )
+        .groupBy(poiTable.id)
+        .orderBy(sql`RANDOM()`)
+        .limit(5);
+    }
 
     // Fetch images for recommended POIs
     const poiImages = await db
@@ -145,6 +174,7 @@ export default async function SuggestPage() {
                             latitude={poi.latitude}
                             longitude={poi.longitude}
                           />
+                          <AddToItineraryButton poiId={poi.id} />
                           <Button variant="outline" asChild className="w-fit p-0">
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
