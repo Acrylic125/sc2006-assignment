@@ -1,10 +1,22 @@
 import { db } from "./db/index";
 import { poiTable, poiTagTable, poiImagesTable, itineraryPOITable, reviewTable, reviewImagesTable, userSurpriseMePreferencesTable } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { eq, not } from "drizzle-orm";
 
-const poi_ids = [37, 81, 39, 88];
+async function get_User_Gen_POI(){
+    const selected_poi = await db.select()
+        .from(poiTable)
+        .where(not(eq(poiTable.uploaderId,"")))
+    
+    console.log(selected_poi)
+    const poi_ids = selected_poi.map(poi => poi.id)
+    const filtered_poi_ids = poi_ids.filter(id => id !== 580)
+    
+    console.log("POI IDs to delete:", filtered_poi_ids)
+    return filtered_poi_ids
+}
 
-async function safeDeletePOIs() {
+
+async function safeDeletePOIs(poi_ids: number[]) {
     console.log("🔍 Starting safe POI deletion process...");
     
     for (const id of poi_ids) {
@@ -113,7 +125,7 @@ async function safeDeletePOIs() {
 }
 
 // Add confirmation prompt
-async function confirmDeletion() {
+async function confirmDeletion(poi_ids: number[]) {
     console.log("⚠️  WARNING: You are about to permanently delete the following POIs:");
     
     for (const id of poi_ids) {
@@ -131,10 +143,21 @@ async function confirmDeletion() {
     console.log("💡 To proceed with deletion, uncomment the safeDeletePOIs() call below");
     
     // Uncomment the line below when you're ready to actually delete
-    //await safeDeletePOIs();
+    await safeDeletePOIs(poi_ids);
 }
 
-confirmDeletion().then(() => {
+async function main() {
+    const poi_ids = await get_User_Gen_POI();
+    
+    if (poi_ids.length === 0) {
+        console.log("No user-generated POIs found to delete.");
+        return;
+    }
+    
+    await confirmDeletion(poi_ids);
+}
+
+main().then(() => {
     console.log("\n✅ POI deletion process completed");
     process.exit(0);
 }).catch((error) => {
