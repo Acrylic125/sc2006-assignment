@@ -23,12 +23,22 @@ interface AddToItineraryButtonProps {
 export function AddToItineraryButton({ poiId }: AddToItineraryButtonProps) {
   const [isAdded, setIsAdded] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [currentItineraryId, setCurrentItineraryId] = useState<number | null>(null);
   const utils = trpc.useContext();
   
   const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
   const addToItineraryMutation = trpc.itinerary.addPOIToItinerary.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       setIsAdded(true);
+      setCurrentItineraryId(data.itineraryId);
+      utils.itinerary.getAllItineraries.invalidate();
+    },
+  });
+
+  const removePOIMutation = trpc.itinerary.removePOIFromItinerary.useMutation({
+    onSuccess: () => {
+      setIsAdded(false);
+      setCurrentItineraryId(null);
       utils.itinerary.getAllItineraries.invalidate();
     },
   });
@@ -44,10 +54,27 @@ export function AddToItineraryButton({ poiId }: AddToItineraryButtonProps) {
     }
   };
 
+  const handleRemoveFromItinerary = async () => {
+    if (!currentItineraryId) return;
+    try {
+      await removePOIMutation.mutateAsync({
+        itineraryId: currentItineraryId,
+        poiId,
+      });
+    } catch (error) {
+      console.error("Failed to remove POI from itinerary:", error);
+    }
+  };
+
   if (isAdded) {
     return (
-      <Button variant="outline" disabled className="w-fit">
-        Added to Itinerary
+      <Button 
+        variant="outline" 
+        className="w-fit text-destructive hover:text-destructive"
+        onClick={handleRemoveFromItinerary}
+        disabled={removePOIMutation.isPending}
+      >
+        {removePOIMutation.isPending ? "Removing..." : "Remove from Itinerary"}
       </Button>
     );
   }
@@ -83,10 +110,18 @@ export function AddToItineraryButton({ poiId }: AddToItineraryButtonProps) {
 
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <CreateItineraryDialog 
-          close={() => {
+          close={async () => {
             setShowCreateModal(false);
-            setIsAdded(true); // Set isAdded to true when a new itinerary is created with the POI
-            utils.itinerary.getAllItineraries.invalidate();
+            // The newly created itinerary will be the most recent one
+            await utils.itinerary.getAllItineraries.invalidate();
+            const itineraries = await utils.itinerary.getAllItineraries.fetch();
+            
+            // Get the most recently created itinerary (last in the list sorted by creation date)
+            if (itineraries && itineraries.length > 0) {
+              const newestItinerary = itineraries[itineraries.length - 1];
+              setIsAdded(true);
+              setCurrentItineraryId(newestItinerary.id);
+            }
           }}
           poiId={poiId}
         />
