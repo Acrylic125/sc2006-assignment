@@ -44,7 +44,7 @@ async function processTouristAttractions() {
       description: overview || "No description available",
       latitude: latitude,
       longitude: longitude,
-      openingHours: openingHours || null
+      openingHours: openingHours || null,
     };
     
     poisToInsert.push(poi);
@@ -54,7 +54,7 @@ async function processTouristAttractions() {
       const fixedImageUrl = fixImageUrl(imagePath);
       imagesToInsert.push({
         poiName: pageTitle, // We'll use this to match with inserted POI
-        imageUrl: fixedImageUrl
+        imageUrl: fixedImageUrl,
       });
     }
   }
@@ -81,7 +81,7 @@ async function processParks() {
       description: `A park in Singapore: ${properties.NAME}`,
       latitude: geometry.coordinates[1].toString(),
       longitude: geometry.coordinates[0].toString(),
-      openingHours: null // Parks data doesn't have opening hours
+      openingHours: null, // Parks data doesn't have opening hours
     };
     
     poisToInsert.push(poi);
@@ -121,7 +121,7 @@ async function insertPOIs() {
         if (matchedPOI) {
           imagesToInsertWithIds.push({
             poiId: matchedPOI.id,
-            imageUrl: image.imageUrl
+            imageUrl: image.imageUrl,
           });
         }
       }

@@ -1,10 +1,20 @@
 "use client";
 
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { useCallback } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMapModalStore } from "./map-modal-store";
 import { POIReviewDialog } from "./itinerary-poi-review-modal";
+import { CreateItineraryDialog } from "./create-itinerary-modal";
+import { CreatePOIDialog } from "./create-poi-modal";
+import { POIImageCarouselDialog } from "./poi-image-carousel-modal";
+import { UploadImageDialog } from "./upload-poi-image-modal";
+import { DeleteItineraryModal } from "./delete-itinerary-modal";
+import { RenameItineraryModal } from "./rename-itinerary-modal";
+import { RemovePOIFromItineraryModal } from "./remove-poi-from-itinerary-modal";
+import { DeleteReviewModal } from "./delete-review-modal";
+import { ReviewImageDialog } from "./review-image-carousel-modal";
+import { UpdateReviewImagesDialog } from "./update-review-images-modal";
 
 export function MapModal() {
   const modalStore = useMapModalStore(
@@ -15,28 +25,81 @@ export function MapModal() {
       };
     })
   );
+
   const setOpen = useCallback(
     (open: boolean) => {
       modalStore.setAction(null);
     },
     [modalStore]
   );
+
   const close = useCallback(() => {
-    console.log("closing");
     modalStore.setAction(null);
   }, [modalStore]);
 
-  console.log(modalStore.action);
   const isOpen = modalStore.action !== null;
-  console.log(isOpen);
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogContent>
-        {modalStore.action?.type === "itinerary-poi-review" && (
-          <POIReviewDialog options={modalStore.action.options} close={close} />
-        )}
-      </DialogContent>
+      {modalStore.action?.type === "itinerary-poi-review" && (
+        <POIReviewDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "create-itinerary" && (
+        <CreateItineraryDialog
+          close={close}
+          poiId={modalStore.action.options.poiId}
+        />
+      )}
+      {modalStore.action?.type === "delete-itinerary" && (
+        <DeleteItineraryModal
+          itineraryId={modalStore.action.options.itineraryId}
+          itineraryName={modalStore.action.options.itineraryName}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "rename-itinerary" && (
+        <RenameItineraryModal
+          itineraryId={modalStore.action.options.itineraryId}
+          currentName={modalStore.action.options.currentName}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "remove-poi-from-itinerary" && (
+        <RemovePOIFromItineraryModal
+          itineraryId={modalStore.action.options.itineraryId}
+          poiId={modalStore.action.options.poiId}
+          poiName={modalStore.action.options.poiName}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "delete-review" && (
+        <DeleteReviewModal
+          reviewId={modalStore.action.options.reviewId}
+          poiId={modalStore.action.options.poiId}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "create-poi" && (
+        <CreatePOIDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "poi-image-carousel" && (
+        <POIImageCarouselDialog
+          options={modalStore.action.options}
+          close={close}
+        />
+      )}
+      {modalStore.action?.type === "upload-poi-image" && (
+        <UploadImageDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "review-image-carousel" && (
+        <ReviewImageDialog options={modalStore.action.options} close={close} />
+      )}
+      {modalStore.action?.type === "update-review-images" && (
+        <UpdateReviewImagesDialog
+          options={modalStore.action.options}
+          close={close}
+        />
+      )}
     </Dialog>
   );
 }

@@ -7,7 +7,9 @@ import { appRouter } from "./router";
 
 // IMPORTANT: Create a stable getter for the query client that
 //            will return the same client during the same request.
+// Ignore lint error
 export const getQueryClient = cache(makeQueryClient);
+// eslint-disable-next-line
 const caller = createCallerFactory(appRouter)(createTRPCContext);
 export const { trpc, HydrateClient } = createHydrationHelpers<typeof appRouter>(
   caller,

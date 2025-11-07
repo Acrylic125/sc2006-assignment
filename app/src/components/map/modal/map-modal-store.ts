@@ -1,11 +1,94 @@
 import { create } from "zustand";
 
-export type MapModalAction = {
-  type: "itinerary-poi-review";
-  options: {
-    poiId: number;
-  };
-};
+export type MapModalAction =
+  | {
+      type: "itinerary-poi-review";
+      options: {
+        poiId: number;
+      };
+    }
+  | {
+      type: "create-itinerary";
+      options: {
+        longitude: number;
+        latitude: number;
+        poiId?: number; // Make poiId optional
+      };
+    }
+  | {
+      type: "delete-itinerary";
+      options: {
+        itineraryId: number;
+        itineraryName: string;
+      };
+    }
+  | {
+      type: "rename-itinerary";
+      options: {
+        itineraryId: number;
+        currentName: string;
+      };
+    }
+  | {
+      type: "remove-poi-from-itinerary";
+      options: {
+        itineraryId: number;
+        poiId: number;
+        poiName: string;
+      };
+    }
+  | {
+      type: "delete-review";
+      options: {
+        reviewId: number;
+        poiId: number;
+      };
+    }
+  | {
+      type: "create-poi";
+      options: {
+        address: string;
+        longitude: number;
+        latitude: number;
+        name: string;
+        description: string;
+        images: string[];
+      };
+    }
+  | {
+      type: "poi-image-carousel";
+      options: {
+        poiId: number;
+        name: string;
+      };
+    }
+  | {
+      type: "upload-poi-image";
+      options: {
+        poiId: number;
+        name: string;
+        images: string[];
+      };
+    }
+  | {
+      type: "review-image-carousel";
+      options: {
+        name: string;
+        images: string[];
+        defaultIndex?: number;
+      };
+    }
+  | {
+      type: "update-review-images";
+      options: {
+        reviewId: number;
+        poiId: number;
+        images: {
+          id: number;
+          url: string;
+        }[];
+      };
+    };
 
 export type ExtractOptions<T extends MapModalAction["type"]> = Extract<
   MapModalAction,

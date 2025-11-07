@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@import "uploadthing/tw/v4";
+@source "../../node_modules/@uploadthing/react/dist";
+
+@import 'swiper/css';
+@import 'swiper/css/pagination';
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -122,4 +128,22 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.swiper-pagination-bullet {
+  background-color: #9ca3af; /* Tailwind gray-400 */
+  opacity: 1;
+}
+
+.swiper-pagination-bullet-active {
+  background-color: #2563eb; /* Tailwind blue-600 */
+}
+
+.dark .swiper-pagination-bullet { 
+  background-color: #4b5563; /* Tailwind gray-600 */
+  opacity: 1;
+}
+
+.dark .swiper-pagination-bullet-active {
+  background-color: #93c5fd; /* Tailwind blue-300 */
 }

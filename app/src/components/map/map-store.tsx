@@ -14,18 +14,54 @@ type Coordinates = {
   longitude: number;
 };
 
+type ViewingPOI =
+  | {
+      type: "existing-poi";
+      poiId: number;
+    }
+  | {
+      type: "new-poi";
+      pos: {
+        latitude: number;
+        longitude: number;
+      };
+    }
+  | {
+      type: "poi-image-carousel";
+      poiId: number;
+      name: string;
+    };
+
 type MapStore = {
   viewingItineraryId: number | null;
+  viewingPOI: ViewingPOI | null;
   currentMapTab: "explore" | "recommend";
   currentSidePanelTab: "itinerary" | "place";
+  tagBadgeOrder: number[];
+  viewState: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  };
   recommend: {
     recommendFromPos: Coordinates;
+  };
+  explore: {
+    explorePos: Coordinates | null;
+  };
+  view: {
+    viewingPos: Coordinates | null;
   };
   filters: {
     showVisited: boolean;
     showUnvisited: boolean;
     excludedTags: Set<number>;
   };
+  setViewState: (viewState: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  }) => void;
   setViewingItineraryId: (itineraryId: number | null) => void;
   setCurrentMapTab: (tab: "explore" | "recommend") => void;
   setCurrentSidePanelTab: (tab: "itinerary" | "place") => void;
@@ -33,20 +69,42 @@ type MapStore = {
   setFilterShowVisited: (showVisited: boolean) => void;
   setFilterShowUnvisited: (showUnvisisted: boolean) => void;
   setRecommendFromPos: (pos: Coordinates) => void;
+  setExplorePos: (pos: Coordinates | null) => void;
+  setViewingPos: (pos: Coordinates | null) => void;
+  setViewingPOI: (poi: ViewingPOI) => void;
+  setTagBadgeOrder: (tagIdOrder: number[]) => void;
 };
 
-export const useMapStore = create<MapStore>((set) => ({
+export const useMapStore = create<MapStore>((set, get) => ({
   viewingItineraryId: null,
+  viewingPOI: null,
   currentMapTab: "explore",
   currentSidePanelTab: "place",
+  tagBadgeOrder: [],
+  viewState: {
+    latitude: 1.3521,
+    longitude: 103.8198,
+    zoom: 10,
+  },
   recommend: {
     recommendFromPos: { latitude: 1.3521, longitude: 103.8198 },
+  },
+  explore: {
+    explorePos: null,
+  },
+    view: {
+    viewingPos: null,
   },
   filters: {
     showVisited: true,
     showUnvisited: true,
     excludedTags: new Set(),
   },
+  setViewState: (viewState: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  }) => set({ viewState }),
   setViewingItineraryId: (itineraryId: number | null) =>
     set({ viewingItineraryId: itineraryId }),
   setCurrentMapTab: (tab: "explore" | "recommend") =>
@@ -60,7 +118,16 @@ export const useMapStore = create<MapStore>((set) => ({
   setFilterShowUnvisited: (showUnvisited: boolean) =>
     set((prev) => ({ filters: { ...prev.filters, showUnvisited } })),
   setRecommendFromPos: (pos: Coordinates) =>
-    set({ recommend: { recommendFromPos: pos } }),
+    set((prev) => ({
+      recommend: { ...prev.recommend, recommendFromPos: pos },
+    })),
+  setExplorePos: (pos: Coordinates | null) =>
+    set({ explore: { explorePos: pos } }),
+  setViewingPos: (pos: Coordinates | null) =>
+    set({ view: { viewingPos: pos } }),
+  setViewingPOI: (poi: ViewingPOI | null) => set({ viewingPOI: poi }),
+  setTagBadgeOrder: (tagIdOrder: number[]) =>
+    set({ tagBadgeOrder: tagIdOrder }),
 
   //   setExplorePois: (pois: { id: number; pos: Coordinates }[]) =>
   //     set({ explore: { pois } }),

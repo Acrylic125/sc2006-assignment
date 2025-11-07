@@ -4,6 +4,7 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     DATABASE_URL: z.url(),
+    UPLOADTHING_TOKEN: z.string(),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -11,6 +12,7 @@ export const env = createEnv({
   },
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
+    UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
     NEXT_PUBLIC_MAPBOX_PK: process.env.NEXT_PUBLIC_MAPBOX_PK,
   },
 

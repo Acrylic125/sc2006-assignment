@@ -48,10 +48,12 @@ export const poiTable = pgTable("poi", {
   description: text("description").notNull(),
   latitude: numeric("latitude").notNull(),
   longitude: numeric("longitude").notNull(),
+  address: text("address").default(''),
   openingHours: text("opening_hours"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  uploaderId: text("uploader_id").default(''),
 });
 
 // Since this is Postgres, we split the images into a separate table.
@@ -67,6 +69,7 @@ export const poiImagesTable = pgTable("poi_images", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  uploaderId: text("uploader_id").default(''),
 });
 
 export const itineraryTable = pgTable("itinerary", {
@@ -134,8 +137,10 @@ export const userSurpriseMePreferencesTable = pgTable(
   {
     id: serial().notNull().primaryKey(),
     userId: varchar({ length: 128 }).notNull(),
-    tagId: integer("tag_id")
+    poiId: integer("poi_id")
       .notNull()
-      .references(() => tagTable.id),
-  }
+      .references(() => poiTable.id),
+    liked: boolean("liked").notNull(),
+  },
+  (t) => [unique("idx_user_poi").on(t.userId, t.poiId)]
 );

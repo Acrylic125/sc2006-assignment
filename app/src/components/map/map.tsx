@@ -1,264 +1,29 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-import mapboxgl from "mapbox-gl";
+import { useCallback, useMemo } from "react";
+import { MapEvent, MapMouseEvent } from "mapbox-gl";
 import { env } from "@/lib/env";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Button } from "../ui/button";
-import { cn } from "@/lib/utils";
 import { useMapStore } from "./map-store";
 import { useShallow } from "zustand/react/shallow";
+import { trpc } from "@/server/client";
+import Map, { Layer, Source, ViewStateChangeEvent } from "react-map-gl/mapbox";
+import { useMapProvider } from "./map-provider";
+import { useThemeStore } from "../theme-store";
+import { Button } from "../ui/button";
+import { Locate, Minus, Plus, Sparkle } from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Check, Ellipsis, Filter, Pen, Plus, Tag, Trash2 } from "lucide-react";
-import { trpc } from "@/server/client";
-import { parseAsInteger, useQueryState } from "nuqs";
-
-export function ItineraryDropdown() {
-  const mapStore = useMapStore(
-    useShallow(({ viewingItineraryId, setViewingItineraryId }) => {
-      return {
-        viewingItineraryId,
-        setViewingItineraryId,
-      };
-    })
-  );
-
-  const itinerariesQuery = trpc.itinerary.getAllItineraries.useQuery();
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-36 md:w-40 lg:w-52">
-          {mapStore.viewingItineraryId ? (
-            <span className="truncate">
-              {
-                itinerariesQuery.data?.find(
-                  (itinerary) => itinerary.id === mapStore.viewingItineraryId
-                )?.name
-              }
-            </span>
-          ) : (
-            <span className="truncate text-muted-foreground">
-              No Intinerary Selected
-            </span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuLabel>My Itineraries</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-
-        {itinerariesQuery.data?.map((itinerary) => (
-          <div key={itinerary.id} className="relative">
-            <Button
-              onClick={() => {
-                if (mapStore.viewingItineraryId === itinerary.id) {
-                  mapStore.setViewingItineraryId(null);
-                } else {
-                  mapStore.setViewingItineraryId(itinerary.id);
-                }
-              }}
-              className="w-full px-2 flex flex-row items-center justify-start pr-20"
-              variant={
-                mapStore.viewingItineraryId === itinerary.id
-                  ? "default"
-                  : "ghost"
-              }
-            >
-              {itinerary.name}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn("absolute top-0 right-0", {
-                    "text-background":
-                      mapStore.viewingItineraryId === itinerary.id,
-                    "text-foreground":
-                      mapStore.viewingItineraryId !== itinerary.id,
-                  })}
-                >
-                  <Ellipsis />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>
-                  <Pen className="size-3" /> Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive">
-                  <Trash2 className="size-3" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="px-2">
-          <Plus /> Create Itinerary
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-export function FilterDropdown() {
-  const mapStore = useMapStore(
-    useShallow(({ filters, setFilterShowVisited, setFilterShowUnvisited }) => {
-      return {
-        showVisited: filters.showVisited,
-        showUnvisited: filters.showUnvisited,
-        setFilterShowVisited,
-        setFilterShowUnvisited,
-      };
-    })
-  );
-
-  const hasModified = !mapStore.showVisited || !mapStore.showUnvisited;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant={hasModified ? "default" : "outline"}>
-          <Filter /> <span className="hidden lg:block">Filters</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuLabel>Filters</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <Button
-          variant="ghost"
-          className="flex flex-row items-center gap-2 w-full justify-start px-2"
-          onClick={() => {
-            mapStore.setFilterShowVisited(!mapStore.showVisited);
-          }}
-        >
-          <span className="w-4">
-            {mapStore.showVisited && <Check className="size-4" />}
-          </span>
-          <span>Show Visited</span>
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex flex-row items-center gap-2 justify-start px-2"
-          onClick={() => {
-            mapStore.setFilterShowUnvisited(!mapStore.showUnvisited);
-          }}
-        >
-          <span className="w-4">
-            {mapStore.showUnvisited && <Check className="size-4" />}
-          </span>
-          <span>Show Unvisited</span>
-        </Button>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-export function FilterTagsDropdown() {
-  const tagsQuery = trpc.map.getTags.useQuery();
-  const mapStore = useMapStore(
-    useShallow(({ filters, setFilterExcludedTags }) => {
-      return {
-        excludedTags: filters.excludedTags,
-        setFilterExcludedTags,
-      };
-    })
-  );
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={mapStore.excludedTags.size > 0 ? "default" : "outline"}
-        >
-          <Tag /> <span className="hidden lg:block">Tags</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-64 overflow-y-auto">
-        <DropdownMenuLabel>Tags</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {tagsQuery.data?.map((tag) => (
-          <Button
-            key={tag.id}
-            variant="ghost"
-            className="w-full flex flex-row items-center gap-2 justify-start px-2"
-            onClick={() => {
-              const currentExcludedTags = new Set(mapStore.excludedTags);
-              if (mapStore.excludedTags.has(tag.id)) {
-                currentExcludedTags.delete(tag.id);
-                mapStore.setFilterExcludedTags(currentExcludedTags);
-              } else {
-                currentExcludedTags.add(tag.id);
-                mapStore.setFilterExcludedTags(currentExcludedTags);
-              }
-            }}
-          >
-            <span className="w-4">
-              {!mapStore.excludedTags.has(tag.id) && (
-                <Check className="size-4" />
-              )}
-            </span>
-            <span>{tag.name}</span>
-          </Button>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-const mapViewTabs = [
-  {
-    id: "explore",
-    label: "Explore",
-  },
-  {
-    id: "recommend",
-    label: "Recommend",
-  },
-] as const;
-
-export function MapViewTabGroup() {
-  const mapStore = useMapStore(
-    useShallow(({ currentMapTab, setCurrentMapTab }) => {
-      return {
-        currentMapTab,
-        setCurrentMapTab,
-      };
-    })
-  );
-
-  return (
-    <div className="flex flex-row bg-secondary/75 backdrop-blur-sm rounded-full border border-border p-1">
-      {mapViewTabs.map((tab) => {
-        return (
-          <Button
-            key={tab.id}
-            variant={mapStore.currentMapTab === tab.id ? "default" : "ghost"}
-            onClick={() => {
-              mapStore.setCurrentMapTab(tab.id);
-            }}
-            size="sm"
-            className={cn("rounded-full shadow-sm text-sm py-1 px-2.5 h-fit", {
-              "border-border border": mapStore.currentMapTab === tab.id,
-            })}
-          >
-            {tab.label}
-          </Button>
-        );
-      })}
-    </div>
-  );
-}
+  DropdownMenuItem,
+} from "../ui/dropdown-menu";
+import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 
 function createPinURL(color: string) {
   return (
@@ -273,27 +38,99 @@ function createPinURL(color: string) {
   );
 }
 
+function createBubbleURL(color: string, width: number = 256, opacity: number = 0.5) {
+  return (
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
+    <svg width="${width}" height="${width}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="32" fill="${color}" fill-opacity="${opacity}" />
+    </svg>
+    `)
+  );
+}
+
+function createAddPin(width: number = 128) {
+  const aspectRatio = 2; // original is 32 wide, 64 tall → 1:2
+  const height = width * aspectRatio;
+
+  const svg = `<svg
+    width="${width}"
+    height="${height}"
+    viewBox="0 0 32 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="16" cy="48" r="16" fill="#00a63e" fill-opacity="0.6"/>
+    <circle cx="16" cy="48" r="3" fill="white"/>
+    <mask id="path-3-inside-1_55_15" fill="white">
+      <path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z"/>
+    </mask>
+    <path d="M16 0C24.8366 0 32 7.16344 32 16C32 27.5 28.3233 36.8858 15.75 48C3.77669 35.3588 0.245448 28.3406 0.0107422 16.5459C0.00466547 16.3647 0 16.1827 0 16C0 7.16353 7.16356 0.00013195 16 0Z" fill="#008236"/>
+    <rect x="14" y="9" width="4" height="16" rx="2" fill="#ffffff"/>
+    <rect x="8" y="15" width="16" height="4" rx="2" fill="#ffffff"/>
+  </svg>`;
+
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+
+//below ensures pins do not become blurry from over-scaling
+//target constant: px_per_scale
+//input var: size = width*scale
+//.: width = px_per_scale * scale
+//   scale = size/width = sqrt(size/px_per_scale)
+
+const PX_PER_SCALE = 128;
+
+const ADD_PIN_SIZE = 40;
+const ADD_PIN_SCALE = Math.sqrt(ADD_PIN_SIZE/PX_PER_SCALE);
+const BUBBLE_MIN_SIZE = 30;
+const BUBBLE_MAX_SIZE = 70;
+const BUBBLE_MIN_SCALE = Math.sqrt(BUBBLE_MIN_SIZE/PX_PER_SCALE);
+const BUBBLE_MAX_SCALE = Math.sqrt(BUBBLE_MAX_SIZE/PX_PER_SCALE);
+
+const BUBBLE_OPACITY = 0.65
+
 const pins = {
-  red: createPinURL("#FB2C36"),
-  blue: createPinURL("#3B82F6"),
-  green: createPinURL("#10B981"),
-  yellow: createPinURL("#EAB308"),
-  purple: createPinURL("#8B5CF6"),
-  orange: createPinURL("#F59E0B"),
-  pink: createPinURL("#EC4899"),
+  red: createPinURL("#e7000b"), //red-600
+  yellow: createPinURL("#fd9a00"), //amber-500
+  blue_bubble: createBubbleURL("#193cb8", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //blue-800
+  red_bubble: createBubbleURL("#ff2056", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //rose-500
+  yellow_bubble: createBubbleURL("#ffba00", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //amber-400
+  gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
+  add_pin: createAddPin(PX_PER_SCALE*ADD_PIN_SCALE),
 };
 
-function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
-  const [, setPoiId] = useQueryState("poi", parseAsInteger);
+const BUBBLE_DOT_SIZE = 4;
+
+const CLUSTER_COLOR = "#0084d1" //sky-600
+const CLUSTER_OPACITY = 0.6
+
+function ExploreMapLayers({ enabled }: { enabled: boolean }) {
   const mapStore = useMapStore(
-    useShallow(({ filters, viewingItineraryId, setCurrentSidePanelTab }) => {
-      return {
+    useShallow(
+      ({
         filters,
         viewingItineraryId,
+        viewingPOI,
         setCurrentSidePanelTab,
-      };
-    })
+        setViewingPOI,
+        explore,
+        view,
+      }) => {
+        return {
+          filters,
+          viewingItineraryId,
+          viewingPOI,
+          setCurrentSidePanelTab,
+          setViewingPOI,
+          explorePos: explore.explorePos,
+          viewingPos: view.viewingPos,
+        };
+      }
+    )
   );
+
   const poisQuery = trpc.map.search.useQuery(
     {
       showVisited: mapStore.filters.showVisited,
@@ -313,143 +150,245 @@ function useExploreMap(map: mapboxgl.Map | null, enabled: boolean) {
     }
   );
 
-  useEffect(() => {
-    if (!enabled) return;
-    if (!poisQuery.data) return;
-    if (!map) return;
-
-    const itineraryPOISSet = new Set(
-      itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
+  const poiPins = useMemo(() => {
+    if (!poisQuery.data || poisQuery.data.length === 0) {
+      return [];
+    }
+    const itineraryPOIIds = new Set(
+      itinerariesQuery.data?.pois?.map((p) => p.id) ?? []
     );
-
-    let cleanUpFn: (() => void) | undefined;
-
-    const load = async () => {
-      const LAYER_EXPLORE_PINS = "explore-pins-layer";
-      const SOURCE_EXPLORE_PINS = "explore-pins";
-
-      const features = [];
-      for (const poi of poisQuery.data) {
-        features.push({
-          type: "Feature" as const,
-          geometry: {
-            type: "Point" as const,
-            coordinates: [poi.pos.longitude, poi.pos.latitude],
-          },
-          properties: {
-            id: poi.id,
-            color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
-          },
-        });
+    const minScore = Math.min(
+      ...poisQuery.data.map((poi) => poi.popularityScore)
+    );
+    const maxScore = Math.max(
+      ...poisQuery.data.map((poi) => poi.popularityScore)
+    );
+    return poisQuery.data?.map((poi) => {
+      // Determine pin color: red for selected POI, green for itinerary POIs, blue for others
+      let color = "blue_bubble"; // default
+      if (itineraryPOIIds.has(poi.id)) {
+        color = "yellow_bubble";
+      }
+      if (
+        mapStore.viewingPOI?.type === "existing-poi" &&
+        mapStore.viewingPOI.poiId === poi.id
+      ) {
+        color = "red_bubble"; // currently selected POI
+      }
+      let poiScale = BUBBLE_MIN_SCALE;
+      if (maxScore === minScore) {
+        poiScale = (BUBBLE_MIN_SCALE + BUBBLE_MAX_SCALE) / 2;
+      } else {
+        poiScale =
+          BUBBLE_MIN_SCALE +
+          ((poi.popularityScore - minScore) / (maxScore - minScore)) *
+            (BUBBLE_MAX_SCALE - BUBBLE_MIN_SCALE);
       }
 
-      map.addSource(SOURCE_EXPLORE_PINS, {
-        type: "geojson",
-        data: {
+      return {
+        id: poi.id,
+        color: color,
+        coordinates: [poi.pos.longitude, poi.pos.latitude],
+        scale: poiScale,
+      };
+    });
+  }, [poisQuery.data, itinerariesQuery.data, mapStore.viewingPOI]);
+
+  return (
+    <>
+      <Source
+        id="pins"
+        type="geojson"
+        cluster={true}
+        clusterRadius={40}
+        clusterMaxZoom={12}
+        data={{
           type: "FeatureCollection",
-          features: features,
-        },
-      });
-      const handlePinClick = (e: mapboxgl.MapMouseEvent) => {
-        if (e.features === undefined || e.features?.length === 0) return;
-        const poiId = e.features?.[0]?.properties?.id;
-        if (poiId === undefined || typeof poiId !== "number") return;
-        setPoiId(poiId);
-        mapStore.setCurrentSidePanelTab("place");
-      };
-      map.on("click", LAYER_EXPLORE_PINS, handlePinClick);
-
-      cleanUpFn = () => {
-        if (map.getLayer(LAYER_EXPLORE_PINS)) {
-          map.removeLayer(LAYER_EXPLORE_PINS);
-        }
-        if (map.getSource(SOURCE_EXPLORE_PINS)) {
-          map.removeSource(SOURCE_EXPLORE_PINS);
-        }
-        map.off("click", LAYER_EXPLORE_PINS, handlePinClick);
-      };
-
-      // Ensure the pin image is loaded before adding the layer
-      const ensurePinImage = async (color: keyof typeof pins) => {
-        if (map.hasImage(`pin-${color}`)) return;
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        const url = pins[color];
-        img.src = url;
-        try {
-          await img.decode();
-          const bitmap = await createImageBitmap(img);
-          if (!map.hasImage(`pin-${color}`)) {
-            map.addImage(`pin-${color}`, bitmap);
-          }
-        } catch (err) {
-          console.error("Failed to load pin image", err);
-        }
-      };
-
-      await ensurePinImage("red");
-      await ensurePinImage("green");
-      await ensurePinImage("blue");
-
-      if (!map.getLayer(LAYER_EXPLORE_PINS)) {
-        map.addLayer({
-          id: LAYER_EXPLORE_PINS,
-          type: "symbol",
-          source: SOURCE_EXPLORE_PINS,
-          layout: {
+          features:
+            poiPins?.map((poi) => {
+              const poiPos = poi.coordinates;
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: poiPos,
+                },
+                properties: {
+                  id: poi.id,
+                  color: poi.color,
+                  scale: poi.scale,
+                },
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="clusters"
+          type="circle"
+          source="pins"
+          filter={["has", "point_count"]}
+          paint={{
+            "circle-color": CLUSTER_COLOR,
+            "circle-radius": [
+              "step",
+              ["get", "point_count"],
+              24, // radius for clusters with less than 10 points
+              10,
+              36, // radius for clusters with 10-30 points
+              30,
+              48, // radius for clusters with 30+ points
+            ],
+            "circle-opacity": CLUSTER_OPACITY,
+          }}
+        />
+        <Layer
+          id="poi-pins"
+          type="symbol"
+          source="pins"
+          layout={{
             "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 0.5,
-            "icon-anchor": "bottom",
+            "icon-size": ["get", "scale"],
+            "icon-anchor": "center",
             "text-offset": [0, 1.2],
             "text-anchor": "top",
-          },
-        });
-      }
-    };
-    // if (map.loaded()) {
-    //   load();
-    // } else {
-    // }
-    map.on("load", load);
-    map.fire("load");
-    return () => {
-      cleanUpFn?.();
-      map.off("load", load);
-    };
-  }, [
-    map,
-    poisQuery.data,
-    itinerariesQuery.data,
-    enabled,
-    mapStore,
-    mapStore.setCurrentSidePanelTab,
-    setPoiId,
-  ]);
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+        <Layer
+          id="poi-pins_center"
+          type="circle"
+          source="pins"
+          filter={["!", ["has", "point_count"]]}
+          paint={{
+            "circle-color": "#ffffff",
+            "circle-radius": BUBBLE_DOT_SIZE,
+            "circle-opacity": 1,
+          }}
+        />
+      </Source>
+      <Source
+        id="poi-pins-itinerary"
+        type="geojson"
+        cluster={false}
+        data={{
+          type: "FeatureCollection",
+          features:
+            itinerariesQuery.data?.pois.map((poi) => {
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [poi.longitude, poi.latitude],
+                },
+                properties: {},
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="poi-pins-itinerary"
+          type="symbol"
+          source="poi-pins-itinerary"
+          layout={{
+            "icon-image": "pin-yellow",
+            "icon-size": 1,
+            "icon-anchor": "bottom",
+          }}
+        />
+      </Source>
+      {mapStore.explorePos && (
+        <Source
+          id="explore-pin-from"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.explorePos.longitude,
+                    mapStore.explorePos.latitude,
+                  ],
+                },
+                properties: {},
+              },
+            ],
+          }}
+        >
+          <Layer
+            id="explore-pin-from"
+            type="symbol"
+            source="explore-pin-from"
+            layout={{
+              "icon-image": "pin-add_pin",
+              "icon-size": ADD_PIN_SCALE,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
+      {mapStore.viewingPos && (
+        <Source
+          id="viewing-pin-from"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [
+                    mapStore.viewingPos.longitude,
+                    mapStore.viewingPos.latitude,
+                  ],
+                },
+                properties: {},
+              },
+            ],
+          }}
+        >
+          <Layer
+            id="viewing-pin-from"
+            type="symbol"
+            source="viewing-pin-from"
+            layout={{
+              "icon-image": "pin-red",
+              "icon-size": 1,
+              "icon-anchor": "bottom",
+            }}
+          />
+        </Source>
+      )}
+    </>
+  );
 }
 
-function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
-  const [, setPoiId] = useQueryState("poi", parseAsInteger);
+function RecommendMapLayers({ enabled }: { enabled: boolean }) {
   const mapStore = useMapStore(
     useShallow(
       ({
         filters,
         viewingItineraryId,
+        viewingPOI,
         setCurrentSidePanelTab,
+        setViewingPOI,
         recommend,
-        setRecommendFromPos,
       }) => {
         return {
           filters,
           viewingItineraryId,
+          viewingPOI,
           setCurrentSidePanelTab,
+          setViewingPOI,
           recommendFromPos: recommend.recommendFromPos,
-          setRecommendFromPos,
         };
       }
     )
   );
-
-  const poisQuery = trpc.map.search.useQuery(
+  const poisQuery = trpc.map.recommend.useQuery(
     {
       recommendFromLocation: mapStore.recommendFromPos,
       showVisited: mapStore.filters.showVisited,
@@ -469,86 +408,207 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
     }
   );
 
-  useEffect(() => {
-    if (!enabled) return;
-    if (!map) return;
-
-    let cleanUpFn: (() => void) | undefined;
-    const itineraryPOISSet = new Set(
-      itinerariesQuery.data?.pois.map((poi) => poi.id) ?? []
-    );
-
-    const load = async () => {
-      const LAYER_RECOMMEND_PINS = "recommend-pins-layer";
-      const SOURCE_RECOMMEND_PINS = "recommend-pins";
-      const LAYER_PIN_FROM_PINS = "pin-from-layer";
-      const SOURCE_PIN_FROM_PINS = "pin-from-pins";
-
-      // Add map click handler to set recommend position
-      const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: [LAYER_RECOMMEND_PINS],
-        });
-        console.log(features);
-        if (features === undefined || features?.length === 0) {
-          const { lng, lat } = e.lngLat;
-          mapStore.setRecommendFromPos({ latitude: lat, longitude: lng });
-          return;
-        }
-        const poiId = features?.[0]?.properties?.id;
-        if (poiId === undefined || typeof poiId !== "number") return;
-        setPoiId(poiId);
-        mapStore.setCurrentSidePanelTab("place");
+  const poiPins = useMemo(() => {
+    if (!poisQuery.data) {
+      return {
+        recommended: [],
+        others: [],
       };
+    }
 
-      // Remove existing click handlers to avoid duplicates
-      cleanUpFn = () => {
-        // Remove existing layers and sources
-        if (map.getLayer(LAYER_RECOMMEND_PINS)) {
-          map.removeLayer(LAYER_RECOMMEND_PINS);
+    let recommended: {
+      id: number;
+      color: string;
+      coordinates: [number, number];
+      scale: number;
+    }[] = [];
+    let others: {
+      id: number;
+      color: string;
+      coordinates: [number, number];
+      scale: number;
+    }[] = [];
+    if (poisQuery.data.recommended.length > 0) {
+      const minScore = Math.min(
+        ...poisQuery.data.recommended.map((poi) => poi.popularityScore)
+      );
+      const maxScore = Math.max(
+        ...poisQuery.data.recommended.map((poi) => poi.popularityScore)
+      );
+      recommended = poisQuery.data.recommended.map((poi) => {
+        let color = "blue_bubble"; // default
+        if (
+          mapStore.viewingPOI?.type === "existing-poi" &&
+          mapStore.viewingPOI.poiId === poi.id
+        ) {
+          color = "red_bubble"; // currently selected POI
         }
-        if (map.getSource(SOURCE_RECOMMEND_PINS)) {
-          map.removeSource(SOURCE_RECOMMEND_PINS);
+        let poiScale = BUBBLE_MIN_SCALE;
+        if (maxScore === minScore) {
+          poiScale = (BUBBLE_MIN_SCALE + BUBBLE_MAX_SCALE) / 2;
+        } else {
+          poiScale =
+            BUBBLE_MIN_SCALE +
+            ((poi.popularityScore - minScore) / (maxScore - minScore)) *
+              (BUBBLE_MAX_SCALE - BUBBLE_MIN_SCALE);
         }
-        if (map.getLayer(LAYER_PIN_FROM_PINS)) {
-          map.removeLayer(LAYER_PIN_FROM_PINS);
-        }
-        if (map.getSource(SOURCE_PIN_FROM_PINS)) {
-          map.removeSource(SOURCE_PIN_FROM_PINS);
-        }
-        map.off("click", handleMapClick);
-      };
-      map.on("click", handleMapClick);
 
-      // Add POI pins if data is available
-      if (poisQuery.data) {
-        const features = [];
-        for (const poi of poisQuery.data) {
-          features.push({
-            type: "Feature" as const,
-            geometry: {
-              type: "Point" as const,
-              coordinates: [poi.pos.longitude, poi.pos.latitude],
-            },
-            properties: {
-              id: poi.id,
-              color: itineraryPOISSet.has(poi.id) ? "green" : "blue",
-            },
-          });
+        return {
+          id: poi.id,
+          color: color,
+          coordinates: [poi.pos.longitude, poi.pos.latitude],
+          scale: poiScale,
+        };
+      });
+    }
+    if (poisQuery.data.others.length > 0) {
+      others = poisQuery.data.others.map((poi) => {
+        let color = "gray_bubble"; // default
+        if (
+          mapStore.viewingPOI?.type === "existing-poi" &&
+          mapStore.viewingPOI.poiId === poi.id
+        ) {
+          color = "red_bubble"; // currently selected POI
         }
-        map.addSource(SOURCE_RECOMMEND_PINS, {
-          type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features: features,
-          },
-        });
-      }
+        return {
+          id: poi.id,
+          color: color,
+          coordinates: [poi.pos.longitude, poi.pos.latitude],
+          scale: 0.5,
+        };
+      });
+    }
 
-      // Add red pin for recommend position
-      map.addSource(SOURCE_PIN_FROM_PINS, {
-        type: "geojson",
-        data: {
+    return {
+      recommended,
+      others,
+    };
+  }, [poisQuery.data, mapStore.viewingPOI]);
+
+  return (
+    <>
+      <Source
+        id="pins-others"
+        type="geojson"
+        cluster={true}
+        clusterRadius={40}
+        clusterMaxZoom={15}
+        data={{
+          type: "FeatureCollection",
+          features:
+            poiPins.others.map((poi) => {
+              const poiPos = poi.coordinates;
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: poiPos,
+                },
+                properties: {
+                  id: poi.id,
+                  color: poi.color,
+                  scale: poi.scale,
+                },
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="poi-pins-others"
+          type="symbol"
+          source="pins-others"
+          layout={{
+            "icon-image": ["concat", "pin-", ["get", "color"]],
+            "icon-size": ["get", "scale"],
+            "icon-anchor": "center",
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+      </Source>
+      <Source
+        id="pins"
+        type="geojson"
+        data={{
+          type: "FeatureCollection",
+          features:
+            poiPins.recommended.map((poi) => {
+              const poiPos = poi.coordinates;
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: poiPos,
+                },
+                properties: {
+                  id: poi.id,
+                  color: poi.color,
+                  scale: poi.scale,
+                },
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="poi-pins"
+          type="symbol"
+          source="pins"
+          layout={{
+            "icon-image": ["concat", "pin-", ["get", "color"]],
+            "icon-size": ["get", "scale"],
+            "icon-anchor": "center",
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+            "icon-allow-overlap": true, //allow overlapping icons because our pins can get big
+          }}
+        />
+        <Layer
+          id="poi-pins_center"
+          type="circle"
+          source="pins"
+          filter={["!", ["has", "point_count"]]}
+          paint={{
+            "circle-color": "#ffffff",
+            "circle-radius": BUBBLE_DOT_SIZE,
+            "circle-opacity": 1,
+          }}
+        />
+      </Source>
+      <Source
+        id="poi-pins-itinerary"
+        type="geojson"
+        cluster={false}
+        data={{
+          type: "FeatureCollection",
+          features:
+            itinerariesQuery.data?.pois.map((poi) => {
+              return {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [poi.longitude, poi.latitude],
+                },
+                properties: {},
+              };
+            }) ?? [],
+        }}
+      >
+        <Layer
+          id="poi-pins-itinerary"
+          type="symbol"
+          source="poi-pins-itinerary"
+          layout={{
+            "icon-image": "pin-yellow",
+            "icon-size": 0.8,
+            "icon-anchor": "bottom",
+          }}
+        />
+      </Source>
+      <Source
+        id="recommend-pin-from"
+        type="geojson"
+        data={{
           type: "FeatureCollection",
           features: [
             {
@@ -560,211 +620,326 @@ function useRecommendMap(map: mapboxgl.Map | null, enabled: boolean) {
                   mapStore.recommendFromPos.latitude,
                 ],
               },
-              properties: {
-                color: "red",
-              },
+              properties: { color: "red" },
             },
           ],
-        },
-      });
-
-      // Ensure the pin images are loaded before adding the layers
-      const ensurePinImage = async (color: keyof typeof pins) => {
-        if (map.hasImage(`pin-${color}`)) return;
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        const url = pins[color];
-        img.src = url;
-        try {
-          await img.decode();
-          const bitmap = await createImageBitmap(img);
-          if (!map.hasImage(`pin-${color}`)) {
-            map.addImage(`pin-${color}`, bitmap);
-          }
-        } catch (err) {
-          console.error("Failed to load pin image", err);
-        }
-      };
-
-      await ensurePinImage("red");
-      await ensurePinImage("green");
-      await ensurePinImage("blue");
-
-      // Add POI layer if data is available
-      if (poisQuery.data && !map.getLayer(LAYER_RECOMMEND_PINS)) {
-        map.addLayer({
-          id: LAYER_RECOMMEND_PINS,
-          type: "symbol",
-          source: SOURCE_RECOMMEND_PINS,
-          layout: {
-            "icon-image": ["concat", "pin-", ["get", "color"]],
-            "icon-size": 0.5,
-            "icon-anchor": "bottom",
-            "text-offset": [0, 1.2],
-            "text-anchor": "top",
-          },
-        });
-      }
-
-      // Add recommend pin layer
-      if (!map.getLayer(LAYER_PIN_FROM_PINS)) {
-        map.addLayer({
-          id: LAYER_PIN_FROM_PINS,
-          type: "symbol",
-          source: SOURCE_PIN_FROM_PINS,
-          layout: {
+        }}
+      >
+        <Layer
+          id="recommend-pin-from"
+          type="symbol"
+          source="recommend-pin-from"
+          layout={{
             "icon-image": "pin-red",
-            "icon-size": 0.5,
+            "icon-size": 1,
             "icon-anchor": "bottom",
-          },
-        });
-      }
-    };
-    // if (map.loaded()) {
-    //   load();
-    // } else {
-    //   map.on("load", load);
-    // }
-    map.on("load", load);
-    map.fire("load");
-    return () => {
-      cleanUpFn?.();
-      map.off("load", load);
-    };
-  }, [
-    map,
-    poisQuery.data,
-    itinerariesQuery.data,
-    enabled,
-    mapStore,
-    mapStore.setCurrentSidePanelTab,
-    mapStore.recommendFromPos,
-    setPoiId,
-  ]);
+          }}
+        />
+      </Source>
+    </>
+  );
 }
 
-export function ExploreMap({ className }: { className: string }) {
-  const [map, setMap] = useState<mapboxgl.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+export default function ExploreMap({ className }: { className: string }) {
+  const { mapRef } = useMapProvider();
+  const { theme } = useThemeStore(useShallow(({ theme }) => ({ theme })));
   const mapStore = useMapStore(
-    useShallow(({ currentMapTab }) => {
-      return {
+    useShallow(
+      ({
         currentMapTab,
-      };
-    })
+        setRecommendFromPos,
+        setExplorePos,
+        setViewingPos,
+        setViewingPOI,
+        setCurrentSidePanelTab,
+        setViewState,
+        viewState,
+        setTagBadgeOrder,
+      }) => {
+        return {
+          currentMapTab,
+          setRecommendFromPos,
+          setExplorePos,
+          setViewingPos,
+          setViewingPOI,
+          setCurrentSidePanelTab,
+          setViewState,
+          viewState,
+          setTagBadgeOrder,
+        };
+      }
+    )
   );
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-    mapboxgl.accessToken = env.NEXT_PUBLIC_MAPBOX_PK;
-    const m = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [103.8198, 1.3521],
-      zoom: 10,
-    });
-    setMap(m);
+  const onMove = useCallback(
+    (e: ViewStateChangeEvent) => {
+      mapStore.setViewState(e.viewState);
+    },
+    [mapStore]
+  );
+  const onLoad = useCallback(async (e: MapEvent) => {
+    const map = e.target;
 
-    // Add red pin with pulsating effect
-    // mapRef.current.on("load", () => {
-    //   if (!mapRef.current) return;
-
-    //   // Create a custom marker element
-    //   const markerElement = document.createElement("div");
-    //   markerElement.className = "custom-red-pin";
-
-    //   // Create the pin structure
-    //   markerElement.innerHTML = `
-    //     <div class="pin-container">
-    //       <div class="pin-pulse"></div>
-    //       <div class="pin-pulse"></div>
-    //       <div class="pin-pulse"></div>
-    //       <div class="pin-dot"></div>
-    //     </div>
-    //   `;
-
-    //   // Add styles for the pin and pulsating effect
-    //   const style = document.createElement("style");
-    //   style.textContent = `
-    //     .custom-red-pin {
-    //       width: 20px;
-    //       height: 20px;
-    //       position: relative;
-    //     }
-
-    //     .pin-container {
-    //       position: relative;
-    //       width: 100%;
-    //       height: 100%;
-    //       display: flex;
-    //       align-items: center;
-    //       justify-content: center;
-    //     }
-
-    //     .pin-dot {
-    //       width: 12px;
-    //       height: 12px;
-    //       background-color: #dc2626;
-    //       border: 2px solid white;
-    //       border-radius: 50%;
-    //       position: relative;
-    //       z-index: 4;
-    //       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    //     }
-
-    //     .pin-pulse {
-    //       position: absolute;
-    //       width: 100px;
-    //       height: 100px;
-    //       background-color: #dc2626;
-    //       border-radius: 50%;
-    //       opacity: 0.6;
-    //       animation: pulse 1s infinite;
-    //     }
-
-    //     .pin-pulse:nth-child(1) {
-    //       animation-delay: 0ms;
-    //     }
-
-    //     .pin-pulse:nth-child(2) {
-    //       animation-delay: 100ms;
-    //     }
-
-    //     .pin-pulse:nth-child(3) {
-    //       animation-delay: 200ms;
-    //     }
-
-    //     @keyframes pulse {
-    //       0% {
-    //         transform: scale(0.8);
-    //         opacity: 0.6;
-    //       }
-    //       50% {
-    //         transform: scale(1.2);
-    //         opacity: 0.3;
-    //       }
-    //       100% {
-    //         transform: scale(1.6);
-    //         opacity: 0;
-    //       }
-    //     }
-    //   `;
-
-    //   document.head.appendChild(style);
-
-    //   // Create and add the marker
-    //   new mapboxgl.Marker(markerElement)
-    //     .setLngLat([103.8198, 1.3521])
-    //     .addTo(mapRef.current);
-    // });
-
-    return () => {
-      m.remove();
+    const ensurePinImage = async (color: keyof typeof pins) => {
+      if (map.hasImage(`pin-${color}`)) return;
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      const url = pins[color];
+      img.src = url;
+      try {
+        await img.decode();
+        const bitmap = await createImageBitmap(img);
+        if (!map.hasImage(`pin-${color}`)) {
+          map.addImage(`pin-${color}`, bitmap);
+        }
+      } catch (err) {
+        console.error("Failed to load pin image", err);
+      }
     };
+
+    await Promise.all([
+      ensurePinImage("red"),
+      ensurePinImage("yellow"),
+      ensurePinImage("blue_bubble"),
+      ensurePinImage("red_bubble"),
+      ensurePinImage("yellow_bubble"),
+      ensurePinImage("gray_bubble"),
+      ensurePinImage("add_pin"),
+    ]);
   }, []);
 
-  useExploreMap(map, mapStore.currentMapTab === "explore");
-  useRecommendMap(map, mapStore.currentMapTab === "recommend");
+  const onClick = useCallback(
+    (e: MapMouseEvent) => {
+      const map = e.target;
+      const layers: string[] = [];
+      const possibleLayers = [
+        "poi-pins",
+        "poi-pins-others",
+        "poi-pins-itinerary",
+      ];
+      for (const layer of possibleLayers) {
+        if (map.getLayer(layer)) {
+          layers.push(layer);
+        }
+      }
 
-  return <div id="map-container" ref={mapContainerRef} className={className} />;
+      const poiPins = map.queryRenderedFeatures(e.point, {
+        layers,
+      });
+      if (poiPins.length > 0) {
+        const poiId = poiPins[0].properties?.id;
+        if (poiId && typeof poiId === "number") {
+          mapStore.setTagBadgeOrder([]); //when a new POI is clicked, reset tag badge order
+          mapStore.setCurrentSidePanelTab("place");
+          mapStore.setViewingPOI({
+            type: "existing-poi",
+            poiId,
+          });
+          // Reset explore pos when a new POI is clicked(set though the cluster layer)
+          if (mapStore.currentMapTab === "explore") {
+            mapStore.setExplorePos(null);
+            if (poiPins[0].geometry?.type === "Point") {
+              const [lng, lat] = poiPins[0].geometry.coordinates;
+              mapStore.setViewingPos({ latitude: lat, longitude: lng });
+            }
+          }
+        }
+        return;
+      }
+
+      if (map.getLayer("clusters") && mapStore.currentMapTab === "explore") {
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: ["clusters"],
+        });
+        if (features.length) {
+          const clusterFeature = features[0];
+          const clusterId = clusterFeature.properties?.cluster_id;
+          const source = map.getSource("pins");
+          if (source && "getClusterExpansionZoom" in source) {
+            (source as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+              clusterId,
+              (err, zoom) => {
+                if (err || zoom == null) return;
+
+                if (clusterFeature.geometry.type === "Point") {
+                  const [lng, lat] = clusterFeature.geometry.coordinates;
+                  map.easeTo({
+                    center: [lng, lat],
+                    zoom: zoom,
+                  });
+                }
+              }
+            );
+            return;
+          }
+        }
+      }
+
+      // For recommend map.
+      if (mapStore.currentMapTab === "recommend") {
+        mapStore.setRecommendFromPos({
+          latitude: e.lngLat.lat,
+          longitude: e.lngLat.lng,
+        });
+      }
+      // For explore map.
+      else if (mapStore.currentMapTab == "explore") {
+        // TODO: Add stuff here for explore map.
+        const pos = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
+        mapStore.setExplorePos(pos);
+        mapStore.setViewingPos(null);
+        mapStore.setViewingPOI({ type: "new-poi", pos });
+        mapStore.setCurrentSidePanelTab("place");
+      }
+    },
+    [mapStore]
+  );
+
+  return (
+    <Map
+      ref={mapRef}
+      mapboxAccessToken={env.NEXT_PUBLIC_MAPBOX_PK}
+      onMove={onMove}
+      latitude={mapStore.viewState.latitude}
+      longitude={mapStore.viewState.longitude}
+      zoom={mapStore.viewState.zoom}
+      onLoad={onLoad}
+      // Dark mode map
+      /*mapStyle={
+        theme === "dark"
+          ? "mapbox://styles/mapbox/navigation-night-v1"
+          : "mapbox://styles/mapbox/streets-v12"
+      }*/
+      key={theme}
+      //mapStyle="mapbox://styles/mapbox/streets-v12"
+      mapStyle="mapbox://styles/mapbox/outdoors-v12"
+      onClick={onClick}
+    >
+      {mapStore.currentMapTab === "explore" && <ExploreMapLayers enabled />}
+      {mapStore.currentMapTab === "recommend" && <RecommendMapLayers enabled />}
+    </Map>
+  );
 }
+
+export function MapControls() {
+  const map = useMapProvider();
+  return (
+    <div className="flex flex-row gap-2 absolute top-4 right-4">
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => {
+          // Center at Singapore.
+          map.mapRef.current?.flyTo({
+            center: [103.8198, 1.3521],
+            zoom: 10,
+          });
+        }}
+      >
+        <Locate />
+      </Button>
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => {
+          map.mapRef.current?.zoomIn();
+        }}
+      >
+        <Plus />
+      </Button>
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => {
+          map.mapRef.current?.zoomOut();
+        }}
+      >
+        <Minus />
+      </Button>
+    </div>
+  );
+}
+
+export function MapHintTopBar() {
+  const mapStore = useMapStore(
+    useShallow(({ currentMapTab }) => ({ currentMapTab }))
+  );
+  if (mapStore.currentMapTab === "explore") {
+    return (
+      <div className="absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
+        <p className="text-center w-full text-muted-foreground">
+          Click on <span className="text-primary font-bold">Pin to view</span>{" "}
+          OR{" "}
+          <span className="text-primary font-bold">Map to add a new place</span>
+          .
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
+      <p className="text-center w-full text-muted-foreground">
+        Click on <span className="text-primary font-bold">Pin to view</span> OR{" "}
+        <span className="text-primary font-bold">
+          Map to view recommendations
+        </span>
+        .
+      </p>
+    </div>
+  );
+}
+
+export function MapViewTabGroupDropdown() {
+  const auth = useAuth();
+  const mapStore = useMapStore(
+    useShallow(({ currentMapTab, setCurrentMapTab }) => ({
+      currentMapTab,
+      setCurrentMapTab,
+    }))
+  );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          <span className="hidden sm:block">
+            {mapStore.currentMapTab === "explore" ? "Explore" : "Recommend"}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuLabel>Map View</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={mapStore.currentMapTab === "explore"}
+          onCheckedChange={() => mapStore.setCurrentMapTab("explore")}
+        >
+          Explore
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={mapStore.currentMapTab === "recommend"}
+          onCheckedChange={() => mapStore.setCurrentMapTab("recommend")}
+        >
+          Recommend
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        {auth.isSignedIn ? (
+          <DropdownMenuItem asChild>
+            <Link href="/surprise-me">
+              <div className="flex flex-row items-center gap-2">
+                <Sparkle />
+                <span>Surprise Me!</span>
+              </div>
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled>
+            <div className="flex items-center gap-2">
+              <span>Sign in to use Surprise Me</span>
+            </div>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+

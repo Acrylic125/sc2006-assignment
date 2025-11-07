@@ -2,16 +2,20 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { formatDurationToClosestUnit } from "@/lib/utils";
+import { cn, formatDurationToClosestUnit } from "@/lib/utils";
 import { useAuth } from "@clerk/nextjs";
 import {
   ImageIcon,
   Loader2,
   MapPin,
+  MessageSquareWarning,
   Navigation,
+  Pencil,
   Plus,
+  Pointer,
   ThumbsDown,
   ThumbsUp,
+  Upload,
 } from "lucide-react";
 import Image from "next/image";
 import { useQueryState, parseAsInteger } from "nuqs";
@@ -21,57 +25,33 @@ import { useMapStore } from "./map-store";
 import { DislikeButton, LikeButton } from "../icons/like-dislike-icons";
 import { trpc } from "@/server/client";
 import { Skeleton } from "../ui/skeleton";
+import { useUser } from "@clerk/nextjs";
+import { Badge } from "@/components/ui/badge";
+import { useMemo } from "react";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
-export function ViewPOIReviews({ poiId }: { poiId: number }) {
+export function ViewPOIReviews({
+  poiId,
+  poiName,
+}: {
+  poiId: number;
+  poiName: string;
+}) {
   const auth = useAuth();
 
-  // TODO: Retrieve personal reviews + other reviews using the Reviews Router.
-  const reviews = [
-    {
-      id: 1,
-      liked: false,
-      comment: "This is a review",
-      images: ["/example.png", "/example.png", "/example.png"],
-      age: 30000,
-      // createdAt: new Date(),
-      // User needs to be retrieved from clerk.
-      // See https://clerk.com/docs/reference/backend/user/get-user-list
-      // Filter by `userId`. Note the limit is 100. We will only ever
-      // retrieve up to 50 reviews at a time so this limit will never
-      // be reached.
-      user: {
-        id: "user_123",
-        name: "User 1",
-        profilePicture: "https://github.com/shadcn.png",
-      },
-      itinerary: {
-        id: 1,
-        name: "Itinerary 1",
-      },
-    },
-    {
-      id: 2,
-      liked: true,
-      comment: "This is a review",
-      images: ["/example.png", "/example.png", "/example.png"],
-      age: 86400000,
-      // createdAt: new Date(),
-      // User needs to be retrieved from clerk.
-      // See https://clerk.com/docs/reference/backend/user/get-user-list
-      // Filter by `userId`. Note the limit is 100. We will only ever
-      // retrieve up to 50 reviews at a time so this limit will never
-      // be reached.
-      user: {
-        id: "user_123",
-        name: "User 1",
-        profilePicture: "https://github.com/shadcn.png",
-      },
-      itinerary: {
-        id: 1,
-        name: "Itinerary 1",
-      },
-    },
-  ];
+  // Get reviews from the backend
+  const reviewsQuery = trpc.review.getReviews.useQuery({ poiId });
+  const userReviewQuery = trpc.review.getUserReview.useQuery(
+    { poiId },
+    { enabled: !!auth.isSignedIn }
+  );
 
   const modalStore = useMapModalStore(
     useShallow(({ setAction }) => {
@@ -81,90 +61,340 @@ export function ViewPOIReviews({ poiId }: { poiId: number }) {
     })
   );
 
+  const handleDeleteReview = (reviewId: number) => {
+    modalStore.setAction({
+      type: "delete-review",
+      options: {
+        reviewId,
+        poiId,
+      },
+    });
+  };
+
+  if (reviewsQuery.isLoading) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-row items-center justify-between">
+          <h3 className="font-medium">Reviews</h3>
+          <Skeleton className="w-24 h-8" />
+        </div>
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const reviews = reviewsQuery.data || [];
+  const userReview = userReviewQuery.data;
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-row items-center justify-between">
-        <h3 className="font-medium">Reviews</h3>
-        <Button
-          variant="default"
-          size="sm"
-          disabled={!auth.isSignedIn}
-          onClick={() => {
-            modalStore.setAction({
-              type: "itinerary-poi-review",
-              options: {
-                poiId: poiId,
-              },
-            });
-          }}
-        >
-          <Plus /> Review
-        </Button>
+        <h3 className="font-medium">Reviews ({reviews.length})</h3>
+        {userReview ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="default"
+                size="sm"
+                disabled={!auth.isSignedIn || reviewsQuery.isPending}
+              >
+                <Pencil /> Edit Review
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => {
+                  modalStore.setAction({
+                    type: "itinerary-poi-review",
+                    options: {
+                      poiId: poiId,
+                    },
+                  });
+                }}
+              >
+                Edit Review
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  modalStore.setAction({
+                    type: "update-review-images",
+                    options: {
+                      reviewId: userReview.id,
+                      poiId: poiId,
+                      images: userReview.images,
+                    },
+                  });
+                }}
+              >
+                Edit Images
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            disabled={!auth.isSignedIn || reviewsQuery.isPending}
+            onClick={() => {
+              modalStore.setAction({
+                type: "itinerary-poi-review",
+                options: {
+                  poiId: poiId,
+                },
+              });
+            }}
+          >
+            <Plus /> Review
+          </Button>
+        )}
       </div>
       <div className="flex flex-col gap-2">
-        {reviews.map((review) => (
-          <div
-            key={review.id}
-            className="flex flex-col border border-border rounded-md p-2 bg-secondary gap-2"
-          >
-            <div className="flex flex-row items-center justify-between gap-2">
-              <div className="flex flex-row items-center gap-2">
-                <Avatar>
-                  <AvatarImage src={review.user.profilePicture} />
-                  <AvatarFallback>Profile</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{review.user.name}</span>
-              </div>
-
-              {review.liked ? (
-                <LikeButton active />
-              ) : (
-                // <ThumbsUp className="size-4 stroke-primary dark:fill-primary/25" />
-                <DislikeButton active />
-                // <ThumbsDown className="size-4 stroke-red-400 fill-red-200/25 dark:fill-red-700/25" />
-              )}
-            </div>
-            <p className="text-sm font-light text-foreground">
-              {review.comment}
-            </p>
-            <div className="flex flex-row items-center gap-2">
-              {review.images.map((image, i) => (
-                <div className="w-1/3 aspect-square relative" key={i}>
-                  <Image
-                    src={image}
-                    alt={review.comment}
-                    className="object-cover"
-                    fill
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-row justify-between">
-              <span className="text-sm flex-1 truncate">
-                {(auth.userId === review.user.id || true) &&
-                  review.itinerary.name}
-              </span>
-              <span className="flex flex-row items-center text-muted-foreground text-sm flex-1 truncate justify-end">
-                {formatDurationToClosestUnit(review.age)} ago
-              </span>
-            </div>
+        {reviews.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground">
+            No reviews yet. Be the first to review this place!
           </div>
-        ))}
+        ) : (
+          reviews.map((review) => {
+            const isCurrentUser = review.userId === auth.userId;
+            return (
+              <div
+                key={review.id}
+                className="flex flex-col border border-border rounded-md p-2 bg-secondary gap-2"
+              >
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <div className="flex flex-row items-center gap-2">
+                    <Avatar>
+                      <AvatarImage src={review.user?.imageUrl} />
+                      <AvatarFallback>
+                        {isCurrentUser
+                          ? "You"
+                          : review.user?.firstName?.[0] ||
+                            review.userId.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">
+                      {isCurrentUser
+                        ? "You"
+                        : review.user?.firstName && review.user?.lastName
+                          ? `${review.user.firstName} ${review.user.lastName}`
+                          : review.user?.username || review.userId}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {review.liked ? (
+                      <LikeButton active />
+                    ) : (
+                      <DislikeButton active />
+                    )}
+                    {isCurrentUser && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteReview(review.id)}
+                        className="text-red-500 hover:text-red-700 p-1 h-auto"
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {review.comment && (
+                  <p className="text-sm font-light text-foreground">
+                    {review.comment}
+                  </p>
+                )}
+                {/* Always show example image for now */}
+                {review.images && review.images.length > 0 && (
+                  <div className="flex flex-row items-center gap-2">
+                    {review.images.slice(0, 3).map((image, i) => (
+                      <Button
+                        className="flex-1 h-fit px-0 py-0 has-[>svg]:px-0 aspect-square relative cursor-pointer hover:opacity-80 transition-opacity"
+                        key={i}
+                        variant="ghost"
+                        onClick={() => {
+                          modalStore.setAction({
+                            type: "review-image-carousel",
+                            options: {
+                              name: poiName,
+                              images: review.images.map((image) => image.url),
+                              defaultIndex: i,
+                            },
+                          });
+                        }}
+                      >
+                        <Image
+                          src={image.url}
+                          alt={review.comment || "Review image"}
+                          className="object-cover rounded"
+                          fill
+                        />
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
 }
 
-export function ViewPOIPanel() {
-  // use nuqs to get the poiId
-  const [poiId, setPoiId] = useQueryState("poi", parseAsInteger);
-  // TODO: Currently, the POI is hardcoded. Create a trpc router that interacts with the database to get the POI.
+export function ViewExistingPOIPanel({ poiId }: { poiId: number }) {
+  const modalStore = useMapModalStore(
+    useShallow(({ setAction }) => {
+      return {
+        setAction,
+      };
+    })
+  );
+  const mapStore = useMapStore(
+    useShallow(
+      ({
+        filters,
+        setFilterExcludedTags,
+        tagBadgeOrder,
+        setTagBadgeOrder,
+        viewingItineraryId,
+        setViewingItineraryId,
+        setCurrentSidePanelTab,
+      }) => {
+        return {
+          excludedTags: filters.excludedTags,
+          setFilterExcludedTags,
+          tagBadgeOrder,
+          setTagBadgeOrder,
+          viewingItineraryId,
+          setViewingItineraryId,
+          setCurrentSidePanelTab,
+        };
+      }
+    )
+  );
+
   const poiQuery = trpc.map.getPOI.useQuery(
     { id: poiId ?? 0 },
     {
       enabled: poiId !== null,
     }
   );
+  const poiTagQuery = trpc.map.getPOITags.useQuery({
+    poiId,
+  });
+  const existsPoiInItinerary = trpc.itinerary.existsPOIInItinerary.useQuery(
+    {
+      poiId,
+      itineraryId: mapStore.viewingItineraryId ?? 0,
+    },
+    {
+      enabled: mapStore.viewingItineraryId !== null,
+    }
+  );
+
+  const sortedTags = useMemo(() => {
+    const tagNames = poiTagQuery.data;
+    if (tagNames === undefined) {
+      return { tagsData: [], tagOrder: [] };
+    }
+    // Do sorting in here using poiTagQuery.data
+    const filteredTagNames = tagNames.map((tag) => ({
+      tagId: tag.tagId,
+      name: tag.name,
+      excluded: mapStore.excludedTags.has(tag.tagId),
+    }));
+
+    if (mapStore.tagBadgeOrder.length === 0) {
+      //console.log(sortedTagNames)
+      const sortedTagNames = [
+        ...filteredTagNames.sort((a, b) => {
+          if (a.excluded === b.excluded)
+            return 0; //if filter state is same, keep order
+          else if (a.excluded)
+            return 1; //if a has been filtered away but not b, place at the end
+          else return -1; //else place it infront of b
+        }),
+      ];
+      const tagOrderData = sortedTagNames.map((item) => item.tagId);
+      return { tagsData: sortedTagNames, tagOrder: tagOrderData };
+    }
+    //console.log(filteredTagNames)
+    const sortedTagNames = [
+      ...filteredTagNames.sort((a, b) => {
+        const aIndex = mapStore.tagBadgeOrder.indexOf(a.tagId);
+        const bIndex = mapStore.tagBadgeOrder.indexOf(b.tagId);
+        if (aIndex === bIndex)
+          return 0; //if id is same, keep order
+        else if (aIndex > bIndex)
+          return 1; //if a has been filtered away but not b, place at the end
+        else return -1; //else place it infront of b
+      }),
+    ];
+    const tagOrderData = sortedTagNames.map((item) => item.tagId);
+    return { tagsData: sortedTagNames, tagOrder: tagOrderData };
+  }, [poiTagQuery.data, mapStore.excludedTags, mapStore.tagBadgeOrder]);
+
+  // Mutation for adding POI to itinerary
+  const addPOIToItineraryMutation =
+    trpc.itinerary.addPOIToItinerary.useMutation({
+      onSuccess: (data, vars) => {
+        if (!poi) {
+          return;
+        }
+        toast.success(`${poi.name} added to itinerary`);
+        // mapStore.setCurrentSidePanelTab("itinerary");
+        utils.itinerary.getItinerary.invalidate({
+          id: vars.itineraryId,
+        });
+        utils.map.search.invalidate();
+        utils.itinerary.getAllItineraries.invalidate();
+        utils.itinerary.existsPOIInItinerary.setData(
+          {
+            itineraryId: vars.itineraryId,
+            poiId: poiId,
+          },
+          true
+        );
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+  const removePOIFromItineraryMutation =
+    trpc.itinerary.removePOIFromItinerary.useMutation({
+      onSuccess: (data, vars) => {
+        if (!poi) {
+          return;
+        }
+        toast.success(`${poi.name} removed from itinerary`);
+        // mapStore.setCurrentSidePanelTab("itinerary");
+        utils.itinerary.getItinerary.invalidate({
+          id: vars.itineraryId,
+        });
+        utils.map.search.invalidate();
+        utils.itinerary.getAllItineraries.invalidate();
+        utils.itinerary.existsPOIInItinerary.setData(
+          {
+            itineraryId: vars.itineraryId,
+            poiId: poiId,
+          },
+          false
+        );
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
+  // TRPC utilities for cache invalidation
+  const utils = trpc.useUtils();
+
+  const isUserSignedIn = useUser().isSignedIn;
 
   if (poiQuery.isLoading) {
     return (
@@ -183,8 +413,15 @@ export function ViewPOIPanel() {
   }
 
   const poi = poiQuery.data;
+  const poiTags = sortedTags.tagsData;
+  const poiTagsOrder = sortedTags.tagOrder;
 
-  if (poiId === null || poi === null || poi === undefined) {
+  if (
+    poi === null ||
+    poi === undefined ||
+    poiTags === null ||
+    poiTags === undefined
+  ) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
         <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
@@ -202,13 +439,293 @@ export function ViewPOIPanel() {
     );
   }
 
+  // Function to handle starting an itinerary with this POI
+  const handleStartItinerary = () => {
+    // Show create itinerary modal with this POI as the starting point
+    modalStore.setAction({
+      type: "create-itinerary",
+      options: {
+        longitude: poi.longitude,
+        latitude: poi.latitude,
+        poiId: poiId, // Pass the POI ID
+      },
+    });
+  };
+
+  let addToItineraryButton;
+  if (mapStore.viewingItineraryId === null) {
+    addToItineraryButton = (
+      <Button className="w-full truncate" size="sm" disabled>
+        Add to Itinerary
+      </Button>
+    );
+  } else if (existsPoiInItinerary.isPending) {
+    addToItineraryButton = <Skeleton className="w-full h-8" />;
+  } else if (existsPoiInItinerary.isError) {
+    addToItineraryButton = (
+      <Alert variant="destructive">
+        <AlertTitle>Something went wrong!</AlertTitle>
+        <AlertDescription>
+          <p>{existsPoiInItinerary.error.message}</p>
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (existsPoiInItinerary.data) {
+    addToItineraryButton = (
+      <Button
+        className="w-full truncate"
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          if (!mapStore.viewingItineraryId) {
+            return;
+          }
+          removePOIFromItineraryMutation.mutate({
+            itineraryId: mapStore.viewingItineraryId,
+            poiId: poiId,
+          });
+        }}
+        disabled={removePOIFromItineraryMutation.isPending || !isUserSignedIn}
+      >
+        {removePOIFromItineraryMutation.isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Removing...
+          </>
+        ) : (
+          "Remove from Itinerary"
+        )}
+      </Button>
+    );
+  } else {
+    addToItineraryButton = (
+      <Button
+        className="w-full truncate"
+        size="sm"
+        onClick={() => {
+          if (!mapStore.viewingItineraryId) {
+            return;
+          }
+          addPOIToItineraryMutation.mutate({
+            itineraryId: mapStore.viewingItineraryId,
+            poiId: poiId,
+          });
+        }}
+        disabled={addPOIToItineraryMutation.isPending || !isUserSignedIn}
+      >
+        {addPOIToItineraryMutation.isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Adding...
+          </>
+        ) : (
+          "Add to Itinerary"
+        )}
+      </Button>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col">
       <div className="w-full aspect-[4/3] relative">
         {poi.images.length > 0 && poi.images[0] !== "" ? (
+          <div className="inline-block">
+            <Button
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                modalStore.setAction({
+                  type: "poi-image-carousel",
+                  options: {
+                    poiId: poi.id,
+                    name: poi.name,
+                  },
+                });
+              }}
+            >
+              <Image
+                src={
+                  poi.images[0].startsWith("https://")
+                    ? poi.images[0]
+                    : `https://${poi.images[0]}`
+                }
+                alt={poi.name}
+                fill
+                className="object-cover cursor-pointer"
+              />
+            </Button>
+            <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-800/70">
+              <p className="text-xs text-white">
+                {poi.images.length} Image{poi.images.length > 1 ? "s" : ""}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg"
+              disabled={!isUserSignedIn}
+              onClick={(e) => {
+                e.stopPropagation();
+                modalStore.setAction({
+                  type: "upload-poi-image",
+                  options: {
+                    poiId: poi.id,
+                    name: poi.name,
+                    images: [],
+                  },
+                });
+              }}
+            >
+              <Upload className="size-5 stroke-white" />
+            </Button>
+          </div>
+        ) : (
+          <div className="relative inline-block h-full w-full">
+            <div className="flex flex-col gap-2 items-center justify-center w-full h-full bg-muted">
+              <ImageIcon className="size-8" />
+              No Image
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute bottom-0 right-3 cursor-pointer stroke-white rounded-full p-2 shadow-lg"
+              disabled={!isUserSignedIn}
+              onClick={(e) => {
+                e.stopPropagation();
+                modalStore.setAction({
+                  type: "upload-poi-image",
+                  options: {
+                    poiId: poi.id,
+                    name: poi.name,
+                    images: [],
+                  },
+                });
+              }}
+            >
+              <Upload className="size-5" />
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col p-1">
+        <h1 className="text-base font-bold">{poi.name}</h1>
+        <p className="text-sm text-muted-foreground">{poi.description}</p>
+        <div className="flex flex-wrap gap-1 py-2">
+          {poiTags.map((tagdata) => (
+            <Badge
+              key={tagdata.tagId}
+              className={cn(
+                {
+                  "dark:bg-green-300": !tagdata.excluded,
+                  "dark:text-neutral-100": tagdata.excluded,
+                  "bg-green-400": !tagdata.excluded,
+                  "text-black": true,
+                },
+                "cursor-pointer"
+              )}
+              variant={tagdata.excluded ? "secondary" : "default"}
+              onClick={(e) => {
+                e.stopPropagation();
+                mapStore.setTagBadgeOrder(poiTagsOrder);
+                const currentExcludedTags = new Set(mapStore.excludedTags);
+                if (mapStore.excludedTags.has(tagdata.tagId ?? -1)) {
+                  currentExcludedTags.delete(tagdata.tagId ?? -1);
+                  mapStore.setFilterExcludedTags(currentExcludedTags);
+                } else {
+                  currentExcludedTags.add(tagdata.tagId ?? -1);
+                  mapStore.setFilterExcludedTags(currentExcludedTags);
+                }
+              }}
+            >
+              {tagdata.name}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1 py-4">
+          <div className="flex w-full items-center justify-between">
+            <Button variant="ghost" asChild className="w-fit p-0">
+              <a
+                href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+                //if wanna open directions mode right away in G maps
+                //href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(poi.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Navigation />
+                Navigate
+              </a>
+            </Button>
+            <Button variant="ghost" asChild className="w-fit p-0">
+              <a href={`https://forms.gle/v9rBS4DWs4zKSmpc7`}>
+                <MessageSquareWarning />
+                Report
+              </a>
+            </Button>
+          </div>
+          {addToItineraryButton}
+          <Button
+            className="w-full truncate"
+            variant="secondary"
+            size="sm"
+            onClick={handleStartItinerary}
+            disabled={!isUserSignedIn}
+          >
+            Start Itinerary
+          </Button>
+        </div>
+        <ViewPOIReviews poiId={poiId} poiName={poi.name} />
+      </div>
+    </div>
+  );
+}
+
+export function ViewNewPOIPanel({
+  pos,
+}: {
+  pos: {
+    latitude: number;
+    longitude: number;
+  };
+}) {
+  const modalStore = useMapModalStore(
+    useShallow(({ setAction }) => {
+      return {
+        setAction,
+      };
+    })
+  );
+  const user = useUser().isSignedIn;
+  const addrQuery = trpc.map.getAddress.useQuery({
+    lat: pos.latitude,
+    lng: pos.longitude,
+  });
+  if (addrQuery.isLoading || addrQuery.isFetching) {
+    return (
+      <div className="w-full flex flex-col gap-2">
+        <div className="w-full aspect-[4/3] relative">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="flex flex-col p-1 gap-2">
+          <Skeleton className="w-24 h-6" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-1/2 h-4" />
+        </div>
+      </div>
+    );
+  }
+
+  const addr = addrQuery.data;
+  const coords = `Lat: ${pos.latitude.toFixed(2)}, Long: ${pos.longitude.toFixed(2)}`;
+  const image = ""; //image placeholder
+
+  return (
+    <div className="w-full flex flex-col">
+      <div className="w-full aspect-[4/3] relative">
+        {image !== "" ? (
           <Image
-            src={`https://${poi.images[0]}`}
-            alt={poi.name}
+            src={`https://${image}`}
+            alt={addr}
             fill
             className="object-cover"
           />
@@ -220,25 +737,69 @@ export function ViewPOIPanel() {
         )}
       </div>
       <div className="flex flex-col p-1">
-        <h1 className="text-base font-bold">{poi.name}</h1>
-        <p className="text-sm text-muted-foreground">{poi.description}</p>
+        <h1 className="text-base font-bold">{addr}</h1>
+        <p className="text-sm text-muted-foreground">{coords}</p>
         <div className="flex flex-col gap-1 py-4">
           <Button variant="ghost" asChild className="w-fit p-0">
             <a
-              href={`https://www.google.com/maps?q=${poi.latitude},${poi.longitude}`}
+              href={`https://www.google.com/maps?q=${pos.latitude},${pos.longitude}`}
             >
               <Navigation />
               Navigate
             </a>
           </Button>
-          <Button className="w-full truncate" size="sm">
-            Add to Itinerary
-          </Button>
-          <Button className="w-full truncate" variant="secondary" size="sm">
-            Start Itinerary
+          <Button
+            className="w-full truncate"
+            size="sm"
+            disabled={!user}
+            onClick={(e) => {
+              e.stopPropagation();
+              modalStore.setAction({
+                type: "create-poi",
+                options: {
+                  address: addr,
+                  longitude: pos.longitude,
+                  latitude: pos.latitude,
+                  name: "",
+                  description: "",
+                  images: [],
+                },
+              });
+            }}
+          >
+            Upload your own POI here
           </Button>
         </div>
-        <ViewPOIReviews poiId={poiId} />
+      </div>
+    </div>
+  );
+}
+
+export function ViewPOIPanel() {
+  const mapStore = useMapStore(
+    useShallow(({ viewingPOI }) => {
+      return {
+        viewingPOI,
+      };
+    })
+  );
+
+  if (mapStore.viewingPOI?.type === "existing-poi") {
+    return <ViewExistingPOIPanel poiId={mapStore.viewingPOI.poiId} />;
+  } else if (mapStore.viewingPOI?.type === "new-poi") {
+    return <ViewNewPOIPanel pos={mapStore.viewingPOI.pos} />;
+  }
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center py-14 px-4 md:py-16">
+      <div className="w-fit lg:w-full flex flex-col gap-2 items-center justify-center p-4 bg-secondary border-border border rounded-md">
+        <MapPin className="size-6 stroke-red-400" />
+        <div className="flex flex-col">
+          <h3 className="text-base font-bold text-center">No pin selected!</h3>
+          <p className="text-muted-foreground text-center text-sm">
+            Select a pin on the map to view more information.
+          </p>
+        </div>
       </div>
     </div>
   );
