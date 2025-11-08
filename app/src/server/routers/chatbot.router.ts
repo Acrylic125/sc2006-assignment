@@ -5,6 +5,23 @@ import { db } from "../../db";
 import { poiTable, poiTagTable, tagTable } from "../../db/schema";
 import { eq, sql, and, gte, lte } from "drizzle-orm";
 
+// Types for POI data
+interface POIWithDistance {
+  id: number;
+  name: string;
+  description: string;
+  latitude: string;
+  longitude: string;
+  tags: string[];
+  distance: number;
+}
+
+interface CoordinatesResult {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 // OpenRouter setup
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -33,7 +50,7 @@ function getUserConversations(userId: string): Map<string, Array<{role: string, 
 }
 
 // Helper function to query POIs near a location
-async function getPOIsNearLocation(latitude: number, longitude: number, radiusKm: number = 2): Promise<any[]> {
+async function getPOIsNearLocation(latitude: number, longitude: number, radiusKm: number = 2): Promise<POIWithDistance[]> {
   try {
     console.log(`Querying POIs near ${latitude}, ${longitude} within ${radiusKm}km`);
     
@@ -177,7 +194,7 @@ async function getOnemapToken(): Promise<string> {
 }
 
 // Search for coordinates using place name
-async function searchPlaceCoordinates(placeName: string): Promise<{latitude: number, longitude: number, address: string} | null> {
+async function searchPlaceCoordinates(placeName: string): Promise<CoordinatesResult | null> {
   try {
     console.log(`Searching coordinates for: "${placeName}"`);
     
@@ -222,7 +239,7 @@ async function searchPlaceCoordinates(placeName: string): Promise<{latitude: num
 }
 
 // Enhanced function that handles both coordinates and place names
-async function getPOIsNearPlace(input: {latitude?: number, longitude?: number, placeName?: string}, radiusKm: number = 2): Promise<any[]> {
+async function getPOIsNearPlace(input: {latitude?: number, longitude?: number, placeName?: string}, radiusKm: number = 2): Promise<POIWithDistance[]> {
   let coordinates: {latitude: number, longitude: number} | null = null;
   
   try {
@@ -273,7 +290,7 @@ export const chatbotRouter = createTRPCRouter({
         conversationId: z.string().optional(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       console.log("Chatbot received message:", input.message);
       
       try {
@@ -283,9 +300,6 @@ export const chatbotRouter = createTRPCRouter({
         
         // Get or create conversation ID - each user can have multiple conversations
         const conversationId = input.conversationId || 'default';
-        
-        // Create the conversation key that includes user isolation
-        const conversationKey = `${userId}:${conversationId}`;
         
         console.log(`Processing message for userId: ${userId} (${isNewSession ? 'NEW SESSION' : 'EXISTING'}), conversationId: ${conversationId}`);
         
@@ -408,9 +422,9 @@ Response formatting tips:
 
         // Get model from environment variable with fallback
         const model = process.env.OPEN_ROUTER_MODEL || "google/gemma-2-9b-it:free";
-        console.log(`Using model: ${model} for conversation: ${conversationKey}`);
+        console.log(`Using model: ${model} for conversation: ${userId}:${conversationId}`);
 
-        let completion = await openai.chat.completions.create({
+        const completion = await openai.chat.completions.create({
           model: model,
           messages: messages,
           tools: tools,
@@ -475,7 +489,7 @@ Response formatting tips:
                 // Get final response from LLM with the POI data
                 const finalCompletion = await openai.chat.completions.create({
                   model: model,
-                  messages: messagesWithTool as any, // Type assertion for tool calling
+                  messages: messagesWithTool as Parameters<typeof openai.chat.completions.create>[0]['messages'],
                   max_tokens: 600, // Increased for POI data processing
                   temperature: 0.8,
                 });
