@@ -38,7 +38,11 @@ function createPinURL(color: string) {
   );
 }
 
-function createBubbleURL(color: string, width: number = 256, opacity: number = 0.5) {
+function createBubbleURL(
+  color: string,
+  width: number = 256,
+  opacity: number = 0.5
+) {
   return (
     "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(`
@@ -73,7 +77,6 @@ function createAddPin(width: number = 128) {
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 
-
 //below ensures pins do not become blurry from over-scaling
 //target constant: px_per_scale
 //input var: size = width*scale
@@ -83,28 +86,44 @@ function createAddPin(width: number = 128) {
 const PX_PER_SCALE = 128;
 
 const ADD_PIN_SIZE = 40;
-const ADD_PIN_SCALE = Math.sqrt(ADD_PIN_SIZE/PX_PER_SCALE);
+const ADD_PIN_SCALE = Math.sqrt(ADD_PIN_SIZE / PX_PER_SCALE);
 const BUBBLE_MIN_SIZE = 30;
 const BUBBLE_MAX_SIZE = 70;
-const BUBBLE_MIN_SCALE = Math.sqrt(BUBBLE_MIN_SIZE/PX_PER_SCALE);
-const BUBBLE_MAX_SCALE = Math.sqrt(BUBBLE_MAX_SIZE/PX_PER_SCALE);
+const BUBBLE_MIN_SCALE = Math.sqrt(BUBBLE_MIN_SIZE / PX_PER_SCALE);
+const BUBBLE_MAX_SCALE = Math.sqrt(BUBBLE_MAX_SIZE / PX_PER_SCALE);
 
-const BUBBLE_OPACITY = 0.65
+const BUBBLE_OPACITY = 0.65;
 
 const pins = {
   red: createPinURL("#e7000b"), //red-600
   yellow: createPinURL("#fd9a00"), //amber-500
-  blue_bubble: createBubbleURL("#193cb8", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //blue-800
-  red_bubble: createBubbleURL("#ff2056", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //rose-500
-  yellow_bubble: createBubbleURL("#ffba00", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY), //amber-400
-  gray_bubble: createBubbleURL("#90a1b9", PX_PER_SCALE*BUBBLE_MAX_SCALE, BUBBLE_OPACITY),
-  add_pin: createAddPin(PX_PER_SCALE*ADD_PIN_SCALE),
+  blue_bubble: createBubbleURL(
+    "#193cb8",
+    PX_PER_SCALE * BUBBLE_MAX_SCALE,
+    BUBBLE_OPACITY
+  ), //blue-800
+  red_bubble: createBubbleURL(
+    "#ff2056",
+    PX_PER_SCALE * BUBBLE_MAX_SCALE,
+    BUBBLE_OPACITY
+  ), //rose-500
+  yellow_bubble: createBubbleURL(
+    "#ffba00",
+    PX_PER_SCALE * BUBBLE_MAX_SCALE,
+    BUBBLE_OPACITY
+  ), //amber-400
+  gray_bubble: createBubbleURL(
+    "#90a1b9",
+    PX_PER_SCALE * BUBBLE_MAX_SCALE,
+    BUBBLE_OPACITY
+  ),
+  add_pin: createAddPin(PX_PER_SCALE * ADD_PIN_SCALE),
 };
 
 const BUBBLE_DOT_SIZE = 4;
 
-const CLUSTER_COLOR = "#0084d1" //sky-600
-const CLUSTER_OPACITY = 0.6
+const CLUSTER_COLOR = "#0084d1"; //sky-600
+const CLUSTER_OPACITY = 0.6;
 
 function ExploreMapLayers({ enabled }: { enabled: boolean }) {
   const mapStore = useMapStore(
@@ -866,7 +885,7 @@ export function MapHintTopBar() {
   );
   if (mapStore.currentMapTab === "explore") {
     return (
-      <div className="absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
+      <div className="hidden md:flex absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
         <p className="text-center w-full text-muted-foreground">
           Click on <span className="text-primary font-bold">Pin to view</span>{" "}
           OR{" "}
@@ -877,7 +896,7 @@ export function MapHintTopBar() {
     );
   }
   return (
-    <div className="absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
+    <div className="hidden md:flex absolute top-4 left-1/2 right-1/2 z-20 -translate-x-1/2 p-2 w-md bg-background/50 backdrop-blur-md rounded-full">
       <p className="text-center w-full text-muted-foreground">
         Click on <span className="text-primary font-bold">Pin to view</span> OR{" "}
         <span className="text-primary font-bold">
@@ -942,4 +961,3 @@ export function MapViewTabGroupDropdown() {
     </DropdownMenu>
   );
 }
-
